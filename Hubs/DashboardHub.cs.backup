@@ -1,0 +1,1461 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.SignalR;
+using System.Security.Claims;
+using CongoTravel.Services.Repositories;
+using CongoTravel.Services;
+using CongoTravel.Models.DTOs;
+using CongoTravel.Models.DTOs.Statistiques;
+using CongoTravel.Models;
+using CongoTravel.Data;
+using Microsoft.EntityFrameworkCore;
+using System.Globalization;
+
+namespace CongoTravel.Hubs
+{
+    /// <summary>
+    /// Hub SignalR pour les notifications en temps réel du dashboard et des statistiques
+    /// Gère les connexions et les groupes par société
+    /// </summary>
+    [Authorize]
+    public class DashboardHub : Hub
+    {
+        private readonly ICurrentUserService _currentUserService;
+        private readonly ILogger<DashboardHub> _logger;
+        private readonly DashboardService _dashboardService;
+        private readonly StatistiquesService _statistiquesService;
+        private readonly SuperAdminDashboardService _superAdminDashboardService;
+        private readonly GerantDashboardService _gerantDashboardService;
+        private readonly FinancierDashboardService _financierDashboardService;
+        private readonly CaissierDashboardService _caissierDashboardService;
+        private readonly ClientDashboardService _clientDashboardService;
+        private readonly CongoTravelDbContext _context;
+
+        public DashboardHub(
+            ICurrentUserService currentUserService,
+            ILogger<DashboardHub> logger,
+            DashboardService dashboardService,
+            StatistiquesService statistiquesService,
+            SuperAdminDashboardService superAdminDashboardService,
+            GerantDashboardService gerantDashboardService,
+            FinancierDashboardService financierDashboardService,
+            CaissierDashboardService caissierDashboardService,
+            ClientDashboardService clientDashboardService,
+            CongoTravelDbContext context)
+        {
+            _currentUserService = currentUserService;
+            _logger = logger;
+            _dashboardService = dashboardService;
+            _statistiquesService = statistiquesService;
+            _superAdminDashboardService = superAdminDashboardService;
+            _gerantDashboardService = gerantDashboardService;
+            _financierDashboardService = financierDashboardService;
+            _caissierDashboardService = caissierDashboardService;
+            _clientDashboardService = clientDashboardService;
+            _context = context;
+        }
+
+        /// <summary>
+        /// Méthode appelée lors de la connexion d'un client
+        /// </summary>
+        public override async Task OnConnectedAsync()
+        {
+            try
+            {
+                var userId = _currentUserService.GetUserId();
+                var userRole = _currentUserService.GetUserRole();
+                var societeId = _currentUserService.GetSocieteId();
+                var userName = _currentUserService.GetUserName();
+
+                _logger.LogInformation($"🔌 User {userName} (ID: {userId}) connected as {userRole} to society {societeId}");
+
+                // Ajouter l'utilisateur aux groupes de société
+                await Groups.AddToGroupAsync(Context.ConnectionId, $"societe_{societeId}");
+                await Groups.AddToGroupAsync(Context.ConnectionId, $"dashboard_societe_{societeId}");
+                await Groups.AddToGroupAsync(Context.ConnectionId, $"statistiques_updates_{societeId}");
+
+                await base.OnConnectedAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error during user connection to DashboardHub");
+            }
+        }
+
+        /// <summary>
+        /// Méthode appelée lors de la déconnexion d'un client
+        /// </summary>
+        public override async Task OnDisconnectedAsync(Exception? exception)
+        {
+            try
+            {
+                var userId = _currentUserService.GetUserId();
+                var userRole = _currentUserService.GetUserRole();
+                var societeId = _currentUserService.GetSocieteId();
+                var userName = _currentUserService.GetUserName();
+
+                _logger.LogInformation($"🔌 User {userName} (ID: {userId}) disconnected as {userRole} from society {societeId}");
+
+                await base.OnDisconnectedAsync(exception);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error during user disconnection from DashboardHub");
+            }
+        }
+
+        #region Dashboard Events
+
+        /// <summary>
+        /// S'abonner aux mises à jour du dashboard
+        /// </summary>
+        public async Task SubscribeToDashboardUpdates(int societeId)
+        {
+            try
+            {
+                var userRole = _currentUserService.GetUserRole();
+                
+                // Vérifier que l'utilisateur a accès à cette société
+                var userSocieteId = _currentUserService.GetSocieteId();
+                if (userSocieteId != societeId && userRole != "Super-Admin")
+                {
+                    await Clients.Caller.SendAsync("Error", "Accès non autorisé à cette société");
+                    return;
+                }
+
+                await Groups.AddToGroupAsync(Context.ConnectionId, $"dashboard_societe_{societeId}");
+                await Clients.Caller.SendAsync("Subscribed", $"Abonné au dashboard de la société {societeId}");
+                
+                _logger.LogInformation($"📢 User subscribed to dashboard updates for society {societeId}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error subscribing to dashboard updates");
+                await Clients.Caller.SendAsync("Error", "Erreur lors de l'abonnement au dashboard");
+            }
+        }
+
+        /// <summary>
+        /// Demander une mise à jour du dashboard
+        /// </summary>
+        public async Task RequestDashboardUpdate(int societeId)
+        {
+            try
+            {
+                var userRole = _currentUserService.GetUserRole();
+                var userName = _currentUserService.GetUserName();
+                
+                // Vérifier que l'utilisateur a accès à cette société
+                var userSocieteId = _currentUserService.GetSocieteId();
+                if (userSocieteId != societeId && userRole != "Super-Admin")
+                {
+                    await Clients.Caller.SendAsync("Error", "Accès non autorisé à cette société");
+                    return;
+                }
+
+                // Récupérer les données du dashboard
+                var dashboardData = await _dashboardService.GetDashboardDataAsync(societeId);
+
+                // Envoyer les données du dashboard
+                await Clients.Group($"dashboard_societe_{societeId}").SendAsync("DashboardUpdated", new
+                {
+                    societeId = societeId,
+                    dashboard = dashboardData,
+                    timestamp = DateTime.UtcNow,
+                    type = "full_update"
+                });
+
+                _logger.LogInformation($"🔄 Dashboard update requested for society {societeId} by {userName}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error requesting dashboard update");
+                await Clients.Caller.SendAsync("Error", "Erreur lors de la demande de mise à jour du dashboard");
+            }
+        }
+
+        #endregion
+
+        #region Statistiques Events
+
+        /// <summary>
+        /// S'abonner aux mises à jour des statistiques
+        /// </summary>
+        public async Task SubscribeToStatistiquesUpdates(int societeId)
+        {
+            try
+            {
+                var userRole = _currentUserService.GetUserRole();
+                
+                // Vérifier que l'utilisateur a accès à cette société
+                var userSocieteId = _currentUserService.GetSocieteId();
+                if (userSocieteId != societeId && userRole != "Super-Admin")
+                {
+                    await Clients.Caller.SendAsync("Error", "Accès non autorisé à cette société");
+                    return;
+                }
+
+                await Groups.AddToGroupAsync(Context.ConnectionId, $"statistiques_updates_{societeId}");
+                await Clients.Caller.SendAsync("Subscribed", $"Abonné aux statistiques de la société {societeId}");
+                
+                _logger.LogInformation($"📢 User subscribed to statistics updates for society {societeId}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error subscribing to statistics updates");
+                await Clients.Caller.SendAsync("Error", "Erreur lors de l'abonnement aux statistiques");
+            }
+        }
+
+        /// <summary>
+        /// Demander une mise à jour des statistiques
+        /// </summary>
+        public async Task RequestStatistiquesUpdate(int societeId)
+        {
+            try
+            {
+                var userRole = _currentUserService.GetUserRole();
+                var userName = _currentUserService.GetUserName();
+                
+                // Vérifier que l'utilisateur a accès à cette société
+                var userSocieteId = _currentUserService.GetSocieteId();
+                if (userSocieteId != societeId && userRole != "Super-Admin")
+                {
+                    await Clients.Caller.SendAsync("Error", "Accès non autorisé à cette société");
+                    return;
+                }
+
+                // Récupérer les statistiques générales
+                var statsGenerales = await _statistiquesService.GetStatistiquesGeneralesAsync(societeId);
+                var statsFinancieres = await _statistiquesService.GetStatistiquesFinancieresAsync(societeId);
+
+                // Envoyer les statistiques générales
+                await Clients.Group($"statistiques_updates_{societeId}").SendAsync("StatistiquesGeneralesUpdated", new
+                {
+                    societeId = societeId,
+                    statistiques = statsGenerales,
+                    timestamp = DateTime.UtcNow,
+                    type = "generales_update"
+                });
+
+                // Envoyer les statistiques financières
+                await Clients.Group($"statistiques_updates_{societeId}").SendAsync("StatistiquesFinancieresUpdated", new
+                {
+                    societeId = societeId,
+                    statistiques = statsFinancieres,
+                    timestamp = DateTime.UtcNow,
+                    type = "financieres_update"
+                });
+
+                _logger.LogInformation($"🔄 Statistics update requested for society {societeId} by {userName}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error requesting statistics update");
+                await Clients.Caller.SendAsync("Error", "Erreur lors de la demande de mise à jour des statistiques");
+            }
+        }
+
+        #endregion
+
+        #region Super Admin Events
+
+        /// <summary>
+        /// S'abonner aux mises à jour du dashboard Super-Admin
+        /// </summary>
+        public async Task SubscribeToSuperAdminDashboard()
+        {
+            try
+            {
+                var userId = _currentUserService.GetUserId();
+                var userRole = _currentUserService.GetUserRole();
+                var userName = _currentUserService.GetUserName();
+
+                // Vérifier que l'utilisateur est un Super-Admin
+                if (userRole != "Super-Admin")
+                {
+                    await Clients.Caller.SendAsync("Error", "Accès réservé au rôle Super-Admin");
+                    return;
+                }
+
+                // Ajouter l'utilisateur au groupe Super-Admin
+                await Groups.AddToGroupAsync(Context.ConnectionId, "super_admin_dashboard");
+
+                _logger.LogInformation($"🔌 User {userName} (ID: {userId}) subscribed to Super-Admin dashboard updates");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error during Super-Admin dashboard subscription");
+                await Clients.Caller.SendAsync("Error", "Erreur lors de l'abonnement au dashboard Super-Admin");
+            }
+        }
+
+        /// <summary>
+        /// S'abonner aux mises à jour du dashboard Gérant
+        /// </summary>
+        public async Task SubscribeToGerantDashboard()
+        {
+            try
+            {
+                var userId = _currentUserService.GetUserId();
+                var userRole = _currentUserService.GetUserRole();
+                var societeId = _currentUserService.GetSocieteId();
+                var userName = _currentUserService.GetUserName();
+
+                // Vérifier que l'utilisateur est un Gérant ou Admin
+                if (userRole != "Gerant" && userRole != "Admin" && userRole != "Super-Admin")
+                {
+                    await Clients.Caller.SendAsync("Error", "Accès réservé au rôle Gérant ou supérieur");
+                    return;
+                }
+
+                if (societeId == 0)
+                {
+                    await Clients.Caller.SendAsync("Error", "ID de société non trouvé");
+                    return;
+                }
+
+                // Ajouter l'utilisateur au groupe Gérant
+                await Groups.AddToGroupAsync(Context.ConnectionId, $"gerant_dashboard_{societeId}");
+
+                _logger.LogInformation($"🔌 User {userName} (ID: {userId}) subscribed to Gérant dashboard updates for society {societeId}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error during Gérant dashboard subscription");
+                await Clients.Caller.SendAsync("Error", "Erreur lors de l'abonnement au dashboard Gérant");
+            }
+        }
+
+        /// <summary>
+        /// S'abonner aux mises à jour du dashboard Financier
+        /// </summary>
+        public async Task SubscribeToFinancierDashboard()
+        {
+            try
+            {
+                var userId = _currentUserService.GetUserId();
+                var userRole = _currentUserService.GetUserRole();
+                var userName = _currentUserService.GetUserName();
+
+                // Vérifier que l'utilisateur est un Financier ou Super-Admin
+                if (userRole != "Financier" && userRole != "Super-Admin")
+                {
+                    await Clients.Caller.SendAsync("Error", "Accès réservé au rôle Financier ou Super-Admin");
+                    return;
+                }
+
+                // Ajouter l'utilisateur au groupe Financier
+                await Groups.AddToGroupAsync(Context.ConnectionId, "financier_dashboard");
+
+                _logger.LogInformation($"� User {userName} (ID: {userId}) subscribed to Financier dashboard updates");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error during Financier dashboard subscription");
+                await Clients.Caller.SendAsync("Error", "Erreur lors de l'abonnement au dashboard Financier");
+            }
+        }
+
+        /// <summary>
+        /// S'abonner aux mises à jour du dashboard Caissier
+        /// </summary>
+        public async Task SubscribeToCaissierDashboard()
+        {
+            try
+            {
+                var userId = _currentUserService.GetUserId();
+                var userRole = _currentUserService.GetUserRole();
+                var societeId = _currentUserService.GetSocieteId();
+                var userName = _currentUserService.GetUserName();
+
+                // Vérifier que l'utilisateur est un Caissier ou Super-Admin
+                if (userRole != "Caissier" && userRole != "Super-Admin")
+                {
+                    await Clients.Caller.SendAsync("Error", "Accès réservé au rôle Caissier ou Super-Admin");
+                    return;
+                }
+
+                if (societeId == 0)
+                {
+                    await Clients.Caller.SendAsync("Error", "ID de société non trouvé");
+                    return;
+                }
+
+                // Ajouter l'utilisateur au groupe Caissier
+                await Groups.AddToGroupAsync(Context.ConnectionId, $"caissier_dashboard_{societeId}");
+
+                _logger.LogInformation($"🔌 User {userName} (ID: {userId}) subscribed to Caissier dashboard updates for society {societeId}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error during Caissier dashboard subscription");
+                await Clients.Caller.SendAsync("Error", "Erreur lors de l'abonnement au dashboard Caissier");
+            }
+        }
+
+        // Les fonctionnalités de dashboard Technicien ne sont plus disponibles après la refactorisation
+
+        /// <summary>
+        /// S'abonner aux mises à jour du dashboard Client
+        /// </summary>
+        public async Task SubscribeToClientDashboard()
+        {
+            try
+            {
+                var userId = _currentUserService.GetUserId();
+                var userRole = _currentUserService.GetUserRole();
+                var userName = _currentUserService.GetUserName();
+
+                // Vérifier que l'utilisateur est un Client ou Super-Admin
+                if (userRole != "Client" && userRole != "Super-Admin")
+                {
+                    await Clients.Caller.SendAsync("Error", "Accès réservé au rôle Client ou Super-Admin");
+                    return;
+                }
+
+                // Ajouter l'utilisateur au groupe Client
+                await Groups.AddToGroupAsync(Context.ConnectionId, "client_dashboard");
+
+                _logger.LogInformation($"🔌 User {userName} (ID: {userId}) subscribed to Client dashboard updates");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error during Client dashboard subscription");
+                await Clients.Caller.SendAsync("Error", "Erreur lors de l'abonnement au dashboard Client");
+            }
+        }
+
+        /// <summary>
+        /// Demander une mise à jour du dashboard Super-Admin
+        /// </summary>
+        public async Task RequestSuperAdminDashboardUpdate()
+        {
+            try
+            {
+                var userRole = _currentUserService.GetUserRole();
+                var userName = _currentUserService.GetUserName();
+                
+                // Vérifier que l'utilisateur est un Super-Admin
+                if (userRole != "Super-Admin")
+                {
+                    await Clients.Caller.SendAsync("Error", "Accès réservé au rôle Super-Admin");
+                    return;
+                }
+
+                // Récupérer les données du dashboard Super-Admin
+                var dashboardData = await _superAdminDashboardService.GetDashboardDataAsync();
+
+                // Envoyer les données du dashboard Super-Admin
+                await Clients.Group("super_admin_dashboard").SendAsync("DashboardSuperAdminRequested", new
+                {
+                    dashboard = dashboardData,
+                    timestamp = DateTime.UtcNow,
+                    type = "full_update_requested",
+                    requestedBy = userName
+                });
+
+                _logger.LogInformation($"🔄 Super Admin dashboard update requested by {userName}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error requesting Super Admin dashboard update");
+                await Clients.Caller.SendAsync("Error", "Erreur lors de la demande de mise à jour du dashboard Super-Admin");
+            }
+        }
+
+        #endregion
+
+        #region Dashboard Gérant
+
+        /// <summary>
+        /// Demander une mise à jour complète du dashboard principal
+        /// </summary>
+        /*
+        public async Task RequestDashboardUpdate(int societeId)
+        {
+            try
+            {
+                var userId = _currentUserService.GetUserId();
+                var userRole = _currentUserService.GetUserRole();
+                var userName = _currentUserService.GetUserName();
+
+                // Vérifier l'accès à la société
+                if (userRole != "Super-Admin" && userRole != "Admin" && userRole != "Gerant" && userRole != "Caissier")
+                {
+                    await Clients.Caller.SendAsync("Error", "Accès réservé aux rôles Admin, Super-Admin, Gérant ou Caissier");
+                    return;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error requesting dashboard update");
+                await Clients.Caller.SendAsync("Error", "Erreur lors de la demande de mise à jour du dashboard");
+            }
+        } */
+
+        /// <summary>
+        /// Rafraîchir uniquement les statistiques du Gérant
+        /// </summary>
+        public async Task RefreshSocieteStatistiques()
+        {
+            try
+            {
+                var userId = _currentUserService.GetUserId();
+                var userRole = _currentUserService.GetUserRole();
+                var societeId = _currentUserService.GetSocieteId();
+                var userName = _currentUserService.GetUserName();
+                
+                // Vérifier que l'utilisateur est un Gérant ou Admin
+                if (userRole != "Gerant" && userRole != "Admin" && userRole != "Super-Admin")
+                {
+                    await Clients.Caller.SendAsync("Error", "Accès réservé au rôle Gérant ou supérieur");
+                    return;
+                }
+
+                if (societeId == 0)
+                {
+                    await Clients.Caller.SendAsync("Error", "ID de société non trouvé");
+                    return;
+                }
+
+                // Récupérer les statistiques de la société
+                var statistiques = await _gerantDashboardService.GetSocieteStatistiquesAsync(societeId);
+
+                // Envoyer les statistiques
+                await Clients.Group($"gerant_dashboard_{societeId}").SendAsync("DashboardGerantRefreshed", new
+                {
+                    statistiques = statistiques,
+                    timestamp = DateTime.UtcNow,
+                    type = "statistiques_update",
+                    requestedBy = userName,
+                    societeId = societeId
+                });
+
+                _logger.LogInformation($"📊 Society statistics refreshed by {userName} for society {societeId}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error refreshing society statistics");
+                await Clients.Caller.SendAsync("Error", "Erreur lors du rafraîchissement des statistiques de la société");
+            }
+        }
+
+        /// <summary>
+        /// Rafraîchir uniquement les alertes de la société du Gérant
+        /// </summary>
+        public async Task RefreshSocieteAlertes()
+        {
+            try
+            {
+                var userId = _currentUserService.GetUserId();
+                var userRole = _currentUserService.GetUserRole();
+                var societeId = _currentUserService.GetSocieteId();
+                var userName = _currentUserService.GetUserName();
+                
+                // Vérifier que l'utilisateur est un Gérant ou Admin
+                if (userRole != "Gerant" && userRole != "Admin" && userRole != "Super-Admin")
+                {
+                    await Clients.Caller.SendAsync("Error", "Accès réservé au rôle Gérant ou supérieur");
+                    return;
+                }
+
+                if (societeId == 0)
+                {
+                    await Clients.Caller.SendAsync("Error", "ID de société non trouvé");
+                    return;
+                }
+
+                // Récupérer les alertes de la société
+                var alertes = await _gerantDashboardService.GetAlertesSocieteAsync(societeId);
+
+                // Envoyer les alertes
+                await Clients.Group($"gerant_dashboard_{societeId}").SendAsync("DashboardGerantRefreshed", new
+                {
+                    alertes = alertes,
+                    timestamp = DateTime.UtcNow,
+                    type = "alertes_update",
+                    requestedBy = userName,
+                    societeId = societeId
+                });
+
+                _logger.LogInformation($"🚨 Society alerts refreshed by {userName} for society {societeId}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error refreshing society alerts");
+                await Clients.Caller.SendAsync("Error", "Erreur lors du rafraîchissement des alertes de la société");
+            }
+        }
+
+        #endregion
+
+        #region Dashboard Financier
+
+        /// <summary>
+        /// Demande une mise à jour complète du dashboard Financier
+        /// </summary>
+        public async Task RequestFinancierDashboardUpdate()
+        {
+            try
+            {
+                var userRole = _currentUserService.GetUserRole();
+                var userName = _currentUserService.GetUserName();
+                
+                // Vérifier que l'utilisateur est un Financier ou Super-Admin
+                if (userRole != "Financier" && userRole != "Super-Admin")
+                {
+                    await Clients.Caller.SendAsync("Error", "Accès réservé au rôle Financier ou Super-Admin");
+                    return;
+                }
+
+                // Récupérer les données du dashboard Financier
+                var dashboardData = await _financierDashboardService.GetDashboardDataAsync();
+
+                // Envoyer les données du dashboard Financier
+                await Clients.Group("financier_dashboard").SendAsync("DashboardFinancierRequested", new
+                {
+                    dashboard = dashboardData,
+                    timestamp = DateTime.UtcNow,
+                    type = "full_update_requested",
+                    requestedBy = userName
+                });
+
+                _logger.LogInformation($"🔄 Financier dashboard update requested by {userName}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error requesting Financier dashboard update");
+                await Clients.Caller.SendAsync("Error", "Erreur lors de la demande de mise à jour du dashboard Financier");
+            }
+        }
+
+        /// <summary>
+        /// Rafraîchir uniquement les statistiques financières globales
+        /// </summary>
+        public async Task RefreshGlobalStatistiques()
+        {
+            try
+            {
+                var userRole = _currentUserService.GetUserRole();
+                var userName = _currentUserService.GetUserName();
+                
+                // Vérifier que l'utilisateur est un Financier ou Super-Admin
+                if (userRole != "Financier" && userRole != "Super-Admin")
+                {
+                    await Clients.Caller.SendAsync("Error", "Accès réservé au rôle Financier ou Super-Admin");
+                    return;
+                }
+
+                // Récupérer les statistiques globales
+                var statistiques = await _financierDashboardService.GetGlobalFinancierStatistiquesAsync();
+
+                // Envoyer les statistiques
+                await Clients.Group("financier_dashboard").SendAsync("DashboardFinancierRefreshed", new
+                {
+                    statistiques = statistiques,
+                    timestamp = DateTime.UtcNow,
+                    type = "statistiques_update",
+                    requestedBy = userName
+                });
+
+                _logger.LogInformation($"📊 Global financial statistics refreshed by {userName}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error refreshing global financial statistics");
+                await Clients.Caller.SendAsync("Error", "Erreur lors du rafraîchissement des statistiques financières globales");
+            }
+        }
+
+        /// <summary>
+        /// Rafraîchir uniquement les alertes financières
+        /// </summary>
+        public async Task RefreshAlertesFinancieres()
+        {
+            try
+            {
+                var userRole = _currentUserService.GetUserRole();
+                var userName = _currentUserService.GetUserName();
+                
+                // Vérifier que l'utilisateur est un Financier ou Super-Admin
+                if (userRole != "Financier" && userRole != "Super-Admin")
+                {
+                    await Clients.Caller.SendAsync("Error", "Accès réservé au rôle Financier ou Super-Admin");
+                    return;
+                }
+
+                // Récupérer les alertes financières
+                var alertes = await _financierDashboardService.GetAlertesFinancieresAsync();
+
+                // Envoyer les alertes
+                await Clients.Group("financier_dashboard").SendAsync("DashboardFinancierRefreshed", new
+                {
+                    alertes = alertes,
+                    timestamp = DateTime.UtcNow,
+                    type = "alertes_update",
+                    requestedBy = userName
+                });
+
+                _logger.LogInformation($"🚨 Financial alerts refreshed by {userName}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error refreshing financial alerts");
+                await Clients.Caller.SendAsync("Error", "Erreur lors du rafraîchissement des alertes financières");
+            }
+        }
+
+        #endregion
+
+        #region Dashboard Caissier
+
+        /// <summary>
+        /// Demande une mise à jour complète du dashboard Caissier
+        /// </summary>
+        public async Task RequestCaissierDashboardUpdate()
+        {
+            try
+            {
+                var userRole = _currentUserService.GetUserRole();
+                var userName = _currentUserService.GetUserName();
+                
+                // Vérifier que l'utilisateur est un Caissier ou Super-Admin
+                if (userRole != "Caissier" && userRole != "Super-Admin")
+                {
+                    await Clients.Caller.SendAsync("Error", "Accès réservé au rôle Caissier ou Super-Admin");
+                    return;
+                }
+
+                // Récupérer les données du dashboard Caissier
+                var dashboardData = await _caissierDashboardService.GetDashboardDataAsync();
+
+                // Envoyer les données du dashboard Caissier
+                await Clients.Group("caissier_dashboard").SendAsync("DashboardCaissierRequested", new
+                {
+                    dashboard = dashboardData,
+                    timestamp = DateTime.UtcNow,
+                    type = "full_update_requested",
+                    requestedBy = userName
+                });
+
+                _logger.LogInformation($"🔄 Caissier dashboard update requested by {userName}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error requesting Caissier dashboard update");
+                await Clients.Caller.SendAsync("Error", "Erreur lors de la demande de mise à jour du dashboard Caissier");
+            }
+        }
+
+        /// <summary>
+        /// Rafraîchir uniquement les statistiques journalières
+        /// </summary>
+        public async Task RefreshStatistiquesJournalieres()
+        {
+            try
+            {
+                var userRole = _currentUserService.GetUserRole();
+                var userName = _currentUserService.GetUserName();
+                
+                // Vérifier que l'utilisateur est un Caissier ou Super-Admin
+                if (userRole != "Caissier" && userRole != "Super-Admin")
+                {
+                    await Clients.Caller.SendAsync("Error", "Accès réservé au rôle Caissier ou Super-Admin");
+                    return;
+                }
+
+                var societeId = _currentUserService.GetSocieteId();
+                if (societeId == 0)
+                {
+                    await Clients.Caller.SendAsync("Error", "ID de société non trouvé");
+                    return;
+                }
+
+                // Récupérer les statistiques journalières
+                var statistiques = await _caissierDashboardService.GetStatistiquesJournalieresAsync(societeId);
+
+                // Envoyer les statistiques
+                await Clients.Group("caissier_dashboard").SendAsync("DashboardCaissierRefreshed", new
+                {
+                    statistiques = statistiques,
+                    timestamp = DateTime.UtcNow,
+                    type = "statistiques_update",
+                    requestedBy = userName
+                });
+
+                _logger.LogInformation($"📊 Daily statistics refreshed by {userName}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error refreshing daily statistics");
+                await Clients.Caller.SendAsync("Error", "Erreur lors du rafraîchissement des statistiques journalières");
+            }
+        }
+
+        /// <summary>
+        /// Rafraîchir uniquement les paiements en cours
+        /// </summary>
+        public async Task RefreshPaiementsEnCours()
+        {
+            try
+            {
+                var userRole = _currentUserService.GetUserRole();
+                var userName = _currentUserService.GetUserName();
+                
+                // Vérifier que l'utilisateur est un Caissier ou Super-Admin
+                if (userRole != "Caissier" && userRole != "Super-Admin")
+                {
+                    await Clients.Caller.SendAsync("Error", "Accès réservé au rôle Caissier ou Super-Admin");
+                    return;
+                }
+
+                var societeId = _currentUserService.GetSocieteId();
+                if (societeId == 0)
+                {
+                    await Clients.Caller.SendAsync("Error", "ID de société non trouvé");
+                    return;
+                }
+
+                // Récupérer les paiements en cours
+                var paiements = await _caissierDashboardService.GetPaiementsEnCoursAsync(societeId);
+
+                // Envoyer les paiements
+                await Clients.Group("caissier_dashboard").SendAsync("DashboardCaissierRefreshed", new
+                {
+                    paiements = paiements,
+                    timestamp = DateTime.UtcNow,
+                    type = "paiements_update",
+                    requestedBy = userName
+                });
+
+                _logger.LogInformation($"💰 Pending payments refreshed by {userName}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error refreshing pending payments");
+                await Clients.Caller.SendAsync("Error", "Erreur lors du rafraîchissement des paiements en cours");
+            }
+        }
+
+        /// <summary>
+        /// Rafraîchir uniquement les alertes caissier
+        /// </summary>
+        public async Task RefreshAlertesCaissier()
+        {
+            try
+            {
+                var userRole = _currentUserService.GetUserRole();
+                var userName = _currentUserService.GetUserName();
+                
+                // Vérifier que l'utilisateur est un Caissier ou Super-Admin
+                if (userRole != "Caissier" && userRole != "Super-Admin")
+                {
+                    await Clients.Caller.SendAsync("Error", "Accès réservé au rôle Caissier ou Super-Admin");
+                    return;
+                }
+
+                var societeId = _currentUserService.GetSocieteId();
+                if (societeId == 0)
+                {
+                    await Clients.Caller.SendAsync("Error", "ID de société non trouvé");
+                    return;
+                }
+
+                // Récupérer les alertes caissier
+                var alertes = await _caissierDashboardService.GetAlertesCaissierAsync(societeId);
+
+                // Envoyer les alertes
+                await Clients.Group("caissier_dashboard").SendAsync("DashboardCaissierRefreshed", new
+                {
+                    alertes = alertes,
+                    timestamp = DateTime.UtcNow,
+                    type = "alertes_update",
+                    requestedBy = userName
+                });
+
+                _logger.LogInformation($"🚨 Cashier alerts refreshed by {userName}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error refreshing cashier alerts");
+                await Clients.Caller.SendAsync("Error", "Erreur lors du rafraîchissement des alertes caissier");
+        {
+            try
+            {
+                var userRole = _currentUserService.GetUserRole();
+                var userName = _currentUserService.GetUserName();
+                
+                // Vérifier que l'utilisateur est un Technicien ou Super-Admin
+                if (userRole != "Technicien" && userRole != "Super-Admin")
+                {
+                    await Clients.Caller.SendAsync("Error", "Accès réservé au rôle Technicien ou Super-Admin");
+                    return;
+                }
+
+                var userId = _currentUserService.GetUserId();
+                if (userId == 0)
+                {
+                    await Clients.Caller.SendAsync("Error", "ID d'utilisateur non trouvé");
+                    return;
+                }
+
+                // Récupérer les alertes technicien
+                var alertes = await _technicienDashboardService.GetAlertesTechnicienAsync(userId);
+
+                // Envoyer les alertes
+                await Clients.Group("technicien_dashboard").SendAsync("DashboardTechnicienRefreshed", new
+                {
+                    alertes = alertes,
+                    timestamp = DateTime.UtcNow,
+                    type = "alertes_update",
+                    requestedBy = userName
+                });
+
+                _logger.LogInformation($"🚨 Technician alerts refreshed by {userName}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error refreshing technician alerts");
+                await Clients.Caller.SendAsync("Error", "Erreur lors du rafraîchissement des alertes technicien");
+            }
+        }
+
+        #endregion
+
+        #region Dashboard Client
+
+        /// <summary>
+        /// Demande une mise à jour complète du dashboard Client
+        /// </summary>
+        public async Task RequestClientDashboardUpdate()
+        {
+            try
+            {
+                var userRole = _currentUserService.GetUserRole();
+                var userName = _currentUserService.GetUserName();
+                
+                // Vérifier que l'utilisateur est un Client ou Super-Admin
+                if (userRole != "Client" && userRole != "Super-Admin")
+                {
+                    await Clients.Caller.SendAsync("Error", "Accès réservé au rôle Client ou Super-Admin");
+                    return;
+                }
+
+                // Récupérer les données du dashboard Client
+                var dashboardData = await _clientDashboardService.GetDashboardDataAsync();
+
+                // Envoyer les données du dashboard Client
+                await Clients.Group("client_dashboard").SendAsync("DashboardClientRequested", new
+                {
+                    dashboard = dashboardData,
+                    timestamp = DateTime.UtcNow,
+                    type = "full_update_requested",
+                    requestedBy = userName
+                });
+
+                _logger.LogInformation($"🔄 Client dashboard update requested by {userName}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error requesting Client dashboard update");
+                await Clients.Caller.SendAsync("Error", "Erreur lors de la demande de mise à jour du dashboard Client");
+            }
+        }
+
+        /// <summary>
+        /// Rafraîchir uniquement les statistiques du client
+        /// </summary>
+        public async Task RefreshStatistiquesClient()
+        {
+            try
+            {
+                var userRole = _currentUserService.GetUserRole();
+                var userName = _currentUserService.GetUserName();
+                
+                // Vérifier que l'utilisateur est un Client ou Super-Admin
+                if (userRole != "Client" && userRole != "Super-Admin")
+                {
+                    await Clients.Caller.SendAsync("Error", "Accès réservé au rôle Client ou Super-Admin");
+                    return;
+                }
+
+                // Récupérer les statistiques du client
+                var statistiques = await _clientDashboardService.GetClientStatistiquesAsync();
+
+                // Envoyer les statistiques
+                await Clients.Group("client_dashboard").SendAsync("DashboardClientRefreshed", new
+                {
+                    statistiques = statistiques,
+                    timestamp = DateTime.UtcNow,
+                    type = "statistiques_update",
+                    requestedBy = userName
+                });
+
+                _logger.LogInformation($"📊 Client statistics refreshed by {userName}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error refreshing client statistics");
+                await Clients.Caller.SendAsync("Error", "Erreur lors du rafraîchissement des statistiques du client");
+            }
+        }
+
+        /// <summary>
+        /// Rafraîchir uniquement les factures récentes
+        /// </summary>
+        public async Task RefreshFacturesRecentes()
+        {
+            try
+            {
+                var userRole = _currentUserService.GetUserRole();
+                var userName = _currentUserService.GetUserName();
+                
+                // Vérifier que l'utilisateur est un Client ou Super-Admin
+                if (userRole != "Client" && userRole != "Super-Admin")
+                {
+                    await Clients.Caller.SendAsync("Error", "Accès réservé au rôle Client ou Super-Admin");
+                    return;
+                }
+
+                // Récupérer les factures récentes
+                var factures = await _clientDashboardService.GetFacturesRecentesAsync();
+
+                // Envoyer les factures
+                await Clients.Group("client_dashboard").SendAsync("DashboardClientRefreshed", new
+                {
+                    factures = factures,
+                    timestamp = DateTime.UtcNow,
+                    type = "factures_update",
+                    requestedBy = userName
+                });
+
+                _logger.LogInformation($"🧾 Recent invoices refreshed by {userName}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error refreshing recent invoices");
+                await Clients.Caller.SendAsync("Error", "Erreur lors du rafraîchissement des factures récentes");
+            }
+        }
+
+        /// <summary>
+        /// Rafraîchir uniquement les alertes client
+        /// </summary>
+        public async Task RefreshAlertesClient()
+        {
+            try
+            {
+                var userRole = _currentUserService.GetUserRole();
+                var userName = _currentUserService.GetUserName();
+                
+                // Vérifier que l'utilisateur est un Client ou Super-Admin
+                if (userRole != "Client" && userRole != "Super-Admin")
+                {
+                    await Clients.Caller.SendAsync("Error", "Accès réservé au rôle Client ou Super-Admin");
+                    return;
+                }
+
+                // Récupérer les alertes client
+                var alertes = await _clientDashboardService.GetAlertesClientAsync();
+
+                // Envoyer les alertes
+                await Clients.Group("client_dashboard").SendAsync("DashboardClientRefreshed", new
+                {
+                    alertes = alertes,
+                    timestamp = DateTime.UtcNow,
+                    type = "alertes_update",
+                    requestedBy = userName
+                });
+
+                _logger.LogInformation($"🚨 Client alerts refreshed by {userName}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error refreshing client alerts");
+                await Clients.Caller.SendAsync("Error", "Erreur lors du rafraîchissement des alertes client");
+            }
+        }
+
+        #endregion
+
+        #region Dashboard Principal Refresh
+
+        /// <summary>
+        /// Demander une mise à jour complète du dashboard principal
+        /// </summary>
+        /*
+        public async Task RequestDashboardUpdate(int societeId)
+        {
+            try
+            {
+                var userId = _currentUserService.GetUserId();
+                var userRole = _currentUserService.GetUserRole();
+                var userName = _currentUserService.GetUserName();
+
+                // Vérifier l'accès à la société
+                if (userRole != "Super-Admin" && userRole != "Admin" && userRole != "Gerant")
+                {
+                    await Clients.Caller.SendAsync("Error", "Accès réservé aux rôles Admin, Super-Admin ou Gérant");
+                    return;
+                }
+
+                if (societeId == 0)
+                {
+                    await Clients.Caller.SendAsync("Error", "ID de société non trouvé");
+                    return;
+                }
+
+                // Récupérer les données du dashboard
+                var dashboardData = await _dashboardService.GetDashboardDataAsync(societeId);
+
+                // Envoyer les données du dashboard
+                await Clients.Group($"dashboard_societe_{societeId}").SendAsync("DashboardUpdated", new
+                {
+                    societeId = societeId,
+                    dashboard = dashboardData,
+                    timestamp = DateTime.UtcNow,
+                    type = "full_update_requested",
+                    requestedBy = userName
+                });
+
+                _logger.LogInformation($"🔄 Dashboard update requested by {userName} for society {societeId}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error requesting dashboard update");
+                await Clients.Caller.SendAsync("Error", "Erreur lors de la demande de mise à jour du dashboard");
+            }
+        } */
+
+        /// <summary>
+        /// Rafraîchir uniquement les statistiques générales du dashboard principal
+        /// </summary>
+        public async Task RefreshDashboardStatistiques(int societeId)
+        {
+            try
+            {
+                var userId = _currentUserService.GetUserId();
+                var userRole = _currentUserService.GetUserRole();
+                var userName = _currentUserService.GetUserName();
+
+                // Vérifier l'accès à la société
+                if (userRole != "Super-Admin" && userRole != "Admin" && userRole != "Gerant")
+                {
+                    await Clients.Caller.SendAsync("Error", "Accès réservé aux rôles Admin, Super-Admin ou Gérant");
+                    return;
+                }
+
+                if (societeId == 0)
+                {
+                    await Clients.Caller.SendAsync("Error", "ID de société non trouvé");
+                    return;
+                }
+
+                // Récupérer les clients de la société pour les statistiques
+                var clients = await GetSocieteClientsForStatsAsync(societeId);
+                var clientIds = clients.Select(c => c.IdClient).ToList();
+
+                // Calculer les statistiques générales
+                var statistiques = new
+                {
+                    totalAgents = await _context.Agents
+                        .Where(a => a.IdSociete == societeId && a.Statut == true)
+                        .CountAsync(),
+                    totalClientsActifs = clients.Count,
+                    paiementsDuMois = await _context.Paiements
+                        .Where(p => !p.IsDeleted.Value && 
+                               p.DatePaiement.Month == DateTime.Now.Month && 
+                               p.DatePaiement.Year == DateTime.Now.Year &&
+                               p.IdClient.HasValue && 
+                               clientIds.Contains(p.IdClient.Value))
+                        .SumAsync(p => p.Montant),
+                    nombreTransactionsMois = await _context.Paiements
+                        .Where(p => !p.IsDeleted.Value && 
+                               p.DatePaiement.Month == DateTime.Now.Month && 
+                               p.DatePaiement.Year == DateTime.Now.Year &&
+                               p.IdClient.HasValue && 
+                               clientIds.Contains(p.IdClient.Value))
+                        .CountAsync()
+                };
+
+                // Envoyer les statistiques
+                await Clients.Group($"dashboard_societe_{societeId}").SendAsync("DashboardStatistiquesRefreshed", new
+                {
+                    societeId = societeId,
+                    statistiques = statistiques,
+                    timestamp = DateTime.UtcNow,
+                    type = "statistiques_update",
+                    requestedBy = userName
+                });
+
+                _logger.LogInformation($"📊 Dashboard statistics refreshed by {userName} for society {societeId}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error refreshing dashboard statistics");
+                await Clients.Caller.SendAsync("Error", "Erreur lors du rafraîchissement des statistiques du dashboard");
+            }
+        }
+
+        /// <summary>
+        /// Rafraîchir uniquement les collectes du dashboard principal
+        /// </summary>
+        /*
+        public async Task RefreshDashboardCollectes(int societeId)
+        {
+            try
+            {
+                var userId = _currentUserService.GetUserId();
+                var userRole = _currentUserService.GetUserRole();
+                var userName = _currentUserService.GetUserName();
+
+                // Vérifier l'accès à la société
+                if (userRole != "Super-Admin" && userRole != "Admin" && userRole != "Gerant")
+                {
+                    await Clients.Caller.SendAsync("Error", "Accès réservé aux rôles Admin, Super-Admin ou Gérant");
+                    return;
+                }
+
+                if (societeId == 0)
+                {
+                    await Clients.Caller.SendAsync("Error", "ID de société non trouvé");
+                    return;
+                }
+
+                // Récupérer les clients de la société
+                var clients = await GetSocieteClientsForStatsAsync(societeId);
+                var clientIds = clients.Select(c => c.IdClient).ToList();
+
+                // Calculer les collectes du mois
+                var debutMois = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
+                var finMois = debutMois.AddMonths(1).AddDays(-1).AddHours(23).AddMinutes(59);
+                var debutMoisPrecedent = debutMois.AddMonths(-1);
+
+                var paiementsMois = await _context.Paiements
+                    .Where(p => !p.IsDeleted && 
+                           p.DatePaiement >= debutMois && 
+                           p.DatePaiement <= finMois &&
+                           p.IdClient.HasValue && 
+                           clientIds.Contains(p.IdClient.Value))
+                    .ToListAsync();
+
+                var montantMois = paiementsMois.Sum(p => p.MontantPaye);
+                var nombrePaiements = paiementsMois.Count;
+                var ticketMoyen = nombrePaiements > 0 ? montantMois / nombrePaiements : 0;
+
+                var montantMoisPrecedent = await _context.Paiements
+                    .Where(p => !p.IsDeleted && 
+                           p.DatePaiement >= debutMoisPrecedent && 
+                           p.DatePaiement <= debutMois.AddDays(-1).AddHours(23).AddMinutes(59) &&
+                           p.IdClient.HasValue && 
+                           clientIds.Contains(p.IdClient.Value))
+                    .SumAsync(p => p.MontantPaye);
+
+                var variationPourcentage = montantMoisPrecedent == 0
+                    ? (montantMois > 0 ? 100 : 0)
+                    : Math.Round(((montantMois - montantMoisPrecedent) / montantMoisPrecedent) * 100, 2);
+
+                // Envoyer les collectes
+                var collectes = new
+                {
+                    moisLabel = $"{CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(DateTime.Now.Month)} {DateTime.Now.Year}",
+                    montant = montantMois,
+                    montantMoisPrecedent = montantMoisPrecedent,
+                    variationPourcentage = variationPourcentage,
+                    nombrePaiements = nombrePaiements,
+                    ticketMoyen = ticketMoyen
+                };
+
+                await Clients.Group($"dashboard_societe_{societeId}").SendAsync("DashboardCollectesRefreshed", new
+                {
+                    societeId = societeId,
+                    collectes = collectes,
+                    timestamp = DateTime.UtcNow,
+                    type = "collectes_update",
+                    requestedBy = userName
+                });
+
+                _logger.LogInformation($"💰 Dashboard collections refreshed by {userName} for society {societeId}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error refreshing dashboard collections");
+                await Clients.Caller.SendAsync("Error", "Erreur lors du rafraîchissement des collectes du dashboard");
+            }
+        } */
+
+        /// <summary>
+        /// Rafraîchir uniquement les alertes du dashboard principal
+        /// </summary>
+        public async Task RefreshDashboardAlertes(int societeId)
+        {
+            try
+            {
+                var userId = _currentUserService.GetUserId();
+                var userRole = _currentUserService.GetUserRole();
+                var userName = _currentUserService.GetUserName();
+
+                // Vérifier l'accès à la société
+                if (userRole != "Super-Admin" && userRole != "Admin" && userRole != "Gerant")
+                {
+                    await Clients.Caller.SendAsync("Error", "Accès réservé aux rôles Admin, Super-Admin ou Gérant");
+                    return;
+                }
+
+                if (societeId == 0)
+                {
+                    await Clients.Caller.SendAsync("Error", "ID de société non trouvé");
+                    return;
+                }
+
+                // Récupérer les clients de la société
+                var clients = await GetSocieteClientsForStatsAsync(societeId);
+                var clientIds = clients.Select(c => c.IdClient).ToList();
+
+                // Calculer les alertes
+                var alertes = new List<object>();
+
+                // Les fonctionnalités de facturation ne sont plus disponibles après la refactorisation
+                var montantTotalArrieres = 0m;
+
+                if (montantTotalArrieres > 1000000)
+                {
+                    alertes.Add(new
+                    {
+                        type = "Arriérés élevés",
+                        niveau = "Élevée",
+                        message = $"Montant d'arriérés important: {montantTotalArrieres:N0} FC",
+                        montant = montantTotalArrieres
+                    });
+                }
+
+                // Les fonctionnalités de facturation ne sont plus disponibles après la refactorisation
+                var montantTotalFactures = 0m;
+                var tauxRecouvrement = 0m;
+
+                if (tauxRecouvrement < 70)
+                {
+                    alertes.Add(new
+                    {
+                        type = "Taux de recouvrement faible",
+                        niveau = "Moyenne",
+                        message = $"Taux de recouvrement critique: {tauxRecouvrement:F1}%",
+                        taux = tauxRecouvrement
+                    });
+                }
+
+                // Envoyer les alertes
+                await Clients.Group($"dashboard_societe_{societeId}").SendAsync("DashboardAlertesRefreshed", new
+                {
+                    societeId = societeId,
+                    alertes = alertes,
+                    timestamp = DateTime.UtcNow,
+                    type = "alertes_update",
+                    requestedBy = userName
+                });
+
+                _logger.LogInformation($"🚨 Dashboard alerts refreshed by {userName} for society {societeId}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error refreshing dashboard alerts");
+                await Clients.Caller.SendAsync("Error", "Erreur lors du rafraîchissement des alertes du dashboard");
+            }
+        }
+
+        #endregion
+
+        #region Utilitaires
+
+        /// <summary>
+        /// Méthode utilitaire pour récupérer les clients d'une société pour les statistiques
+        /// </summary>
+        private async Task<List<Client>> GetSocieteClientsForStatsAsync(int societeId)
+        {
+            try
+            {
+                // Les fonctionnalités de CategorieClients et Usages ne sont plus disponibles après la refactorisation
+                var categorieIds = new List<int>();
+                var usageIds = new List<int>();
+
+                // Les fonctionnalités de CategorieClients et Usages ne sont plus disponibles après la refactorisation
+                var clientIds = new List<int>();
+
+                var clients = await _context.Clients
+                    .Where(c => clientIds.Contains(c.IdClient))
+                    .ToListAsync();
+
+                return clients.Where(c => c != null).ToList();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur lors de la récupération des clients de la société {SocieteId}", societeId);
+                return new List<Client>();
+            }
+        }
+
+        /// <summary>
+        /// Envoyer un message de test de connexion
+        /// </summary>
+        public async Task SendConnectionTest(string message = "Test de connexion")
+        {
+            try
+            {
+                var userId = _currentUserService.GetUserId();
+                var userName = _currentUserService.GetUserName();
+                var societeId = _currentUserService.GetSocieteId();
+
+                await Clients.Caller.SendAsync("ConnectionTest", new
+                {
+                    message = message,
+                    userId = userId,
+                    userName = userName,
+                    societeId = societeId,
+                    timestamp = DateTime.UtcNow,
+                    connectionId = Context.ConnectionId
+                });
+
+                _logger.LogInformation($"🔌 Connection test sent to {userName}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error sending connection test");
+                await Clients.Caller.SendAsync("Error", "Erreur lors du test de connexion");
+            }
+        }
+
+        /// <summary>
+        /// Obtenir le statut de connexion actuel
+        /// </summary>
+        public async Task GetConnectionStatus()
+        {
+            try
+            {
+                var userId = _currentUserService.GetUserId();
+                var userName = _currentUserService.GetUserName();
+                var userRole = _currentUserService.GetUserRole();
+                var societeId = _currentUserService.GetSocieteId();
+
+                await Clients.Caller.SendAsync("ConnectionStatus", new
+                {
+                    isConnected = true,
+                    userId = userId,
+                    userName = userName,
+                    userRole = userRole,
+                    societeId = societeId,
+                    connectionId = Context.ConnectionId,
+                    connectedAt = DateTime.UtcNow
+                });
+
+                _logger.LogInformation($"📊 Connection status sent to {userName}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error getting connection status");
+                await Clients.Caller.SendAsync("Error", "Erreur lors de l'obtention du statut de connexion");
+            }
+        }
+
+        #endregion
+    }
+}

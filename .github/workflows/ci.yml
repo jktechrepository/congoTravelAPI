@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master, develop]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "6.0.x"
+
+      - name: Restore
+        run: dotnet restore CongoTravel.csproj
+
+      - name: Build
+        run: dotnet build CongoTravel.csproj --no-restore -c Release
+
+      - name: Test
+        run: dotnet test Tests/CongoTravel.Tests.csproj --no-build -c Release --filter "Category!=Integration" --verbosity normal
+
+      - name: List EF migrations (audit artifact)
+        run: dotnet ef migrations list --project CongoTravel.csproj --no-build 2>&1 | tee ef-migrations-list.txt || true
+
+      - name: Upload migration list
+        uses: actions/upload-artifact@v4
+        with:
+          name: ef-migrations-list
+          path: ef-migrations-list.txt
+
+  integration-mariadb:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: congotravel_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "6.0.x"
+
+      - name: Restore and build
+        run: |
+          dotnet restore CongoTravel.csproj
+          dotnet build CongoTravel.csproj -c Release
+
+      - name: Apply migrations to test DB
+        env:
+          ConnectionStrings__DefaultConnection: "Server=127.0.0.1;Port=3306;Database=congotravel_test;User=root;Password=root;"
+        run: dotnet ef database update --project CongoTravel.csproj -c CongoTravelDbContext
+
+      - name: Integration tests (MariaDB)
+        env:
+          CONGOTRAVEL_TEST_MARIADB: "Server=127.0.0.1;Port=3306;Database=congotravel_test;User=root;Password=root;"
+        run: dotnet test Tests/CongoTravel.Tests.csproj -c Release --filter "Category=Integration" --verbosity normal

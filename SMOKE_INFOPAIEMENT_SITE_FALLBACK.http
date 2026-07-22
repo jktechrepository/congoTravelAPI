@@ -1,0 +1,70 @@
+### Smoke — repli InfoPaiement site satellite → site principal (FlexPay)
+### Prérequis : au moins une InfoPaiementSociete active sur un site actif de la société.
+### Site satellite SANS ligne InfoPaiementSociete (voir Scripts/audit-infopaiement-by-societe.sql).
+### Cas UAT société 60 / site 71 : audit Scripts/audit-infopaiement-by-societe.sql (@IdSociete=60)
+### correctif données optionnel : Scripts/fix-infopaiement-principal-by-societe.sql
+@baseUrl = https://localhost:7110
+@tokenClient = REPLACE_JWT_CLIENT
+@idSociete = 1
+@idSiteSatellite = REPLACE_ID_SITE_SATELLITE
+@voyageId = 1
+@idClient = 1
+@idCategorieSiege = 1
+@idUtilisateurClient = 1
+
+### Auth client
+# @name loginClient
+POST {{baseUrl}}/api/Utilisateur/authentifier
+Content-Type: application/json
+
+{
+  "emailOuTelephone": "client@example.com",
+  "motDePasse": "VotreMotDePasse"
+}
+
+###
+
+### FlexPay depuis site satellite (sans InfoPaiement propre)
+### Succès attendu : 200, statut EnAttente, paiement.idSite = idSiteSatellite
+### Log serveur : "FlexPay InfoPaiement fallback — site demandeur ..."
+# @name smoke_flexpay_satellite_fallback
+POST {{baseUrl}}/api/Reservation/reservation_with_paiement_electronique
+Authorization: Bearer {{tokenClient}}
+Content-Type: application/json
+
+{
+  "reservation": {
+    "idVoyage": {{voyageId}},
+    "idClient": {{idClient}},
+    "nombreDePlace": 1,
+    "idUtilisateur": {{idUtilisateurClient}},
+    "idSociete": {{idSociete}},
+    "idSite": {{idSiteSatellite}},
+    "passagers": [
+      {
+        "idClient": {{idClient}},
+        "idCategorieSiege": {{idCategorieSiege}},
+        "nomComplet": "Passager satellite FlexPay"
+      }
+    ]
+  },
+  "paiement": {
+    "montantAPaye": 50000,
+    "montantPaye": 50000,
+    "methodePaiement": "MOBILE_MONEY",
+    "phone": "+243900000001",
+    "codeDevisePaiement": "CDF",
+    "idUtilisateur": {{idUtilisateurClient}},
+    "idSociete": {{idSociete}},
+    "idSite": {{idSiteSatellite}}
+  }
+}
+
+###
+
+### Admin : GET InfoPaiement sur satellite → 404 attendu (pas de repli exposé en lecture admin)
+GET {{baseUrl}}/api/InfoPaiementSociete/site/{{idSiteSatellite}}
+Authorization: Bearer REPLACE_JWT_SUPER_ADMIN
+Accept: application/json
+
+###

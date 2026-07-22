@@ -1,0 +1,90 @@
+@baseUrl = http://192.168.43.139:5000
+@token = REPLACE_WITH_JWT
+@idSociete = 1
+@idUtilisateur = 1
+@idSite = 1
+@idVoyage = 1
+@idClientPrincipal = 1
+@idReservation = REPLACE_WITH_ID_RESERVATION_CREATED
+@idCategorieSiegeEco = 1
+
+### ============================================================================
+### 1) Creer reservation + paiement PARTIEL pour 3 passagers
+### ============================================================================
+POST {{baseUrl}}/api/Reservation/with-passengers-and-paiement
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "reservation": {
+    "idVoyage": {{idVoyage}},
+    "idClient": {{idClientPrincipal}},
+    "nombreDePlace": 3,
+    "idUtilisateur": {{idUtilisateur}},
+    "idSociete": {{idSociete}},
+    "idSite": {{idSite}},
+    "passagers": [
+      {
+        "idCategorieSiege": {{idCategorieSiegeEco}},
+        "nomComplet": "PASSAGER PARTIEL 01",
+        "telephone": "+243970001001",
+        "email": "partiel1.test@rusa.local",
+        "documentType": "CNI",
+        "documentNumero": "CNI-PARTIEL-001",
+        "genre": "M"
+      },
+      {
+        "idCategorieSiege": {{idCategorieSiegeEco}},
+        "nomComplet": "PASSAGER PARTIEL 02",
+        "telephone": "+243970001002",
+        "email": "partiel2.test@rusa.local",
+        "documentType": "CNI",
+        "documentNumero": "CNI-PARTIEL-002",
+        "genre": "F"
+      },
+      {
+        "idCategorieSiege": {{idCategorieSiegeEco}},
+        "nomComplet": "PASSAGER PARTIEL 03",
+        "telephone": "+243970001003",
+        "email": "partiel3.test@rusa.local",
+        "documentType": "CNI",
+        "documentNumero": "CNI-PARTIEL-003",
+        "genre": "M"
+      }
+    ]
+  },
+  "paiement": {
+    "montantAPaye": 150,
+    "montantPaye": 50,
+    "methodePaiement": "Especes",
+    "referenceTransaction": "RES-PARTIEL-{{$guid}}",
+    "idUtilisateur": {{idUtilisateur}},
+    "idSociete": {{idSociete}},
+    "idSite": {{idSite}}
+  }
+}
+
+###
+
+### ============================================================================
+### 2) Verifier les billets sur la reservation creee
+### NOTE:
+### - Recopier reservation.idReservation depuis la reponse du POST
+### ============================================================================
+GET {{baseUrl}}/api/Billet/reservation/{{idReservation}}
+Authorization: Bearer {{token}}
+
+###
+
+### ============================================================================
+### RESULTATS ATTENDUS
+### ============================================================================
+### - Reponse POST:
+###   - statut: "SuccesPaiementPartiel" OU "Succes" avec "paiement.estPartiel = true"
+###   - paiement.estPartiel = true
+###   - paiement.estComplet = false
+###   - billets = [] (ou null selon serialisation)
+###   - billet = null
+###
+### - Reponse GET /api/Billet/reservation/{idReservation}:
+###   - tableau vide (aucun billet emis tant que paiement incomplet)

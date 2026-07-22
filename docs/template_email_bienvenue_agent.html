@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang='fr'>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <title>Bienvenue sur K-Energie</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+            line-height: 1.6;
+        }
+        .email-wrapper {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+        }
+        .header {
+            background-color: #232f3e;
+            padding: 30px 40px;
+            text-align: center;
+        }
+        .header-logo {
+            color: #ffffff;
+            font-size: 28px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            margin: 0;
+        }
+        .content {
+            padding: 40px;
+            color: #232f3e;
+        }
+        .title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #232f3e;
+            margin: 0 0 20px 0;
+        }
+        .greeting {
+            font-size: 16px;
+            color: #232f3e;
+            margin: 0 0 20px 0;
+        }
+        .message {
+            font-size: 16px;
+            color: #232f3e;
+            margin: 0 0 20px 0;
+        }
+        .info-section {
+            background-color: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            padding: 25px;
+            margin: 25px 0;
+        }
+        .info-section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #232f3e;
+            margin: 0 0 20px 0;
+        }
+        .credential-row {
+            display: flex;
+            padding: 12px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .credential-row:last-child {
+            border-bottom: none;
+        }
+        .credential-label {
+            font-weight: 500;
+            color: #666666;
+            width: 140px;
+            flex-shrink: 0;
+        }
+        .credential-value {
+            color: #232f3e;
+            font-family: 'Courier New', monospace;
+            font-weight: 600;
+            flex: 1;
+        }
+        .warning-box {
+            background-color: #fff3cd;
+            border-left: 4px solid #ff9900;
+            padding: 15px 20px;
+            margin: 25px 0;
+            border-radius: 4px;
+        }
+        .warning-box strong {
+            color: #856404;
+        }
+        .button {
+            display: inline-block;
+            background-color: #ff9900;
+            color: #ffffff;
+            padding: 14px 32px;
+            text-decoration: none;
+            border-radius: 4px;
+            margin: 25px 0;
+            font-weight: 600;
+            font-size: 16px;
+        }
+        .button:hover {
+            background-color: #e68900;
+        }
+        .footer {
+            background-color: #f5f5f5;
+            padding: 30px 40px;
+            text-align: center;
+            color: #666666;
+            font-size: 12px;
+            border-top: 1px solid #e0e0e0;
+        }
+        .footer-text {
+            margin: 5px 0;
+            color: #666666;
+        }
+        .role-badge {
+            display: inline-block;
+            background-color: #232f3e;
+            color: #ffffff;
+            padding: 6px 16px;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 500;
+            margin: 0 5px;
+        }
+        .highlight-box {
+            background-color: #f8f9fa;
+            border-left: 3px solid #ff9900;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .highlight-box-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #232f3e;
+            margin: 0 0 10px 0;
+        }
+        .highlight-box-text {
+            font-size: 14px;
+            color: #666666;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class='email-wrapper'>
+        <div class='header'>
+            <h1 class='header-logo'>K-Energie</h1>
+        </div>
+        
+        <div class='content'>
+            <h2 class='title'>Bienvenue sur K-Energie</h2>
+            
+            <p class='greeting'>Bonjour <strong>Monsieur Jean Technicien</strong>,</p>
+            
+            <p class='message'>
+                Votre compte a été créé avec succès sur la plateforme K-Energie. 
+                Vous faites maintenant partie de <strong>K-Energie RDC</strong> en tant que <span class='role-badge'>Technicien</span>.
+            </p>
+            
+            <!-- Matricule (spécifique aux agents) -->
+            <div class='highlight-box'>
+                <p class='highlight-box-text'><strong>Matricule :</strong> AGT-2025-001</p>
+            </div>
+            
+            <div class='info-section'>
+                <h3 class='info-section-title'>Vos identifiants de connexion</h3>
+                <div class='credential-row'>
+                    <span class='credential-label'>Email :</span>
+                    <span class='credential-value'>technicien@kenergie.cd</span>
+                </div>
+                <div class='credential-row'>
+                    <span class='credential-label'>Nom d'utilisateur :</span>
+                    <span class='credential-value'>technicien123</span>
+                </div>
+                <div class='credential-row'>
+                    <span class='credential-label'>Téléphone :</span>
+                    <span class='credential-value'>+243900000002</span>
+                </div>
+                <div class='credential-row'>
+                    <span class='credential-label'>Mot de passe :</span>
+                    <span class='credential-value'>TempPass123!</span>
+                </div>
+            </div>
+            
+            <div class='warning-box'>
+                <strong>Important :</strong> Pour des raisons de sécurité, vous devrez <strong>obligatoirement changer votre mot de passe</strong> lors de votre première connexion.
+            </div>
+            
+            <div style='text-align: center; margin: 30px 0;'>
+                <a href='https://k-energie.kansaconsulting.com' class='button'>Se connecter maintenant</a>
+            </div>
+            
+            <p style='margin-top: 30px; font-size: 14px; color: #666666;'>
+                Vous pouvez vous connecter en utilisant votre <strong>email</strong>, votre <strong>nom d'utilisateur</strong> ou votre <strong>numéro de téléphone</strong>.
+            </p>
+        </div>
+        
+        <div class='footer'>
+            <p class='footer-text'>Cet email a été envoyé automatiquement par K-Energie Platform.</p>
+            <p class='footer-text'>© 2025 K-Energie. Tous droits réservés.</p>
+        </div>
+    </div>
+</body>
+</html>
+
+
+
+
+
+
+
+
+

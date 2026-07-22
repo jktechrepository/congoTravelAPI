@@ -1,0 +1,153 @@
+@CongoTravelAPI_HostAddress = http://192.168.43.139:5000
+### Coller un JWT valide (rôle autorisé sur ReservationController / VoyageController)
+@token = REPLACE_WITH_JWT
+@voyageId = 1
+@reservationId = 1
+### Collection Postman associée : CongoTravel_Workflow_V2.postman_collection.json
+
+GET {{CongoTravelAPI_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
+
+### ─────────────────────────────────────────────────────────────────────────────
+### Workflow V2 — réservation + paiement (1 passager explicite requis)
+### POST api/reservation/reservation_with_paiement
+### Corps : nombreDePlace 1, passagers[0].idCategorieSiege requis
+### ─────────────────────────────────────────────────────────────────────────────
+POST {{CongoTravelAPI_HostAddress}}/api/reservation/reservation_with_paiement
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "reservation": {
+    "idVoyage": 1,
+    "idClient": 1,
+    "nombreDePlace": 1,
+    "idUtilisateur": 1,
+    "idSociete": 1,
+    "passagers": [
+      {
+        "idClient": 1,
+        "idCategorieSiege": 1,
+        "nomComplet": "Client acheteur",
+        "telephone": "+243900000001",
+        "email": "acheteur@example.com"
+      }
+    ]
+  },
+  "paiement": {
+    "montantAPaye": 50000,
+    "montantPaye": 50000,
+    "methodePaiement": "CASH",
+    "referenceTransaction": "TEST-SOLO-{{$guid}}",
+    "idUtilisateur": 1,
+    "idSociete": 1
+  }
+}
+
+###
+
+### Même corps — alias Phase D (nom explicite pour clients / doc)
+POST {{CongoTravelAPI_HostAddress}}/api/Reservation/with-passengers-and-paiement
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "reservation": {
+    "idVoyage": 1,
+    "idClient": 1,
+    "nombreDePlace": 1,
+    "idUtilisateur": 1,
+    "idSociete": 1,
+    "passagers": [
+      {
+        "idClient": 1,
+        "idCategorieSiege": 1,
+        "nomComplet": "Client acheteur",
+        "telephone": "+243900000001",
+        "email": "acheteur@example.com"
+      }
+    ]
+  },
+  "paiement": {
+    "montantAPaye": 50000,
+    "montantPaye": 50000,
+    "methodePaiement": "CASH",
+    "referenceTransaction": "TEST-ALIAS-{{$guid}}",
+    "idUtilisateur": 1,
+    "idSociete": 1
+  }
+}
+
+###
+
+### ─────────────────────────────────────────────────────────────────────────────
+### Workflow V2 — N passagers explicites (nombreDePlace === passagers.length)
+### Réponse attendue : billets[] (N entrées), billet = premier ; codeSiege par billet
+### ─────────────────────────────────────────────────────────────────────────────
+POST {{CongoTravelAPI_HostAddress}}/api/reservation/reservation_with_paiement
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "reservation": {
+    "idVoyage": 1,
+    "idClient": 1,
+    "nombreDePlace": 2,
+    "idUtilisateur": 1,
+    "idSociete": 1,
+    "passagers": [
+      {
+        "idClient": 1,
+        "idCategorieSiege": 1,
+        "nomComplet": "Client acheteur",
+        "telephone": "+243900000001",
+        "email": "acheteur@example.com"
+      },
+      {
+        "idCategorieSiege": 1,
+        "nomComplet": "Passager invité",
+        "telephone": "+243900000002",
+        "documentType": "CNI",
+        "documentNumero": "KB-123456"
+      }
+    ]
+  },
+  "paiement": {
+    "montantAPaye": 100000,
+    "montantPaye": 100000,
+    "methodePaiement": "MPESA",
+    "referenceTransaction": "TEST-MULTI-{{$guid}}",
+    "idUtilisateur": 1,
+    "idSociete": 1
+  }
+}
+
+###
+
+### ─────────────────────────────────────────────────────────────────────────────
+### Lectures §6.2 — Voyage (étapes + sièges libres pour UI)
+### ─────────────────────────────────────────────────────────────────────────────
+GET {{CongoTravelAPI_HostAddress}}/api/Voyage/{{voyageId}}/destinations
+Authorization: Bearer {{token}}
+
+###
+
+GET {{CongoTravelAPI_HostAddress}}/api/Voyage/{{voyageId}}/sieges-disponibles
+Authorization: Bearer {{token}}
+
+###
+
+### ─────────────────────────────────────────────────────────────────────────────
+### Lectures §6.2 — Réservation (passagers V2 + billets enrichis AutoMapper)
+### ─────────────────────────────────────────────────────────────────────────────
+GET {{CongoTravelAPI_HostAddress}}/api/Reservation/{{reservationId}}/passagers
+Authorization: Bearer {{token}}
+
+###
+
+GET {{CongoTravelAPI_HostAddress}}/api/Reservation/{{reservationId}}/billets
+Authorization: Bearer {{token}}
+
+###

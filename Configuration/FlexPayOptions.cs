@@ -1,0 +1,49 @@
+namespace CongoTravel.Configuration
+{
+    public class FlexPayOptions
+    {
+        public const string SectionName = "FlexPay";
+
+        public bool Enabled { get; set; }
+
+        public int SeatHoldMinutes { get; set; } = 15;
+
+        public string? ApiToken { get; set; }
+
+        public string? Merchant { get; set; }
+
+        public string? CallbackBaseUrl { get; set; }
+
+        public string? MobileMoneyUrl { get; set; } =
+            "https://backend.flexpay.cd/api/rest/v1/paymentService";
+
+        public string? PayOutUrl { get; set; } =
+            "https://backend.flexpay.cd/api/rest/v1/merchantPayOutService";
+
+        /// <summary>Fenêtre d'idempotence : refuser un second reversement EnAttente sur le même site.</summary>
+        public int PayOutPendingMinutes { get; set; } = 15;
+
+        public string? CardPaymentUrl { get; set; } =
+            "https://cardpayment.flexpay.cd/v1.1/pay";
+
+        public string? CheckTransactionUrl { get; set; } =
+            "https://apicheck.flexpaie.com/api/rest/v1/check";
+
+        public bool ForceProductionCallbackInDev { get; set; }
+
+        /// <summary>
+        /// Chemin relatif callback FlexPay événement (défaut <c>/api/events/flexpay/callback</c>).
+        /// Concaténé à <see cref="CallbackBaseUrl"/> ou à l'hôte courant.
+        /// </summary>
+        public string EventCallbackRelativePath { get; set; } = "/api/events/flexpay/callback";
+
+        /// <summary>Kill-switch dédié événement ; si <c>false</c>, seul <see cref="Enabled"/> global s'applique.</summary>
+        public bool? EventEnabled { get; set; }
+
+        /// <summary>Kill-switch global pour le reversement automatique post-paiement électronique.</summary>
+        public bool AutoReversementEnabled { get; set; } = true;
+
+        /// <summary>FlexPay événement actif (fallback sur <see cref="Enabled"/> si null).</summary>
+        public bool IsEventEnabled => EventEnabled ?? Enabled;
+    }
+}

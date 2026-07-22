@@ -1,0 +1,539 @@
+{
+  "info": {
+    "_postman_id": "congotravel-api-v1",
+    "name": "Congo Travel API — CongoTravel v1",
+    "description": "Collection Postman officielle — routes legacy.\n\n**Import :**\n1. Importer cette collection\n2. Importer l'environnement `CongoTravel_API.postman_environment.json` (dev) ou `_Prod` (prod)\n3. Exécuter `Auth > Login` pour remplir `accessToken`\n\n**Swagger live :** `{{baseUrl}}/swagger`\n\n**Doc :** `Documentation/Themes/09_frontend_integration/CHANGELOG_API_BREAKING_CHANGES.md`",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Collection Congo Travel API — routes legacy officielles"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.accessToken) {",
+                  "    pm.environment.set('accessToken', json.accessToken);",
+                  "    pm.collectionVariables.set('accessToken', json.accessToken);",
+                  "}",
+                  "if (json.refreshToken) {",
+                  "    pm.environment.set('refreshToken', json.refreshToken);",
+                  "    pm.collectionVariables.set('refreshToken', json.refreshToken);",
+                  "}",
+                  "pm.test('Login OK', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"emailOuTelephone\": \"admin@example.com\",\n  \"motDePasse\": \"password\"\n}"
+            },
+            "url": "{{baseUrl}}/api/Utilisateur/authentifier"
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.accessToken) pm.environment.set('accessToken', json.accessToken);",
+                  "if (json.refreshToken) pm.environment.set('refreshToken', json.refreshToken);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/Utilisateur/refresh-token"
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/Utilisateur/deconnecter"
+          }
+        },
+        {
+          "name": "Changer mot de passe",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ancienMotDePasse\": \"old\",\n  \"nouveauMotDePasse\": \"new\"\n}"
+            },
+            "url": "{{baseUrl}}/api/Utilisateur/changer_mot_de_passe"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Utilisateur & Rôles",
+      "item": [
+        {
+          "name": "Liste utilisateurs",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/Utilisateur" }
+        },
+        {
+          "name": "Créer utilisateur",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{}" },
+            "url": "{{baseUrl}}/api/Utilisateur"
+          }
+        },
+        {
+          "name": "Détail utilisateur",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/Utilisateur/1" }
+        },
+        {
+          "name": "Toggle statut utilisateur",
+          "request": { "method": "PUT", "url": "{{baseUrl}}/api/Utilisateur/toggle-statut/1" }
+        },
+        {
+          "name": "Utilisateurs par rôle",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/Utilisateur/role/1" }
+        },
+        {
+          "name": "Catalogue rôles",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/Role" }
+        },
+        {
+          "name": "Rôle par nom",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/Role/nomRole/Caissier" }
+        }
+      ]
+    },
+    {
+      "name": "Agent",
+      "item": [
+        {
+          "name": "Liste agents",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/Agent" }
+        },
+        {
+          "name": "Créer agent",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{}" },
+            "url": "{{baseUrl}}/api/Agent"
+          }
+        },
+        {
+          "name": "Agent par serial number",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/Agent/serial-number/ABC123" }
+        },
+        {
+          "name": "Affecter agent site",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{ \"idSite\": 1 }" },
+            "url": "{{baseUrl}}/api/Agent/1/site"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Société & Site",
+      "item": [
+        {
+          "name": "Liste sociétés",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/Societe" }
+        },
+        {
+          "name": "Config société",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/Societe/{{idSociete}}/config" }
+        },
+        {
+          "name": "Mettre à jour config société",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{}" },
+            "url": "{{baseUrl}}/api/Societe/{{idSociete}}/config"
+          }
+        },
+        {
+          "name": "Liste sites",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/Site" }
+        },
+        {
+          "name": "Sites par société",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/Site/societe/{{idSociete}}" }
+        },
+        {
+          "name": "Infos paiement par site",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/InfoPaiementSociete/site/1" }
+        }
+      ]
+    },
+    {
+      "name": "Client",
+      "item": [
+        {
+          "name": "Inscription publique",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{}" },
+            "url": "{{baseUrl}}/api/Client/register"
+          }
+        },
+        {
+          "name": "Liste clients paginée",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/Client/paged?pageNumber=1&pageSize=20" }
+        },
+        {
+          "name": "Clients par société",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/Client/societe/{{idSociete}}/paged?pageNumber=1&pageSize=20" }
+        },
+        {
+          "name": "Recherche clients société",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/Client/societe/{{idSociete}}/recherche?searchTerm=dupont" }
+        },
+        {
+          "name": "Détail client",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/Client/{{idClient}}" }
+        }
+      ]
+    },
+    {
+      "name": "Voyage & Planification",
+      "item": [
+        {
+          "name": "Voyages paginés (public)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/Voyage/paged?pageNumber=1&pageSize=20&periode=Jour",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Voyage", "paged"],
+              "query": [
+                { "key": "pageNumber", "value": "1" },
+                { "key": "pageSize", "value": "20" },
+                { "key": "searchTerm", "value": "", "disabled": true },
+                { "key": "sortBy", "value": "date", "disabled": true },
+                { "key": "sortDescending", "value": "true", "disabled": true },
+                { "key": "date", "value": "2026-07-07", "disabled": true },
+                { "key": "periode", "value": "Jour" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Recherche voyages (public)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/Voyage/search?pageNumber=1&pageSize=20&villeDepart=Kinshasa&villeArrivee=Lubumbashi"
+          }
+        },
+        {
+          "name": "Détail voyage",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/Voyage/{{idVoyage}}"
+          }
+        },
+        {
+          "name": "Sièges disponibles",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/Voyage/{{idVoyage}}/sieges-disponibles"
+          }
+        },
+        {
+          "name": "Créer voyage",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{}" },
+            "url": "{{baseUrl}}/api/Voyage"
+          }
+        },
+        {
+          "name": "Liste planifications",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/PlanificationVoyage" }
+        },
+        {
+          "name": "Générer voyages depuis planification",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/PlanificationVoyage/1/generer"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Réservation & Paiement",
+      "item": [
+        {
+          "name": "Liste réservations",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/Reservation" }
+        },
+        {
+          "name": "Détail réservation",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/Reservation/{{idReservation}}" }
+        },
+        {
+          "name": "Réservations par client",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/Reservation/client/{{idClient}}" }
+        },
+        {
+          "name": "Réservation + paiement guichet",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{}" },
+            "url": "{{baseUrl}}/api/Reservation/reservation_with_paiement"
+          }
+        },
+        {
+          "name": "Réservation + paiement électronique (FlexPay)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const order = json.orderNumber || json.flexPayOrderNumber || (json.data && json.data.orderNumber);",
+                  "if (order) pm.environment.set('orderNumber', order);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{}" },
+            "url": "{{baseUrl}}/api/Reservation/reservation_with_paiement_electronique"
+          }
+        },
+        {
+          "name": "Réservation passagers + paiement",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{}" },
+            "url": "{{baseUrl}}/api/Reservation/with-passengers-and-paiement"
+          }
+        },
+        {
+          "name": "Paiements par réservation",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/Paiement/reservation/{{idReservation}}" }
+        },
+        {
+          "name": "Paiements par société paginés",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/Paiement/societe/{{idSociete}}/paged?pageNumber=1&pageSize=20" }
+        },
+        {
+          "name": "FlexPay — Vérifier statut",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/FlexPay/verifier/{{orderNumber}}" }
+        }
+      ]
+    },
+    {
+      "name": "Billet & Référentiels",
+      "item": [
+        {
+          "name": "Billets par réservation",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/Billet/reservation/{{idReservation}}" }
+        },
+        {
+          "name": "Billet par QR code",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/Billet/qrcode/QR_CODE_HERE" }
+        },
+        {
+          "name": "Réaffecter billet (POST)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{ \"idNouveauPassager\": 1 }" },
+            "url": "{{baseUrl}}/api/Billet/societe/{{idSociete}}/billet/1/reaffecter"
+          }
+        },
+        {
+          "name": "Liste véhicules",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/Vehicule/societe/{{idSociete}}" }
+        },
+        {
+          "name": "Liste destinations",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/Destination/societe/{{idSociete}}" }
+        },
+        {
+          "name": "Catégories siège par société",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/CategorieSiege/societe/{{idSociete}}" }
+        },
+        {
+          "name": "Types véhicule",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/TypeVehicule" }
+        }
+      ]
+    },
+    {
+      "name": "Devises & Finance",
+      "item": [
+        {
+          "name": "Liste devises",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/Devise/devises" }
+        },
+        {
+          "name": "Devises société",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/Devise/devises/societe/{{idSociete}}" }
+        },
+        {
+          "name": "Preview conversion (GET)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/Devise/preview-conversion?montant=100&codeDeviseSource=USD&codeDeviseCible=CDF&idSociete={{idSociete}}"
+          }
+        },
+        {
+          "name": "FinanceReporting — Synthèse paiements",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/FinanceReporting/paiements/summary?idSociete={{idSociete}}" }
+        },
+        {
+          "name": "FinanceReporting — Rapport caisse",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/FinanceReporting/rapport-caisse?idSociete={{idSociete}}&datePrecise=2026-07-07"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dashboards & Statistiques",
+      "item": [
+        {
+          "name": "Statistiques consolidées société",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/Statistiques/{{idSociete}}" }
+        },
+        {
+          "name": "Dashboard Admin société",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/Dashboard/{{idSociete}}" }
+        },
+        {
+          "name": "SuperAdmin Dashboard",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/SuperAdminDashboard?pageNumber=1&pageSize=20" }
+        },
+        {
+          "name": "Gérant Dashboard (unifié)",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/GerantDashboard" }
+        },
+        {
+          "name": "Caissier Dashboard (unifié)",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/CaissierDashboard" }
+        },
+        {
+          "name": "Caissier — Rapport caisse",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/CaissierDashboard/rapport-caisse?datePrecise=2026-07-07"
+          }
+        },
+        {
+          "name": "Financier Dashboard (unifié)",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/FinancierDashboard" }
+        },
+        {
+          "name": "Client Dashboard (unifié)",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/ClientDashboard" }
+        }
+      ]
+    },
+    {
+      "name": "Plaintes, Audit, Communication",
+      "item": [
+        {
+          "name": "Liste plaintes",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/PlainteClient" }
+        },
+        {
+          "name": "Activités suspectes (audit)",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/Audit/suspicious" }
+        },
+        {
+          "name": "Historique audit",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/Audit/history/Reservation/1" }
+        },
+        {
+          "name": "Campagnes communication",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/CommunicationCampaign" }
+        }
+      ]
+    },
+    {
+      "name": "Swagger",
+      "item": [
+        {
+          "name": "OpenAPI JSON",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/swagger/v1/swagger.json"
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "https://dev-congotravel.asdc-rdc.org" },
+    { "key": "accessToken", "value": "" },
+    { "key": "refreshToken", "value": "" },
+    { "key": "idSociete", "value": "1" },
+    { "key": "idClient", "value": "1" },
+    { "key": "idVoyage", "value": "1" },
+    { "key": "idReservation", "value": "1" },
+    { "key": "orderNumber", "value": "" }
+  ]
+}

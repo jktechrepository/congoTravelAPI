@@ -1,0 +1,118 @@
+@baseUrl = http://192.168.43.139:5000
+@token = REPLACE_WITH_JWT
+@idSociete = 1
+@idUtilisateur = 1
+@idSite = 1
+@idVoyage = 1
+@idClientPrincipal = 1
+@idReservation = REPLACE_WITH_ID_RESERVATION_CREATED
+@idCategorieSiegeEco = 1
+
+### ============================================================================
+### PRE-CHECK OBLIGATOIRE - Verifier coherence Voyage/Societe/Site
+### ============================================================================
+### 1) Faire un GET du voyage cible
+### 2) Verifier que:
+###    - voyage.idSociete == @idSociete
+###    - voyage.idSite == @idSite (si renseigne dans la requete)
+### Sinon, adapter @idSociete et @idSite aux valeurs reelles du voyage.
+GET {{baseUrl}}/api/Voyage/{{idVoyage}}
+Authorization: Bearer {{token}}
+
+###
+
+### ============================================================================
+### 0) PRE-CHECK (optionnel) - Verifier les billets existants de la reservation
+### ============================================================================
+GET {{baseUrl}}/api/Billet/reservation/{{idReservation}}
+Authorization: Bearer {{token}}
+
+###
+
+### ============================================================================
+### 1) Creer reservation + paiement COMPLET pour PLUSIEURS passagers
+### Route alias V2:
+###   POST /api/Reservation/with-passengers-and-paiement
+###   (equivalent: /api/Reservation/reservation_with_paiement)
+### IMPORTANT:
+### - nombreDePlace doit etre egal au nombre d'entrees passagers
+### - chaque passager doit fournir idCategorieSiege
+### - montantAPaye doit etre coherent avec les tarifs backend des categories attribuees
+### ============================================================================
+POST {{baseUrl}}/api/Reservation/with-passengers-and-paiement
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "reservation": {
+    "idVoyage": {{idVoyage}},
+    "idClient": {{idClientPrincipal}},
+    "nombreDePlace": 2,
+    "idUtilisateur": {{idUtilisateur}},
+    "idSociete": {{idSociete}},
+    "idSite": {{idSite}},
+    "passagers": [
+      {
+        "idClient": null,
+        "idCategorieSiege": {{idCategorieSiegeEco}},
+        "nomComplet": "PASSAGER TEST 01",
+        "telephone": "+243970000001",
+        "email": "passager1.test@rusa.local",
+        "documentType": "CNI",
+        "documentNumero": "CNI-TEST-001",
+        "genre": "M"
+      },
+      {
+        "idClient": null,
+        "idCategorieSiege": {{idCategorieSiegeEco}},
+        "nomComplet": "PASSAGER TEST 02",
+        "telephone": "+243970000002",
+        "email": "passager2.test@rusa.local",
+        "documentType": "CNI",
+        "documentNumero": "CNI-TEST-002",
+        "genre": "F"
+      }
+    ]
+  },
+  "paiement": {
+    "montantAPaye": 100,
+    "montantPaye": 100,
+    "methodePaiement": "Especes",
+    "referenceTransaction": "RES-MULTI-{{$guid}}",
+    "idUtilisateur": {{idUtilisateur}},
+    "idSociete": {{idSociete}},
+    "idSite": {{idSite}}
+  }
+}
+
+###
+
+### ============================================================================
+### 2) Recuperer les billets de la reservation creee
+### NOTE:
+### - Recopier "reservation.idReservation" de la reponse precedente
+###   dans la variable @idReservation en tete du fichier.
+### ============================================================================
+GET {{baseUrl}}/api/Billet/reservation/{{idReservation}}
+Authorization: Bearer {{token}}
+
+###
+
+### ============================================================================
+### 3) (Optionnel) Verifier le paiement par reservation
+### ============================================================================
+GET {{baseUrl}}/api/Paiement/reservation/{{idReservation}}
+Authorization: Bearer {{token}}
+
+###
+
+### ============================================================================
+### CRITERES DE VALIDATION ATTENDUS
+### ============================================================================
+### - La reponse du POST contient:
+###   - reservation.idReservation non null
+###   - billets avec 2 entrees (paiement complet + 2 passagers)
+###   - billet (premiere entree) au meme format que GET /api/Billet/reservation/{idReservation}
+### - Le GET /api/Billet/reservation/{idReservation} retourne 2 billets.
+### - Chaque billet a un idReservationPassenger distinct.
+### - codeSiege et qrCode sont renseignes.

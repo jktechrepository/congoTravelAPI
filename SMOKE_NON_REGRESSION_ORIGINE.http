@@ -1,0 +1,237 @@
+### Smoke non-régression — champ `origine` + flux critiques front
+### Variables : adapter baseUrl, ids métier et credentials à votre environnement (UAT / local).
+@baseUrl = https://localhost:7110
+@tokenCaissier = REPLACE_JWT_CAISSIER
+@tokenClient = REPLACE_JWT_CLIENT
+@tokenAdmin = REPLACE_JWT_ADMIN
+@idSociete = 1
+@idSite = 1
+@voyageId = 1
+@idClient = 1
+@idCategorieSiege = 1
+@idUtilisateurCaissier = 1
+@idUtilisateurClient = 1
+@idReservationExistante = 1
+@orderNumberFlexPay = REPLACE_ORDER_NUMBER
+
+### ─────────────────────────────────────────────────────────────────────────────
+### 0 — Auth (obtenir les tokens ; copier accessToken dans les variables ci-dessus)
+### ─────────────────────────────────────────────────────────────────────────────
+
+# @name loginCaissier
+POST {{baseUrl}}/api/Utilisateur/authentifier
+Content-Type: application/json
+
+{
+  "emailOuTelephone": "caissier@example.com",
+  "motDePasse": "VotreMotDePasse"
+}
+
+###
+
+# @name loginClient
+POST {{baseUrl}}/api/Utilisateur/authentifier
+Content-Type: application/json
+
+{
+  "emailOuTelephone": "client@example.com",
+  "motDePasse": "VotreMotDePasse"
+}
+
+###
+
+# @name loginAdmin
+POST {{baseUrl}}/api/Utilisateur/authentifier
+Content-Type: application/json
+
+{
+  "emailOuTelephone": "admin@example.com",
+  "motDePasse": "VotreMotDePasse"
+}
+
+###
+
+### ─────────────────────────────────────────────────────────────────────────────
+### 1 — Agent : réservation + paiement cash (Vue caissier)
+### Attendu : 200, billets si paiement complet, reservation.origine + paiement.origine = CAISSIER
+### ─────────────────────────────────────────────────────────────────────────────
+
+# @name smoke01_cash_caissier
+POST {{baseUrl}}/api/Reservation/reservation_with_paiement
+Authorization: Bearer {{tokenCaissier}}
+Content-Type: application/json
+
+{
+  "reservation": {
+    "idVoyage": {{voyageId}},
+    "idClient": {{idClient}},
+    "nombreDePlace": 1,
+    "idUtilisateur": {{idUtilisateurCaissier}},
+    "idSociete": {{idSociete}},
+    "idSite": {{idSite}},
+    "passagers": [
+      {
+        "idClient": {{idClient}},
+        "idCategorieSiege": {{idCategorieSiege}},
+        "nomComplet": "Passager smoke caissier"
+      }
+    ]
+  },
+  "paiement": {
+    "montantAPaye": 50000,
+    "montantPaye": 50000,
+    "methodePaiement": "ESPECES",
+    "referenceTransaction": "SMOKE-CASH-{{$guid}}",
+    "idUtilisateur": {{idUtilisateurCaissier}},
+    "idSociete": {{idSociete}},
+    "idSite": {{idSite}}
+  }
+}
+
+###
+
+### ─────────────────────────────────────────────────────────────────────────────
+### 2 — Client : initiation FlexPay (Flutter)
+### Attendu : 200, statut EnAttente, paiement.origine = CLIENT, billets = []
+### ─────────────────────────────────────────────────────────────────────────────
+
+# @name smoke02_flexpay_init_client
+POST {{baseUrl}}/api/Reservation/reservation_with_paiement_electronique
+Authorization: Bearer {{tokenClient}}
+Content-Type: application/json
+
+{
+  "reservation": {
+    "idVoyage": {{voyageId}},
+    "idClient": {{idClient}},
+    "nombreDePlace": 1,
+    "idUtilisateur": {{idUtilisateurClient}},
+    "idSociete": {{idSociete}},
+    "idSite": {{idSite}},
+    "passagers": [
+      {
+        "idClient": {{idClient}},
+        "idCategorieSiege": {{idCategorieSiege}},
+        "nomComplet": "Passager smoke flexpay"
+      }
+    ]
+  },
+  "paiement": {
+    "montantAPaye": 50000,
+    "montantPaye": 50000,
+    "methodePaiement": "MOBILE_MONEY",
+    "phone": "+243900000001",
+    "codeDevisePaiement": "CDF",
+    "idUtilisateur": {{idUtilisateurClient}},
+    "idSociete": {{idSociete}},
+    "idSite": {{idSite}}
+  }
+}
+
+###
+
+### 2b — Client : verifier FlexPay (après paiement simulé / callback)
+### Attendu : reservation.idReservation > 0, origine CLIENT sur reservation + paiement
+
+# @name smoke02b_flexpay_verifier
+GET {{baseUrl}}/api/FlexPay/verifier/{{orderNumberFlexPay}}
+Authorization: Bearer {{tokenClient}}
+Accept: application/json
+
+###
+
+### ─────────────────────────────────────────────────────────────────────────────
+### 3 — Agent : liste paiements paginée
+### Attendu : 200, chaque item peut contenir origine (string), pas d'erreur parsing
+### ─────────────────────────────────────────────────────────────────────────────
+
+# @name smoke03_paiements_paged
+GET {{baseUrl}}/api/Paiement/societe/{{idSociete}}/paged?pageNumber=1&pageSize=20&sortBy=DatePaiement&sortDescending=true
+Authorization: Bearer {{tokenCaissier}}
+Accept: application/json
+
+###
+
+### ─────────────────────────────────────────────────────────────────────────────
+### 4 — Agent : détail paiement
+### Attendu : 200, nomClient si réservation liée, origine présent
+### ─────────────────────────────────────────────────────────────────────────────
+
+# @name smoke04_paiement_by_id
+GET {{baseUrl}}/api/Paiement/1
+Authorization: Bearer {{tokenCaissier}}
+Accept: application/json
+
+###
+
+### ─────────────────────────────────────────────────────────────────────────────
+### 5 — Client : mes réservations
+### Attendu : 200, passagers peuplés, origine sur chaque réservation
+### ─────────────────────────────────────────────────────────────────────────────
+
+# @name smoke05_reservations_client
+GET {{baseUrl}}/api/Reservation/client/{{idClient}}
+Authorization: Bearer {{tokenClient}}
+Accept: application/json
+
+###
+
+### ─────────────────────────────────────────────────────────────────────────────
+### 6 — Admin : dashboard société (correctif métriques à 0)
+### Attendu : 200, collecteMois.moisLabel non vide, totalAgents >= 0 réel
+### ─────────────────────────────────────────────────────────────────────────────
+
+# @name smoke06_dashboard_societe
+GET {{baseUrl}}/api/Dashboard/{{idSociete}}
+Authorization: Bearer {{tokenAdmin}}
+Accept: application/json
+
+###
+
+### ─────────────────────────────────────────────────────────────────────────────
+### 7 — Refresh token (session)
+### Attendu : 200, nouveaux accessToken + refreshToken
+### ─────────────────────────────────────────────────────────────────────────────
+
+# @name smoke07_refresh_token
+POST {{baseUrl}}/api/Utilisateur/refresh-token
+Content-Type: application/json
+
+{
+  "refreshToken": "REPLACE_REFRESH_TOKEN"
+}
+
+###
+
+### ─────────────────────────────────────────────────────────────────────────────
+### Bonus — Historique : origine INCONNU sur ancienne réservation
+### ─────────────────────────────────────────────────────────────────────────────
+
+# @name bonus_origine_historique
+GET {{baseUrl}}/api/Reservation/{{idReservationExistante}}
+Authorization: Bearer {{tokenAdmin}}
+Accept: application/json
+
+###
+
+### ─────────────────────────────────────────────────────────────────────────────
+### Bonus — Paiement partiel sur réservation existante (héritage origine)
+### ─────────────────────────────────────────────────────────────────────────────
+
+# @name bonus_paiement_partiel_herite_origine
+POST {{baseUrl}}/api/Paiement
+Authorization: Bearer {{tokenCaissier}}
+Content-Type: application/json
+
+{
+  "idReservation": {{idReservationExistante}},
+  "idUtilisateur": {{idUtilisateurCaissier}},
+  "idSociete": {{idSociete}},
+  "montantAPaye": 10000,
+  "montantPaye": 5000,
+  "codeDevisePaiement": "CDF",
+  "methodePaiement": "ESPECES",
+  "statut": true
+}
+
+###

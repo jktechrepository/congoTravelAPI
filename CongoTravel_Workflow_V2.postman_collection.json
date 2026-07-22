@@ -1,0 +1,97 @@
+{
+  "info": {
+    "name": "CongoTravel — Workflow réservation V2 (minimal)",
+    "description": "Lectures voyage/réservation + création (route canonique et alias with-passengers-and-paiement). Environnement : baseUrl + accessToken.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "https://localhost:7105/api", "type": "string" },
+    { "key": "accessToken", "value": "", "type": "string" },
+    { "key": "voyageId", "value": "1", "type": "string" },
+    { "key": "reservationId", "value": "1", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Voyage — lectures",
+      "item": [
+        {
+          "name": "GET destinations (étapes ordonnées)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/Voyage/{{voyageId}}/destinations"
+          }
+        },
+        {
+          "name": "GET sieges-disponibles",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/Voyage/{{voyageId}}/sieges-disponibles"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Réservation — lectures",
+      "item": [
+        {
+          "name": "GET passagers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/Reservation/{{reservationId}}/passagers"
+          }
+        },
+        {
+          "name": "GET billets",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/Reservation/{{reservationId}}/billets"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Réservation — création avec paiement (1 place)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"reservation\": {\n    \"idVoyage\": 1,\n    \"idClient\": 1,\n    \"nombreDePlace\": 1,\n    \"idUtilisateur\": 1,\n    \"idSociete\": 1\n  },\n  \"paiement\": {\n    \"montantAPaye\": 50000,\n    \"montantPaye\": 50000,\n    \"methodePaiement\": \"CASH\",\n    \"referenceTransaction\": \"POSTMAN-SOLO\",\n    \"idUtilisateur\": 1,\n    \"idSociete\": 1\n  }\n}"
+        },
+        "url": "{{baseUrl}}/Reservation/reservation_with_paiement"
+      }
+    },
+    {
+      "name": "Réservation — création (alias Phase D, 1 place)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"reservation\": {\n    \"idVoyage\": 1,\n    \"idClient\": 1,\n    \"nombreDePlace\": 1,\n    \"idUtilisateur\": 1,\n    \"idSociete\": 1\n  },\n  \"paiement\": {\n    \"montantAPaye\": 50000,\n    \"montantPaye\": 50000,\n    \"methodePaiement\": \"CASH\",\n    \"referenceTransaction\": \"POSTMAN-ALIAS-SOLO\",\n    \"idUtilisateur\": 1,\n    \"idSociete\": 1\n  }\n}"
+        },
+        "url": "{{baseUrl}}/Reservation/with-passengers-and-paiement"
+      }
+    },
+    {
+      "name": "Réservation — création avec paiement (2 passagers)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"reservation\": {\n    \"idVoyage\": 1,\n    \"idClient\": 1,\n    \"nombreDePlace\": 2,\n    \"idUtilisateur\": 1,\n    \"idSociete\": 1,\n    \"passagers\": [\n      {\n        \"idClient\": 1,\n        \"nomComplet\": \"Passager A\",\n        \"telephone\": \"+243900000001\"\n      },\n      {\n        \"nomComplet\": \"Passager B\",\n        \"telephone\": \"+243900000002\"\n      }\n    ]\n  },\n  \"paiement\": {\n    \"montantAPaye\": 100000,\n    \"montantPaye\": 100000,\n    \"methodePaiement\": \"MPESA\",\n    \"referenceTransaction\": \"POSTMAN-MULTI\",\n    \"idUtilisateur\": 1,\n    \"idSociete\": 1\n  }\n}"
+        },
+        "url": "{{baseUrl}}/Reservation/reservation_with_paiement"
+      }
+    }
+  ]
+}

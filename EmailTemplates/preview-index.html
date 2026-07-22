@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang='fr'>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <title>Aperçu des Templates Email - CongoTravel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #232f3e 0%, #1a2332 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 36px;
+            margin-bottom: 10px;
+        }
+        .header .highlight {
+            color: #ff9900;
+        }
+        .header p {
+            font-size: 18px;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 40px;
+        }
+        .preview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 30px;
+        }
+        .preview-card {
+            background: #f8f9fa;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 25px;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+        .preview-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            border-color: #ff9900;
+        }
+        .preview-card-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+        .preview-card-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #232f3e;
+            margin-bottom: 10px;
+        }
+        .preview-card-description {
+            font-size: 14px;
+            color: #666666;
+            line-height: 1.6;
+        }
+        .preview-card-button {
+            display: inline-block;
+            margin-top: 15px;
+            padding: 10px 20px;
+            background-color: #ff9900;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .preview-card-button:hover {
+            background-color: #e68900;
+        }
+        .info-section {
+            background: #fff3cd;
+            border-left: 4px solid #ff9900;
+            padding: 20px;
+            margin: 30px 0;
+            border-radius: 4px;
+        }
+        .info-section h3 {
+            color: #856404;
+            margin-bottom: 10px;
+        }
+        .info-section p {
+            color: #856404;
+            line-height: 1.6;
+        }
+        .comparison {
+            margin-top: 40px;
+            padding: 30px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .comparison h3 {
+            color: #232f3e;
+            margin-bottom: 20px;
+        }
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .comparison-table th,
+        .comparison-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .comparison-table th {
+            background-color: #232f3e;
+            color: white;
+            font-weight: 600;
+        }
+        .comparison-table tr:hover {
+            background-color: #f0f0f0;
+        }
+    </style>
+</head>
+<body>
+    <div class='container'>
+        <div class='header'>
+            <h1>📧 Aperçu des <span class='highlight'>Templates Email</span></h1>
+            <p>CongoTravel - Style Professionnel AWS</p>
+        </div>
+        
+        <div class='content'>
+            <div class='info-section'>
+                <h3>ℹ️ Instructions</h3>
+                <p>
+                    Cliquez sur les cartes ci-dessous pour ouvrir les aperçus des templates d'email dans votre navigateur. 
+                    Ces fichiers HTML peuvent être utilisés pour prévisualiser le rendu final des emails avant leur envoi.
+                </p>
+            </div>
+            
+            <div class='preview-grid'>
+                <a href='preview-welcome.html' class='preview-card'>
+                    <div class='preview-card-icon'>👋</div>
+                    <div class='preview-card-title'>Email de Bienvenue</div>
+                    <div class='preview-card-description'>
+                        Template pour l'email de bienvenue envoyé lors de la création d'un compte. 
+                        Inclut les identifiants de connexion, les informations sur l'école et les instructions de première connexion.
+                    </div>
+                    <span class='preview-card-button'>Voir l'aperçu →</span>
+                </a>
+                
+                <a href='preview-reset-password.html' class='preview-card'>
+                    <div class='preview-card-icon'>🔐</div>
+                    <div class='preview-card-title'>Réinitialisation de Mot de Passe</div>
+                    <div class='preview-card-description'>
+                        Template pour l'email de réinitialisation de mot de passe. 
+                        Affiche le code de vérification de manière claire et professionnelle, similaire au style AWS.
+                    </div>
+                    <span class='preview-card-button'>Voir l'aperçu →</span>
+                </a>
+            </div>
+            
+            <div class='comparison'>
+                <h3>✨ Caractéristiques du Nouveau Design</h3>
+                <table class='comparison-table'>
+                    <thead>
+                        <tr>
+                            <th>Élément</th>
+                            <th>Style AWS</th>
+                            <th>Avantages</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Header</strong></td>
+                            <td>Gris foncé (#232f3e) avec logo</td>
+                            <td>Professionnel et reconnaissable</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Couleur d'accent</strong></td>
+                            <td>Orange (#ff9900)</td>
+                            <td>Boutons et éléments importants visibles</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Code de vérification</strong></td>
+                            <td>48px, gras, monospace</td>
+                            <td>Facilement lisible et copiable</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Typographie</strong></td>
+                            <td>Police système moderne</td>
+                            <td>Rendu optimal sur tous les appareils</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Layout</strong></td>
+                            <td>600px max-width, centré</td>
+                            <td>Compatible mobile et desktop</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+

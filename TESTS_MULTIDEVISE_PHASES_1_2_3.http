@@ -1,0 +1,184 @@
+@baseUrl = http://192.168.43.139:5000
+@token = REPLACE_WITH_JWT
+@idSociete = 1
+@idUtilisateur = 1
+@idSite = 1
+@idVehicule = 1
+@idDestination = 1
+@idPaiement = 1
+
+### ============================================================================
+### 0) Devises actives
+### ============================================================================
+GET {{baseUrl}}/api/Devise/devises
+Authorization: Bearer {{token}}
+
+###
+
+### ============================================================================
+### 1) Définir devise principale société (CDF)
+### ============================================================================
+PUT {{baseUrl}}/api/Devise/societe/{{idSociete}}/devise-principale/CDF
+Authorization: Bearer {{token}}
+
+###
+
+### ============================================================================
+### 2) Créer taux USD -> CDF
+### ============================================================================
+POST {{baseUrl}}/api/Devise/taux-change
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "idSociete": {{idSociete}},
+  "codeDeviseSource": "USD",
+  "codeDeviseCible": "CDF",
+  "taux": 2850.50,
+  "dateEffet": "2026-05-08T00:00:00Z"
+}
+
+###
+
+### ============================================================================
+### 3) Créer taux CDF -> USD (deux sens)
+### ============================================================================
+POST {{baseUrl}}/api/Devise/taux-change
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "idSociete": {{idSociete}},
+  "codeDeviseSource": "CDF",
+  "codeDeviseCible": "USD",
+  "taux": 0.0003508,
+  "dateEffet": "2026-05-08T00:00:00Z"
+}
+
+###
+
+### ============================================================================
+### 4) Preview conversion avant paiement
+### ============================================================================
+GET {{baseUrl}}/api/Devise/preview-conversion?idSociete={{idSociete}}&codeDeviseSource=USD&montant=25&datePaiement=2026-05-08T10:30:00Z
+Authorization: Bearer {{token}}
+
+###
+
+### ============================================================================
+### 5) Créer voyage en USD (phase 2)
+### NOTE: utiliser un véhicule et une destination valides du même site/société
+### OPTION: vous pouvez définir les tarifs initiaux par catégorie de siège via "tarifs".
+### ============================================================================
+POST {{baseUrl}}/api/Voyage
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "dateDepart": "2026-05-20T00:00:00",
+  "heureDepart": "08:30:00",
+  "prix": 100,
+  "codeDevisePrix": "USD",
+  "idVehicule": {{idVehicule}},
+  "idDestination": {{idDestination}},
+  "idSociete": {{idSociete}},
+  "idSite": {{idSite}},
+  "statut": true,
+  "tarifs": [
+    {
+      "idCategorieSiege": 1,
+      "prix": 100
+    },
+    {
+      "idCategorieSiege": 2,
+      "prix": 150
+    }
+  ]
+}
+
+###
+
+### ============================================================================
+### 6) Créer paiement en USD (phase 1)
+### ============================================================================
+POST {{baseUrl}}/api/Paiement
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "montantAPaye": 100,
+  "montantPaye": 40,
+  "codeDevisePaiement": "USD",
+  "datePaiement": "2026-05-08T10:30:00Z",
+  "methodePaiement": "Especes",
+  "referenceTransaction": "PMT-USD-{{$guid}}",
+  "idUtilisateur": {{idUtilisateur}},
+  "idReservation": null,
+  "idSociete": {{idSociete}},
+  "idSite": {{idSite}}
+}
+
+###
+
+### ============================================================================
+### 6.b) Mettre à jour voyage + tarifs categorie en un seul appel
+### NOTE: remplacez {{idVoyage}} par l'ID du voyage créé à l'étape 5
+### ============================================================================
+PUT {{baseUrl}}/api/Voyage/{{idVoyage}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "id": {{idVoyage}},
+  "dateDepart": "2026-05-20T00:00:00",
+  "heureDepart": "09:00:00",
+  "prix": 110,
+  "codeDevisePrix": "USD",
+  "idVehicule": {{idVehicule}},
+  "idDestination": {{idDestination}},
+  "idSociete": {{idSociete}},
+  "idSite": {{idSite}},
+  "statut": true,
+  "tarifs": [
+    {
+      "idCategorieSiege": 1,
+      "prix": 110
+    },
+    {
+      "idCategorieSiege": 2,
+      "prix": 170
+    }
+  ]
+}
+
+###
+
+### ============================================================================
+### 7) Créer remboursement multi-devise (phase 3)
+### NOTE: remplacez {{idPaiement}} par un paiement existant remboursable
+### ============================================================================
+POST {{baseUrl}}/api/Remboursement
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "idPaiement": {{idPaiement}},
+  "idSociete": {{idSociete}},
+  "idUtilisateur": {{idUtilisateur}},
+  "montantRembourse": 10,
+  "codeDeviseRemboursement": "USD",
+  "forcerDevisePrincipale": false,
+  "dateRemboursement": "2026-05-08T12:00:00Z",
+  "motif": "Annulation test"
+}
+
+###
+
+### ============================================================================
+### 8) Reporting financier consolidé (devise principale)
+### ============================================================================
+GET {{baseUrl}}/api/FinanceReporting/paiements/summary?idSociete={{idSociete}}&dateDebut=2026-05-01&dateFin=2026-05-31
+Authorization: Bearer {{token}}
+
+###
+

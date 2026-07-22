@@ -1,0 +1,611 @@
+{
+  "info": {
+    "name": "CongoTravel API",
+    "description": "Collection complète des endpoints de l'API CongoTravel avec système RBAC",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "12345"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://localhost:7105/api",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentification",
+      "item": [
+        {
+          "name": "Se Connecter",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Sauvegarder le token automatiquement",
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('accessToken', jsonData.accessToken);",
+                  "    pm.environment.set('accessToken', jsonData.accessToken);",
+                  "    console.log('Token sauvegardé:', jsonData.accessToken);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"emailOuTelephone\": \"+243999999999\",\n  \"motDePasse\": \"Super-Admin\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Utilisateur/authentifier",
+              "host": ["{{baseUrl}}"],
+              "path": ["Utilisateur", "authentifier"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Changer Mot de Passe",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idUtilisateur\": 1,\n  \"ancienMotDePasse\": \"Super-Admin\",\n  \"nouveauMotDePasse\": \"NewPassword123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Utilisateur/changer-mot-de-passe",
+              "host": ["{{baseUrl}}"],
+              "path": ["Utilisateur", "changer-mot-de-passe"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Permissions",
+      "item": [
+        {
+          "name": "Mes Permissions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/Permission/my-permissions",
+              "host": ["{{baseUrl}}"],
+              "path": ["Permission", "my-permissions"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Toutes les Permissions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/Permission",
+              "host": ["{{baseUrl}}"],
+              "path": ["Permission"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Vérifier Permission",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/Permission/check/Paiement.Validate",
+              "host": ["{{baseUrl}}"],
+              "path": ["Permission", "check", "Paiement.Validate"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Permissions par Catégorie",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/Permission/by-category/Paiement",
+              "host": ["{{baseUrl}}"],
+              "path": ["Permission", "by-category", "Paiement"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Permissions d'un Rôle",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/Permission/role/2",
+              "host": ["{{baseUrl}}"],
+              "path": ["Permission", "role", "2"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Écoles",
+      "item": [
+        {
+          "name": "Lister Écoles",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/Ecole",
+              "host": ["{{baseUrl}}"],
+              "path": ["Ecole"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Détails École",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/Ecole/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["Ecole", "1"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Créer École",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nom\": \"Nouvelle École\",\n  \"slogan\": \"Excellence et Innovation\",\n  \"type\": \"Secondaire\",\n  \"telephone\": \"+243999888777\",\n  \"emailContact\": \"contact@nouvelle-ecole.com\",\n  \"provinceEducationnel\": \"Kinshasa\",\n  \"nomCompletResponsable\": \"Marie Kabila\",\n  \"description\": \"École secondaire moderne\",\n  \"province\": \"Kinshasa\",\n  \"ville\": \"Kinshasa\",\n  \"commune\": \"Limete\",\n  \"quartier\": \"Industriel\",\n  \"avenue\": \"Avenue Commerce\",\n  \"numero\": \"456\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Ecole",
+              "host": ["{{baseUrl}}"],
+              "path": ["Ecole"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Modifier École",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idEcole\": 2,\n  \"nom\": \"Nouvelle École (Modifiée)\",\n  \"telephone\": \"+243999888777\",\n  \"emailContact\": \"nouveau@ecole.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Ecole/2",
+              "host": ["{{baseUrl}}"],
+              "path": ["Ecole", "2"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Supprimer École",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/Ecole/2",
+              "host": ["{{baseUrl}}"],
+              "path": ["Ecole", "2"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Élèves",
+      "item": [
+        {
+          "name": "Lister Élèves (Paginé)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/Eleve/paginated?pageNumber=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["Eleve", "paginated"],
+              "query": [
+                {
+                  "key": "pageNumber",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                },
+                {
+                  "key": "searchTerm",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "idEcole",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "idClasse",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Détails Élève",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/Eleve/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["Eleve", "1"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Créer Élève",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nom\": \"KABAMBA\",\n  \"postnom\": \"Marie\",\n  \"prenom\": \"Grace\",\n  \"genre\": \"Féminin\",\n  \"dateNaissance\": \"2012-08-20\",\n  \"lieuNaissance\": \"Lubumbashi\",\n  \"nationalite\": \"Congolaise\",\n  \"idTuteur\": 2,\n  \"province\": \"Kinshasa\",\n  \"ville\": \"Kinshasa\",\n  \"commune\": \"Lemba\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Eleve",
+              "host": ["{{baseUrl}}"],
+              "path": ["Eleve"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Modifier Élève",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idEleve\": 1,\n  \"nom\": \"KABAMBA\",\n  \"postnom\": \"Marie\",\n  \"prenom\": \"Grace\",\n  \"telephone\": \"+243998877665\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Eleve/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["Eleve", "1"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Paiements",
+      "item": [
+        {
+          "name": "Lister Paiements (Paginé)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/Paiement/paginated?pageNumber=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["Paiement", "paginated"],
+              "query": [
+                {
+                  "key": "pageNumber",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                },
+                {
+                  "key": "idEcole",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "idEleve",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "estValide",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Créer Paiement",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idEleve\": 10,\n  \"idFrais\": 1,\n  \"montantPaye\": 50000,\n  \"devise\": \"CDF\",\n  \"datePaiement\": \"2025-10-28T10:00:00Z\",\n  \"modePaiement\": \"Mobile Money\",\n  \"referenceTransaction\": \"MM20251028123456\",\n  \"commentaire\": \"Paiement via M-Pesa\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Paiement",
+              "host": ["{{baseUrl}}"],
+              "path": ["Paiement"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Valider Paiement",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/Paiement/150/valider",
+              "host": ["{{baseUrl}}"],
+              "path": ["Paiement", "150", "valider"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Dashboard Paiements École",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/Paiement/dashboard/ecole/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["Paiement", "dashboard", "ecole", "1"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Notes",
+      "item": [
+        {
+          "name": "Notes d'un Élève",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/Note/eleve/10",
+              "host": ["{{baseUrl}}"],
+              "path": ["Note", "eleve", "10"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Créer Note",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idEleve\": 10,\n  \"idCours\": 5,\n  \"idAnneeScolaire\": 1,\n  \"cote\": 16,\n  \"coteSur\": 20,\n  \"session\": \"Session 2\",\n  \"appreciation\": \"Très bon\",\n  \"dateEnregistrement\": \"2025-10-28T00:00:00Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Note",
+              "host": ["{{baseUrl}}"],
+              "path": ["Note"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Modifier Note",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idNote\": 1,\n  \"cote\": 17,\n  \"appreciation\": \"Excellent\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Note/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["Note", "1"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Utilisateurs",
+      "item": [
+        {
+          "name": "Lister Utilisateurs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/Utilisateur",
+              "host": ["{{baseUrl}}"],
+              "path": ["Utilisateur"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Créer Utilisateur",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nomUtilisateur\": \"DUPONT\",\n  \"prenomUtilisateur\": \"Jean\",\n  \"email\": \"jean.dupont@email.com\",\n  \"telephone\": \"+243998877665\",\n  \"genre\": \"Masculin\",\n  \"motDePasseHash\": \"Password123!\",\n  \"idRole\": 2,\n  \"idEcole\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Utilisateur",
+              "host": ["{{baseUrl}}"],
+              "path": ["Utilisateur"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Classes",
+      "item": [
+        {
+          "name": "Lister Classes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/Classe",
+              "host": ["{{baseUrl}}"],
+              "path": ["Classe"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Agents",
+      "item": [
+        {
+          "name": "Lister Agents",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/Agent",
+              "host": ["{{baseUrl}}"],
+              "path": ["Agent"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Créer Agent",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nom\": \"KASONGO\",\n  \"postnom\": \"Jean\",\n  \"prenom\": \"Paul\",\n  \"genre\": \"Masculin\",\n  \"fonction\": \"Professeur\",\n  \"specialite\": \"Français\",\n  \"dateNaissance\": \"1988-07-20\",\n  \"lieuNaissance\": \"Lubumbashi\",\n  \"telephone\": \"+243997654321\",\n  \"email\": \"kasongo@ecole.com\",\n  \"idEcole\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Agent",
+              "host": ["{{baseUrl}}"],
+              "path": ["Agent"]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
+

@@ -1,0 +1,116 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using CongoTravel.Data;
+using CongoTravel.Models;
+using CongoTravel.Models.DTOs.Evenement;
+using CongoTravel.Models.Evenement;
+using CongoTravel.Models.Evenement.Enums;
+using CongoTravel.Services.Evenement;
+using Xunit;
+
+namespace CongoTravel.Tests
+{
+    public class EvenementSessionServiceTests
+    {
+        private static CongoTravelDbContext BuildDb(string name) =>
+            new(new DbContextOptionsBuilder<CongoTravelDbContext>()
+                .UseInMemoryDatabase(name)
+                .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
+                .Options);
+
+        private static EvenementSessionService CreateService(CongoTravelDbContext ctx) =>
+            new(ctx, Microsoft.Extensions.Logging.Abstractions.NullLogger<EvenementSessionService>.Instance);
+
+        [Fact]
+        public async Task CreateDraftAsync_creates_session_with_global_quota_pricing()
+        {
+            await using var ctx = BuildDb(nameof(CreateDraftAsync_creates_session_with_global_quota_pricing));
+            var idSociete = await SeedSocieteAsync(ctx);
+            var service = CreateService(ctx);
+
+            var result = await service.CreateDraftAsync(new EvenementCreateSessionRequestDto
+            {
+                CodeSession = "GALA-2026",
+                Libelle = "Gala annuel",
+                StartAtUtc = DateTime.UtcNow.AddDays(10),
+                InventoryMode = "GlobalQuota",
+                GlobalQuota = new EvenementCreateSessionGlobalQuotaDto
+                {
+                    CapaciteTotale = 200,
+                    PrixUnitaire = 50m,
+                    CodeDevise = "USD"
+                }
+            }, idSociete);
+
+            Assert.Equal("Draft", result.Status);
+            Assert.Equal("GlobalQuota", result.InventoryMode);
+            Assert.NotNull(result.GlobalQuota);
+            Assert.Equal(200, result.GlobalQuota!.CapaciteTotale);
+            Assert.Equal(50m, result.GlobalQuota.PrixUnitaire);
+            Assert.Equal("USD", result.GlobalQuota.CodeDevise);
+        }
+
+        [Fact]
+        public async Task CreateDraftAsync_throws_conflict_on_duplicate_code()
+        {
+            await using var ctx = BuildDb(nameof(CreateDraftAsync_throws_conflict_on_duplicate_code));
+            var idSociete = await SeedSocieteAsync(ctx);
+            var service = CreateService(ctx);
+            var request = BuildValidCreateRequest("DUPE-1");
+
+            await service.CreateDraftAsync(request, idSociete);
+
+            await Assert.ThrowsAsync<EvenementSessionConflictException>(() =>
+                service.CreateDraftAsync(request, idSociete));
+        }
+
+        [Fact]
+        public async Task PublishAsync_moves_draft_to_published()
+        {
+            await using var ctx = BuildDb(nameof(PublishAsync_moves_draft_to_published));
+            var idSociete = await SeedSocieteAsync(ctx);
+            var service = CreateService(ctx);
+
+            var created = await service.CreateDraftAsync(BuildValidCreateRequest("PUB-1"), idSociete);
+            var published = await service.PublishAsync(created.IdEvenementSession, idSociete);
+
+            Assert.Equal("Published", published.Status);
+        }
+
+        [Fact]
+        public async Task GetByIdAsync_returns_null_for_other_societe()
+        {
+            await using var ctx = BuildDb(nameof(GetByIdAsync_returns_null_for_other_societe));
+            var idSociete1 = await SeedSocieteAsync(ctx, "Societe A");
+            var idSociete2 = await SeedSocieteAsync(ctx, "Societe B");
+            var service = CreateService(ctx);
+
+            var created = await service.CreateDraftAsync(BuildValidCreateRequest("ISO-1"), idSociete1);
+            var other = await service.GetByIdAsync(created.IdEvenementSession, idSociete2);
+
+            Assert.Null(other);
+        }
+
+        private static EvenementCreateSessionRequestDto BuildValidCreateRequest(string code) => new()
+        {
+            CodeSession = code,
+            Libelle = "Test session",
+            StartAtUtc = DateTime.UtcNow.AddDays(5),
+            InventoryMode = "GlobalQuota",
+            GlobalQuota = new EvenementCreateSessionGlobalQuotaDto
+            {
+                CapaciteTotale = 50,
+                PrixUnitaire = 10m,
+                CodeDevise = "CDF"
+            }
+        };
+
+        private static async Task<int> SeedSocieteAsync(CongoTravelDbContext ctx, string nom = "Test Societe")
+        {
+            var societe = new Societe { Nom = nom, DateCreation = DateTime.UtcNow };
+            ctx.Societes.Add(societe);
+            await ctx.SaveChangesAsync();
+            return societe.IdSociete;
+        }
+    }
+}

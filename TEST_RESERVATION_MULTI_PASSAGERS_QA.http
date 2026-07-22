@@ -1,0 +1,157 @@
+@baseUrl = http://192.168.43.139:5000
+@token = REPLACE_WITH_JWT
+@idSociete = 1
+@idUtilisateur = 1
+@idSite = 1
+@idVoyage = 1
+@idClientPrincipal = 1
+@idReservationComplet = REPLACE_AFTER_STEP_1
+@idReservationPartiel = REPLACE_AFTER_STEP_3
+@idCategorieSiegeEco = 1
+
+### ============================================================================
+### PRE-CHECK OBLIGATOIRE - Verifier coherence Voyage/Societe/Site
+### ============================================================================
+### 1) Faire un GET du voyage cible
+### 2) Verifier que:
+###    - voyage.idSociete == @idSociete
+###    - voyage.idSite == @idSite (si renseigne dans la requete)
+### Sinon, adapter @idSociete et @idSite aux valeurs reelles du voyage.
+GET {{baseUrl}}/api/Voyage/{{idVoyage}}
+Authorization: Bearer {{token}}
+
+###
+
+### ============================================================================
+### SCENARIO A - MULTI PASSAGERS + PAIEMENT COMPLET (billets attendus)
+### ============================================================================
+POST {{baseUrl}}/api/Reservation/with-passengers-and-paiement
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "reservation": {
+    "idVoyage": {{idVoyage}},
+    "idClient": {{idClientPrincipal}},
+    "nombreDePlace": 2,
+    "idUtilisateur": {{idUtilisateur}},
+    "idSociete": {{idSociete}},
+    "idSite": {{idSite}},
+    "passagers": [
+      {
+        "idCategorieSiege": {{idCategorieSiegeEco}},
+        "nomComplet": "QA COMPLET 01",
+        "telephone": "+243971100001",
+        "email": "qa.complet1@rusa.local",
+        "documentType": "CNI",
+        "documentNumero": "QA-COMP-001",
+        "genre": "M"
+      },
+      {
+        "idCategorieSiege": {{idCategorieSiegeEco}},
+        "nomComplet": "QA COMPLET 02",
+        "telephone": "+243971100002",
+        "email": "qa.complet2@rusa.local",
+        "documentType": "CNI",
+        "documentNumero": "QA-COMP-002",
+        "genre": "F"
+      }
+    ]
+  },
+  "paiement": {
+    "montantAPaye": 100,
+    "montantPaye": 100,
+    "methodePaiement": "Especes",
+    "referenceTransaction": "QA-COMP-{{$guid}}",
+    "idUtilisateur": {{idUtilisateur}},
+    "idSociete": {{idSociete}},
+    "idSite": {{idSite}}
+  }
+}
+
+###
+
+### STEP 2 - Verifier billets scenario complet
+### Copier reservation.idReservation de STEP 1 dans @idReservationComplet
+GET {{baseUrl}}/api/Billet/reservation/{{idReservationComplet}}
+Authorization: Bearer {{token}}
+
+###
+
+### ============================================================================
+### SCENARIO B - MULTI PASSAGERS + PAIEMENT PARTIEL (aucun billet attendu)
+### ============================================================================
+POST {{baseUrl}}/api/Reservation/with-passengers-and-paiement
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "reservation": {
+    "idVoyage": {{idVoyage}},
+    "idClient": {{idClientPrincipal}},
+    "nombreDePlace": 3,
+    "idUtilisateur": {{idUtilisateur}},
+    "idSociete": {{idSociete}},
+    "idSite": {{idSite}},
+    "passagers": [
+      {
+        "idCategorieSiege": {{idCategorieSiegeEco}},
+        "nomComplet": "QA PARTIEL 01",
+        "telephone": "+243972200001",
+        "email": "qa.partiel1@rusa.local",
+        "documentType": "CNI",
+        "documentNumero": "QA-PART-001",
+        "genre": "M"
+      },
+      {
+        "idCategorieSiege": {{idCategorieSiegeEco}},
+        "nomComplet": "QA PARTIEL 02",
+        "telephone": "+243972200002",
+        "email": "qa.partiel2@rusa.local",
+        "documentType": "CNI",
+        "documentNumero": "QA-PART-002",
+        "genre": "F"
+      },
+      {
+        "idCategorieSiege": {{idCategorieSiegeEco}},
+        "nomComplet": "QA PARTIEL 03",
+        "telephone": "+243972200003",
+        "email": "qa.partiel3@rusa.local",
+        "documentType": "CNI",
+        "documentNumero": "QA-PART-003",
+        "genre": "M"
+      }
+    ]
+  },
+  "paiement": {
+    "montantAPaye": 150,
+    "montantPaye": 50,
+    "methodePaiement": "Especes",
+    "referenceTransaction": "QA-PART-{{$guid}}",
+    "idUtilisateur": {{idUtilisateur}},
+    "idSociete": {{idSociete}},
+    "idSite": {{idSite}}
+  }
+}
+
+###
+
+### STEP 4 - Verifier billets scenario partiel
+### Copier reservation.idReservation de STEP 3 dans @idReservationPartiel
+GET {{baseUrl}}/api/Billet/reservation/{{idReservationPartiel}}
+Authorization: Bearer {{token}}
+
+###
+
+### ============================================================================
+### CRITERES DE VALIDATION QA
+### ============================================================================
+### Scenario A (complet):
+### - paiement.estComplet = true
+### - billets contient N entrees (N = nombreDePlace)
+### - GET /api/Billet/reservation/{id} retourne N billets
+###
+### Scenario B (partiel):
+### - paiement.estPartiel = true
+### - billet = null et billets vide (ou absent selon serialisation)
+### - GET /api/Billet/reservation/{id} retourne []

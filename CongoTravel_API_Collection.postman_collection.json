@@ -1,0 +1,1057 @@
+{
+  "info": {
+    "name": "CongoTravel API Collection",
+    "description": "Collection complète pour tester l'API CongoTravel - Système de Gestion Scolaire",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://192.168.100.17:5001",
+      "type": "string"
+    },
+    {
+      "key": "httpBaseUrl",
+      "value": "http://localhost:5002",
+      "type": "string"
+    },
+    {
+      "key": "productionUrl",
+      "value": "https://localhost:7155",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "noauth"
+  },
+  "item": [
+    {
+      "name": "🔐 Authentification",
+      "item": [
+        {
+          "name": "Authentification par email",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"emailOuTelephone\": \"admin@example.com\",\n  \"motDePasse\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/Utilisateur/authentifier",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Utilisateur", "authentifier"]
+            }
+          }
+        },
+        {
+          "name": "Authentification par téléphone",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"emailOuTelephone\": \"+243123456789\",\n  \"motDePasse\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/Utilisateur/authentifier",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Utilisateur", "authentifier"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "👥 Gestion des Utilisateurs",
+      "item": [
+        {
+          "name": "Récupérer tous les utilisateurs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Utilisateur",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Utilisateur"]
+            }
+          }
+        },
+        {
+          "name": "Récupérer un utilisateur par ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Utilisateur/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Utilisateur", "1"]
+            }
+          }
+        },
+        {
+          "name": "Récupérer un utilisateur par email",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Utilisateur/email/admin@example.com",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Utilisateur", "email", "admin@example.com"]
+            }
+          }
+        },
+        {
+          "name": "Récupérer les utilisateurs par rôle",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Utilisateur/role/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Utilisateur", "role", "1"]
+            }
+          }
+        },
+        {
+          "name": "Récupérer les utilisateurs d'une école",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Utilisateur/ecole/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Utilisateur", "ecole", "1"]
+            }
+          }
+        },
+        {
+          "name": "Créer un utilisateur",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nomUtilisateur\": \"Doe\",\n  \"postNomUtilisateur\": \"Smith\",\n  \"prenomUtilisateur\": \"John\",\n  \"email\": \"john.doe@example.com\",\n  \"téléphone\": \"+243123456789\",\n  \"photoUrl\": \"https://example.com/photo.jpg\",\n  \"lieuNaissance\": \"Kinshasa\",\n  \"dateNaissance\": \"1990-01-01T00:00:00\",\n  \"genre\": \"M\",\n  \"statut\": true,\n  \"motDePasseHash\": \"hashedPassword\",\n  \"idRole\": 1,\n  \"idEcole\": 1,\n  \"province\": \"Kinshasa\",\n  \"ville\": \"Kinshasa\",\n  \"commune\": \"Gombe\",\n  \"quartier\": \"Centre-ville\",\n  \"avenue\": \"Avenue du Commerce\",\n  \"numero\": \"123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/Utilisateur",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Utilisateur"]
+            }
+          }
+        },
+        {
+          "name": "Modifier un utilisateur",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idUtilisateur\": 1,\n  \"nomUtilisateur\": \"Doe\",\n  \"postNomUtilisateur\": \"Smith\",\n  \"prenomUtilisateur\": \"John\",\n  \"email\": \"john.doe@example.com\",\n  \"téléphone\": \"+243123456789\",\n  \"photoUrl\": \"https://example.com/photo.jpg\",\n  \"lieuNaissance\": \"Kinshasa\",\n  \"dateNaissance\": \"1990-01-01T00:00:00\",\n  \"genre\": \"M\",\n  \"statut\": true,\n  \"motDePasseHash\": \"hashedPassword\",\n  \"idRole\": 1,\n  \"idEcole\": 1,\n  \"province\": \"Kinshasa\",\n  \"ville\": \"Kinshasa\",\n  \"commune\": \"Gombe\",\n  \"quartier\": \"Centre-ville\",\n  \"avenue\": \"Avenue du Commerce\",\n  \"numero\": \"123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/Utilisateur/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Utilisateur", "1"]
+            }
+          }
+        },
+        {
+          "name": "Supprimer un utilisateur",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Utilisateur/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Utilisateur", "1"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🏫 Gestion des Écoles",
+      "item": [
+        {
+          "name": "Récupérer toutes les écoles",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Ecole",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Ecole"]
+            }
+          }
+        },
+        {
+          "name": "Récupérer une école par ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Ecole/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Ecole", "1"]
+            }
+          }
+        },
+        {
+          "name": "Récupérer une école par nom",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Ecole/nom/Ecole%20CongoTravel",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Ecole", "nom", "Ecole CongoTravel"]
+            }
+          }
+        },
+        {
+          "name": "Récupérer les classes d'une école",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Ecole/1/classes",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Ecole", "1", "classes"]
+            }
+          }
+        },
+        {
+          "name": "Récupérer les utilisateurs d'une école",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Ecole/1/utilisateurs",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Ecole", "1", "utilisateurs"]
+            }
+          }
+        },
+        {
+          "name": "Créer une école",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nom\": \"Ecole CongoTravel\",\n  \"slogan\": \"L'éducation pour tous\",\n  \"type\": \"Privée\",\n  \"logoUrl\": \"https://example.com/logo.jpg\",\n  \"téléphone\": \"+243123456789\",\n  \"emailContact\": \"contact@ecole.com\",\n  \"siteWeb\": \"https://ecole.com\",\n  \"capaciteEleve\": 500,\n   \"description\": \"Une école d'excellence\",\n  \"statut\": true,\n  \"province\": \"Kinshasa\",\n  \"ville\": \"Kinshasa\",\n  \"commune\": \"Gombe\",\n  \"quartier\": \"Centre-ville\",\n  \"avenue\": \"Avenue du Commerce\",\n  \"numero\": \"123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/Ecole",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Ecole"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "👨‍🎓 Gestion des Élèves",
+      "item": [
+        {
+          "name": "Récupérer tous les élèves (vue complète)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/V_Eleve",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "V_Eleve"]
+            }
+          }
+        },
+        {
+          "name": "Récupérer un élève par ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Eleve/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Eleve", "1"]
+            }
+          }
+        },
+        {
+          "name": "Récupérer les élèves d'une classe",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Eleve/classe/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Eleve", "classe", "1"]
+            }
+          }
+        },
+        {
+          "name": "Récupérer les élèves d'une école",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Eleve/ecole/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Eleve", "ecole", "1"]
+            }
+          }
+        },
+        {
+          "name": "Récupérer les notes d'un élève",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Eleve/1/notes",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Eleve", "1", "notes"]
+            }
+          }
+        },
+        {
+          "name": "Créer un élève",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"matricule\": \"ELEVE001\",\n  \"nom\": \"Doe\",\n  \"postNom\": \"Smith\",\n  \"prenom\": \"John\",\n  \"dateNaissance\": \"2010-05-15T00:00:00\",\n  \"lieuNaissance\": \"Kinshasa\",\n  \"genre\": \"M\",\n  \"nationalite\": \"Congolais\",\n  \"photoUrl\": \"https://example.com/photo.jpg\",\n  \"statut\": true,\n  \"idClasse\": 1,\n  \"idTuteur\": 1,\n  \"province\": \"Kinshasa\",\n  \"ville\": \"Kinshasa\",\n  \"commune\": \"Gombe\",\n  \"quartier\": \"Centre-ville\",\n  \"avenue\": \"Avenue du Commerce\",\n  \"numero\": \"123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/Eleve",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Eleve"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📚 Gestion des Classes",
+      "item": [
+        {
+          "name": "Récupérer toutes les classes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Classe",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Classe"]
+            }
+          }
+        },
+        {
+          "name": "Récupérer une classe par ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Classe/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Classe", "1"]
+            }
+          }
+        },
+        {
+          "name": "Récupérer les classes d'une école",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Classe/ecole/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Classe", "ecole", "1"]
+            }
+          }
+        },
+        {
+          "name": "Récupérer les élèves d'une classe",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Classe/1/eleves",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Classe", "1", "eleves"]
+            }
+          }
+        },
+        {
+          "name": "Créer une classe",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nom\": \"6ème A\",\n  \"description\": \"Classe de 6ème année section A\",\n  \"capacite\": 40,\n  \"statut\": true,\n  \"idEcole\": 1,\n  \"idSection\": 1,\n  \"idOption\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/Classe",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Classe"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📝 Gestion des Notes",
+      "item": [
+        {
+          "name": "Récupérer toutes les notes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Note",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Note"]
+            }
+          }
+        },
+        {
+          "name": "Récupérer les notes d'un élève",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Note/eleve/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Note", "eleve", "1"]
+            }
+          }
+        },
+        {
+          "name": "Créer une note",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"valeur\": 85.5,\n  \"coefficient\": 2.0,\n  \"commentaire\": \"Excellent travail\",\n  \"dateEvaluation\": \"2024-01-15T00:00:00\",\n  \"idEleve\": 1,\n  \"idCours\": 1,\n  \"idEvaluation\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/Note",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Note"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📊 Gestion des Présences",
+      "item": [
+        {
+          "name": "Récupérer toutes les présences",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Presence",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Presence"]
+            }
+          }
+        },
+        {
+          "name": "Récupérer les présences d'un élève",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Presence/eleve/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Presence", "eleve", "1"]
+            }
+          }
+        },
+        {
+          "name": "Récupérer les présences d'une classe",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Presence/classe/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Presence", "classe", "1"]
+            }
+          }
+        },
+        {
+          "name": "Créer une présence",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"2024-01-15T00:00:00\",\n  \"heureArrivee\": \"08:00:00\",\n  \"heureDepart\": \"16:00:00\",\n  \"statut\": \"Present\",\n  \"commentaire\": \"Présent toute la journée\",\n  \"idEleve\": 1,\n  \"idVacation\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/Presence",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Presence"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "💰 Gestion des Paiements",
+      "item": [
+        {
+          "name": "Récupérer tous les paiements",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Paiement",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Paiement"]
+            }
+          }
+        },
+        {
+          "name": "Récupérer les paiements d'un élève",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Paiement/eleve/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Paiement", "eleve", "1"]
+            }
+          }
+        },
+        {
+          "name": "Créer un paiement",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"montant\": 50000.0,\n  \"datePaiement\": \"2024-01-15T00:00:00\",\n  \"methodePaiement\": \"Virement bancaire\",\n  \"referencePaiement\": \"PAY-2024-001\",\n  \"statut\": \"Payé\",\n  \"commentaire\": \"Paiement des frais de scolarité\",\n  \"idEleve\": 1,\n  \"idFrais\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/Paiement",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Paiement"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📋 Gestion des Inscriptions",
+      "item": [
+        {
+          "name": "Récupérer toutes les inscriptions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Inscription",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Inscription"]
+            }
+          }
+        },
+        {
+          "name": "Récupérer les inscriptions d'un élève",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Inscription/eleve/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Inscription", "eleve", "1"]
+            }
+          }
+        },
+        {
+          "name": "Créer une inscription",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dateInscription\": \"2024-01-15T00:00:00\",\n  \"statut\": \"Inscrit\",\n  \"commentaire\": \"Inscription pour l'année scolaire 2024-2025\",\n  \"idEleve\": 1,\n  \"idClasse\": 1,\n  \"idAnneeScolaire\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/Inscription",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Inscription"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📚 Gestion des Cours",
+      "item": [
+        {
+          "name": "Récupérer tous les cours",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Cours",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Cours"]
+            }
+          }
+        },
+        {
+          "name": "Récupérer les cours d'une classe",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Cours/classe/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Cours", "classe", "1"]
+            }
+          }
+        },
+        {
+          "name": "Créer un cours",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nom\": \"Mathématiques\",\n  \"description\": \"Cours de mathématiques pour la 6ème année\",\n  \"coefficient\": 4.0,\n  \"statut\": true,\n  \"idClasse\": 1,\n  \"idEnseignant\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/Cours",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Cours"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "👨‍🏫 Gestion des Enseignants",
+      "item": [
+        {
+          "name": "Récupérer tous les enseignants",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Enseignant",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Enseignant"]
+            }
+          }
+        },
+        {
+          "name": "Récupérer les enseignants d'une école",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Enseignant/ecole/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Enseignant", "ecole", "1"]
+            }
+          }
+        },
+        {
+          "name": "Créer un enseignant",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"specialite\": \"Mathématiques\",\n  \"diplome\": \"Licence en Mathématiques\",\n  \"anneesExperience\": 5,\n  \"statut\": true,\n  \"idUtilisateur\": 1,\n  \"idEcole\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/Enseignant",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Enseignant"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "👨‍👩‍👧‍👦 Gestion des Tuteurs",
+      "item": [
+        {
+          "name": "Récupérer tous les tuteurs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Tuteur",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Tuteur"]
+            }
+          }
+        },
+        {
+          "name": "Récupérer les tuteurs d'une école",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Tuteur/ecole/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Tuteur", "ecole", "1"]
+            }
+          }
+        },
+        {
+          "name": "Créer un tuteur",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"relation\": \"Père\",\n  \"profession\": \"Ingénieur\",\n  \"statut\": true,\n  \"idUtilisateur\": 1,\n  \"idEcole\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/Tuteur",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Tuteur"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📅 Gestion des Vacations",
+      "item": [
+        {
+          "name": "Récupérer toutes les vacations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Vacation",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Vacation"]
+            }
+          }
+        },
+        {
+          "name": "Récupérer les vacations d'une classe",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Vacation/classe/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Vacation", "classe", "1"]
+            }
+          }
+        },
+        {
+          "name": "Créer une vacation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"2024-01-15T00:00:00\",\n  \"heureDebut\": \"08:00:00\",\n  \"heureFin\": \"09:00:00\",\n  \"salle\": \"Salle 101\",\n  \"statut\": \"Planifiée\",\n  \"idClasse\": 1,\n  \"idCours\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/Vacation",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Vacation"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "💸 Gestion des Frais",
+      "item": [
+        {
+          "name": "Récupérer tous les frais",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Frais",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Frais"]
+            }
+          }
+        },
+        {
+          "name": "Récupérer les frais d'une classe",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Frais/classe/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Frais", "classe", "1"]
+            }
+          }
+        },
+        {
+          "name": "Créer un frais",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nom\": \"Frais de scolarité\",\n  \"description\": \"Frais de scolarité pour l'année scolaire 2024-2025\",\n  \"montant\": 500000.0,\n  \"periode\": \"Annuelle\",\n  \"dateEcheance\": \"2024-09-30T00:00:00\",\n  \"statut\": true,\n  \"idClasse\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/Frais",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Frais"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📧 Gestion des Messages",
+      "item": [
+        {
+          "name": "Récupérer tous les messages",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Message",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Message"]
+            }
+          }
+        },
+        {
+          "name": "Récupérer les messages d'un groupe",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Message/groupe/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Message", "groupe", "1"]
+            }
+          }
+        },
+        {
+          "name": "Créer un message",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contenu\": \"Bonjour, voici un message important\",\n  \"dateEnvoi\": \"2024-01-15T10:30:00\",\n  \"statut\": \"Envoyé\",\n  \"idExpediteur\": 1,\n  \"idDestinataire\": 2,\n  \"idGroupe\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/Message",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Message"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔔 Gestion des Notifications",
+      "item": [
+        {
+          "name": "Récupérer toutes les notifications",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Notification",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Notification"]
+            }
+          }
+        },
+        {
+          "name": "Récupérer les notifications d'un utilisateur",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Notification/utilisateur/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Notification", "utilisateur", "1"]
+            }
+          }
+        },
+        {
+          "name": "Créer une notification",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titre\": \"Nouvelle note disponible\",\n  \"contenu\": \"Une nouvelle note a été ajoutée pour votre enfant\",\n  \"type\": \"Note\",\n  \"dateCreation\": \"2024-01-15T10:30:00\",\n  \"statut\": \"Non lu\",\n  \"idDestinataire\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/Notification",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Notification"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📊 Vues Spécialisées",
+      "item": [
+        {
+          "name": "Vue des élèves par école",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/EleveParEcole",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "EleveParEcole"]
+            }
+          }
+        },
+        {
+          "name": "Vue des paiements et frais par école",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/VuePaiementsFraisParEcole",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "VuePaiementsFraisParEcole"]
+            }
+          }
+        },
+        {
+          "name": "Vue des pointages de présence par école",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/VuePointagePresenceParEcole",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "VuePointagePresenceParEcole"]
+            }
+          }
+        },
+        {
+          "name": "Vue du répertoire des enseignants par parent",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/VueRepertoireEnseignantsParParent",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "VueRepertoireEnseignantsParParent"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

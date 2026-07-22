@@ -1,0 +1,45 @@
+### Smoke — clients par société (réservation requise)
+### Vérifier après déploiement que /societe, /paged et /recherche partagent le même périmètre.
+@baseUrl = https://localhost:7110
+@tokenStaff = REPLACE_JWT_GERANT_OU_CAISSIER
+@idSociete = 1
+@idSocieteAutre = 2
+@searchTerm = dupont
+
+### Prérequis : token staff avec permission Client.ReadAll et idSociete = @idSociete
+
+### 1 — Liste non paginée (clients ayant réservé dans la société)
+GET {{baseUrl}}/api/Client/societe/{{idSociete}}
+Authorization: Bearer {{tokenStaff}}
+
+###
+
+### 2 — Liste paginée (même périmètre + pagination)
+GET {{baseUrl}}/api/Client/societe/{{idSociete}}/paged?pageNumber=1&pageSize=20&sortBy=NomClient&sortDescending=false
+Authorization: Bearer {{tokenStaff}}
+
+###
+
+### 3 — Recherche multi-champs (même périmètre + searchTerm)
+GET {{baseUrl}}/api/Client/societe/{{idSociete}}/recherche?searchTerm={{searchTerm}}&includeInactive=false
+Authorization: Bearer {{tokenStaff}}
+
+###
+
+### 4 — Scope JWT : autre société → 403 (utilisateur non Super-Admin)
+GET {{baseUrl}}/api/Client/societe/{{idSocieteAutre}}/paged?pageNumber=1&pageSize=20
+Authorization: Bearer {{tokenStaff}}
+
+###
+
+### 5 — Sync clients alignée (réservation dans société JWT)
+GET {{baseUrl}}/api/sync/clients?pageSize=50
+Authorization: Bearer {{tokenStaff}}
+
+###
+
+### Attendu :
+### - 1/2/3 : 200, uniquement clients avec au moins une Reservation (Statut=true) pour idSociete
+### - idSociete renseigné dans chaque ClientResponseDto des routes /societe/*
+### - 4 : 403 si token.idSociete != idSocieteAutre
+### - 5 : même périmètre que les routes REST société
