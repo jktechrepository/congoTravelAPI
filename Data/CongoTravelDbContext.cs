@@ -134,6 +134,19 @@ namespace CongoTravel.Data
                 .IsUnique()
                 .HasDatabaseName("IX_Utilisateurs_Email_Unique");
 
+            modelBuilder.Entity<Utilisateur>()
+                .Property(u => u.AuthProvider)
+                .HasMaxLength(32);
+
+            modelBuilder.Entity<Utilisateur>()
+                .Property(u => u.ExternalSubjectId)
+                .HasMaxLength(128);
+
+            modelBuilder.Entity<Utilisateur>()
+                .HasIndex(u => new { u.AuthProvider, u.ExternalSubjectId })
+                .IsUnique()
+                .HasDatabaseName("IX_Utilisateurs_AuthProvider_ExternalSubjectId");
+
             // Configuration Agent
             modelBuilder.Entity<Agent>()
                 .HasOne(a => a.Societe)

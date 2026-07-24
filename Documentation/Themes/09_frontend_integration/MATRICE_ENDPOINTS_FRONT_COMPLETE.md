@@ -24,6 +24,8 @@
 | Endpoint | Méthode | Statut | Breaking ? | Rôle(s) | Notes / remplacement |
 |----------|---------|--------|------------|---------|----------------------|
 | `/api/Utilisateur/authentifier` | POST | **Actif** | Non | Public | Body : `emailOuTelephone`, `motDePasse` |
+| `/api/Utilisateur/auth/google` | POST | **Actif** | Non | Public | Body : `idToken` — **même response body** que `authentifier` |
+| `/api/Utilisateur/auth/apple` | POST | **Actif** | Non | Public | Body : `idToken` (Apple) — **même response body** que `authentifier` |
 | `/api/Auth/login` | POST | **Absent** | Oui | — | Utiliser `/api/Utilisateur/authentifier` |
 | `/api/Utilisateur/deconnecter` | POST | **Actif** | Non | JWT | |
 | `/api/Auth/logout` | POST | **Absent** | Oui | — | Utiliser `/api/Utilisateur/deconnecter` |

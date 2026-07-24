@@ -38,6 +38,8 @@ namespace CongoTravel.Tests
                 new Mock<ISimpleJwtService>().Object,
                 permissionService,
                 refreshTokenService,
+                new Mock<IGoogleAuthService>().Object,
+                new Mock<IAppleAuthService>().Object,
                 new ConfigurationBuilder().Build(),
                 NullLogger<UtilisateurController>.Instance,
                 ctx,

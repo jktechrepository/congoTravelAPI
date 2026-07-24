@@ -239,6 +239,16 @@ builder.Services.AddDbContext<CongoTravelDbContext>(options =>
 // Enregistrement du service JWT
 builder.Services.AddScoped<ISimpleJwtService, SimpleJwtService>();
 builder.Services.AddScoped<IRefreshTokenService, RefreshTokenService>(); //  REFRESH TOKEN : Service de gestion des refresh tokens
+builder.Services.Configure<CongoTravel.Models.Options.GoogleAuthOptions>(
+    builder.Configuration.GetSection(CongoTravel.Models.Options.GoogleAuthOptions.SectionName));
+builder.Services.Configure<CongoTravel.Models.Options.AppleAuthOptions>(
+    builder.Configuration.GetSection(CongoTravel.Models.Options.AppleAuthOptions.SectionName));
+builder.Services.AddScoped<IGoogleTokenValidator, GoogleTokenValidator>();
+builder.Services.AddScoped<IAppleTokenValidator, AppleTokenValidator>();
+builder.Services.AddScoped<ExternalAuthAccountService>();
+builder.Services.AddScoped<AuthentificationResponseBuilder>();
+builder.Services.AddScoped<IGoogleAuthService, GoogleAuthService>();
+builder.Services.AddScoped<IAppleAuthService, AppleAuthService>();
 
 // AUDIT TRAIL: Service d'audit pour tracer toutes les modifications
 builder.Services.AddScoped<IAuditService, AuditService>();

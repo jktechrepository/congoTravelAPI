@@ -84,6 +84,17 @@ namespace CongoTravel.Models
         [ForeignKey("IdClient")]
         public Client? Client { get; set; }
 
+        /// <summary>Provider d'auth externe (ex. <c>Google</c>) ; null = compte local.</summary>
+        [MaxLength(32)]
+        public string? AuthProvider { get; set; }
+
+        /// <summary>Identifiant stable du provider (Google <c>sub</c>).</summary>
+        [MaxLength(128)]
+        public string? ExternalSubjectId { get; set; }
+
+        /// <summary>Email vérifié par le provider OAuth (claim Google).</summary>
+        public bool? EmailVerified { get; set; }
+
         /// <summary>Site d’affectation opérationnelle (optionnel, même société).</summary>
         public int? IdSite { get; set; }
 

@@ -1847,3 +1847,15 @@ INSERT INTO `__EFMigrationsHistory` (`MigrationId`, `ProductVersion`)
 VALUES ('20260724174943_AddConfigSocietePoidsBagageParKiloOffert', '6.0.25');
 
 COMMIT;
+
+START TRANSACTION;
+
+ALTER TABLE `Utilisateurs` ADD `AuthProvider` varchar(32) CHARACTER SET utf8mb4 NULL;
+ALTER TABLE `Utilisateurs` ADD `EmailVerified` tinyint(1) NULL;
+ALTER TABLE `Utilisateurs` ADD `ExternalSubjectId` varchar(128) CHARACTER SET utf8mb4 NULL;
+CREATE UNIQUE INDEX `IX_Utilisateurs_AuthProvider_ExternalSubjectId` ON `Utilisateurs` (`AuthProvider`, `ExternalSubjectId`);
+
+INSERT INTO `__EFMigrationsHistory` (`MigrationId`, `ProductVersion`)
+VALUES ('20260724193702_AddUtilisateurGoogleAuthFields', '6.0.25');
+
+COMMIT;

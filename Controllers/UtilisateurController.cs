@@ -30,6 +30,8 @@ namespace CongoTravel.Controllers
         private readonly ISimpleJwtService _jwtService;
         private readonly IPermissionService _permissionService;
         private readonly IRefreshTokenService _refreshTokenService;
+        private readonly IGoogleAuthService _googleAuthService;
+        private readonly IAppleAuthService _appleAuthService;
         private readonly IConfiguration _configuration;
         private readonly ILogger<UtilisateurController> _logger;
         private readonly CongoTravelDbContext _context;
@@ -42,6 +44,8 @@ namespace CongoTravel.Controllers
             ISimpleJwtService jwtService,
             IPermissionService permissionService,
             IRefreshTokenService refreshTokenService,
+            IGoogleAuthService googleAuthService,
+            IAppleAuthService appleAuthService,
             IConfiguration configuration,
             ILogger<UtilisateurController> logger,
             CongoTravelDbContext context,
@@ -54,6 +58,8 @@ namespace CongoTravel.Controllers
             _jwtService = jwtService;
             _permissionService = permissionService;
             _refreshTokenService = refreshTokenService;
+            _googleAuthService = googleAuthService;
+            _appleAuthService = appleAuthService;
             _configuration = configuration;
             _logger = logger;
             _context = context;
@@ -1632,6 +1638,88 @@ namespace CongoTravel.Controllers
             {
                 _logger.LogError(ex, "❌ Erreur lors de l'authentification pour {EmailOuTelephone}", request.EmailOuTelephone);
                 return StatusCode(500, new { message = "Erreur interne du serveur", error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Connexion / inscription via Google ID token.
+        /// Réponse : même contrat que <see cref="Authentifier"/>.
+        /// </summary>
+        [AllowAnonymous]
+        [HttpPost("auth/google")]
+        [ProducesResponseType(typeof(AuthentificationResponse), 200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(401)]
+        [ProducesResponseType(403)]
+        [ProducesResponseType(409)]
+        public async Task<ActionResult<AuthentificationResponse>> AuthentifierGoogle(
+            [FromBody] GoogleAuthRequestDto request,
+            CancellationToken cancellationToken)
+        {
+            if (request == null || string.IsNullOrWhiteSpace(request.IdToken))
+                return BadRequest(new { message = "idToken est requis." });
+
+            try
+            {
+                var deviceInfo = Request.Headers.UserAgent.ToString();
+                var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+                var response = await _googleAuthService.SignInWithGoogleAsync(
+                    request.IdToken.Trim(),
+                    string.IsNullOrWhiteSpace(deviceInfo) ? null : deviceInfo,
+                    ipAddress,
+                    cancellationToken);
+                return Ok(response);
+            }
+            catch (ExternalAuthException ex)
+            {
+                _logger.LogWarning(ex, "Échec auth Google ({StatusCode})", ex.StatusCode);
+                return StatusCode(ex.StatusCode, new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur inattendue auth Google");
+                return StatusCode(500, new { message = "Erreur interne du serveur" });
+            }
+        }
+
+        /// <summary>
+        /// Connexion / inscription via Apple identity token.
+        /// Réponse : même contrat que <see cref="Authentifier"/>.
+        /// </summary>
+        [AllowAnonymous]
+        [HttpPost("auth/apple")]
+        [ProducesResponseType(typeof(AuthentificationResponse), 200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(401)]
+        [ProducesResponseType(403)]
+        [ProducesResponseType(409)]
+        public async Task<ActionResult<AuthentificationResponse>> AuthentifierApple(
+            [FromBody] GoogleAuthRequestDto request,
+            CancellationToken cancellationToken)
+        {
+            if (request == null || string.IsNullOrWhiteSpace(request.IdToken))
+                return BadRequest(new { message = "idToken est requis." });
+
+            try
+            {
+                var deviceInfo = Request.Headers.UserAgent.ToString();
+                var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+                var response = await _appleAuthService.SignInWithAppleAsync(
+                    request.IdToken.Trim(),
+                    string.IsNullOrWhiteSpace(deviceInfo) ? null : deviceInfo,
+                    ipAddress,
+                    cancellationToken);
+                return Ok(response);
+            }
+            catch (ExternalAuthException ex)
+            {
+                _logger.LogWarning(ex, "Échec auth Apple ({StatusCode})", ex.StatusCode);
+                return StatusCode(ex.StatusCode, new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur inattendue auth Apple");
+                return StatusCode(500, new { message = "Erreur interne du serveur" });
             }
         }
 
