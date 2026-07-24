@@ -105,6 +105,7 @@ namespace CongoTravel.Tests
             public int UserId => 1;
             public int GetUserId() => UserId;
             public string UserRole => "Admin";
+            public string PrimaryRole => UserRole;
             public string GetUserRole() => UserRole;
             public int SocieteId { get; init; }
             public int GetSocieteId() => SocieteId;

@@ -55,6 +55,19 @@ Réponse : tableau de strings `["Client.Read", "Reservation.Create", ...]`.
 
 > **Note « Agent » :** dans l'API, `Agent` désigne une **entité métier** (`/api/Agent`), pas un rôle JWT seedé. Les agents terrain sont des utilisateurs liés (souvent rôle **Caissier**) avec un numéro de série appareil.
 
+### Visibilité lecture agents (`GET /api/Agent*`)
+
+Filtrage serveur (`RoleVisibilityHelper`, même matrice que les rôles assignables via `RoleService`) :
+
+| Appelant (JWT `primaryRole`) | Agents visibles (rôle) | Société |
+|------------------------------|------------------------|---------|
+| Super-Admin | Tous | Toutes |
+| Admin | Tous sauf `Super-Admin` | JWT uniquement |
+| Gerant | Tous sauf `Super-Admin`, `Admin` | JWT uniquement |
+| Autres (Caissier, Financier, …) | Tous sauf `Super-Admin`, `Admin`, `Gerant` | JWT uniquement |
+
+`GET /api/Agent/{id}` (et équivalents détail) renvoie **404** si l'agent est hors périmètre (rôle caché ou autre société) — pas de confirmation d'existence.
+
 ### Rôles legacy (enum `UserRoles`, non seedés par défaut)
 
 `Sous-Directeur`, `Secrétaire`, `Préfet`, `Technicien`, `Bailleur`, `Agent Support`, `Autre Personnel` — présents dans l'enum mais **sans assignation permissions** au seed. À configurer manuellement si utilisés.
@@ -139,6 +152,7 @@ Même périmètre qu'**Admin** (seed identique par catégorie).
 Restrictions métier additionnelles (code) :
 - Ne peut pas modifier un agent avec rôle `Admin`
 - Ne peut pas attribuer le rôle `Super-Admin` ni `Admin` (sauf Super-Admin/Admin)
+- **Liste / détail agents** : voir [Visibilité lecture agents](#visibilité-lecture-agents-get-apiagent)
 - Dashboard gérant : scope **site JWT** (pas vue société globale)
 
 ---

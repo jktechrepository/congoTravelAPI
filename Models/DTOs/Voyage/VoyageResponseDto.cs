@@ -40,6 +40,8 @@ namespace CongoTravel.Models.DTOs
         public string? AliasVehicule { get; set; }
         public string? LibelleTypeVehicule { get; set; }
         public string? NomSociete { get; set; }
+        /// <summary>Logo de la société (via véhicule), lecture seule — pas de colonne sur Voyage.</summary>
+        public string? LogoSociete { get; set; }
         public string? NomSite { get; set; }
         public string? VilleDepart { get; set; }
         public string? VilleArrivee { get; set; }
@@ -49,5 +51,8 @@ namespace CongoTravel.Models.DTOs
 
         /// <summary>Devise du supplément électronique ; null = devise du voyage.</summary>
         public string? CodeDeviseMontAddPaieElectronique { get; set; }
+
+        /// <summary>Snapshot ConfigSociete — poids de bagage offert (kg) ; 0 = aucun.</summary>
+        public decimal PoidsBagageParKiloOffert { get; set; }
     }
 }

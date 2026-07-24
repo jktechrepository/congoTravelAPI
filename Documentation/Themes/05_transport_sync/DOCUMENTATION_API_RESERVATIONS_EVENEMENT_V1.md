@@ -2,14 +2,15 @@
 
 Base route : `api/events/reservations`
 
-Complète les actions POST existantes (confirm-payment, initiate-flexpay, cancel) avec la lecture inspirée de `api/Reservation`, adaptée au modèle événement.
+Lecture inspirée de `api/Reservation`, adaptée au modèle événement. Achat via façades `with-paiement` / `with-paiement-electronique` (plus de holds / confirm / initiate séparés).
 
 ## Permissions
 
 | Action | Permission |
 |--------|------------|
 | Tous les GET | `Evenement.Session.Read` |
-| confirm-payment, initiate-flexpay, cancel | `Evenement.Reservation.Confirm` |
+| `with-paiement`, `with-paiement-electronique` | `Evenement.Hold.Create` **et** `Evenement.Reservation.Confirm` |
+| cancel, verify FlexPay | `Evenement.Reservation.Confirm` |
 
 Tenancy : société du JWT ; Super-Admin peut passer `?idSociete=` sur la liste.
 
@@ -91,15 +92,24 @@ GET /api/events/reservations/{id}/tickets
 
 Équivalent transport de `GET /api/Reservation/{id}/billets`.
 
-## Endpoints POST (existants)
+## Endpoints POST
 
 | Méthode | Route | Permission |
 |---------|-------|------------|
-| POST | `/{id}/confirm-payment` | `Evenement.Reservation.Confirm` |
-| POST | `/{id}/initiate-flexpay` | `Evenement.Reservation.Confirm` |
+| POST | `/with-paiement` | `Evenement.Hold.Create` + `Evenement.Reservation.Confirm` |
+| POST | `/with-paiement-electronique` | `Evenement.Hold.Create` + `Evenement.Reservation.Confirm` |
 | POST | `/{id}/cancel` | `Evenement.Reservation.Confirm` |
 
-La création de hold reste sur `POST /api/events/sessions/{id}/holds` (`Evenement.Hold.Create`).
+### Résolution `idSite` à l’achat
+
+| Source | Règle |
+|--------|--------|
+| `paiement.idSite` | Prioritaire s’il est > 0 |
+| sinon `session.idSite` | Défaut depuis la session |
+| Électronique | Un site effectif est **obligatoire** (sinon 400) |
+| CASH | Optionnel ; si résolu, persisté |
+
+Le site effectif est stocké sur `EvenementReservation.IdSite` et `EvenementPayment.IdSite` (miroir Transport pour un futur reversement PayOut).
 
 ## Mapping transport → événement
 
@@ -114,6 +124,8 @@ La création de hold reste sur `POST /api/events/sessions/{id}/holds` (`Evenemen
 | `GET /date/{date}` | `GET /date/{date}` |
 | `GET /daterange` | `GET /daterange` |
 | `GET /{id}/billets` | `GET /{id}/tickets` |
+| `POST .../with-passengers-and-paiement` | `POST /with-paiement` |
+| `POST .../reservation_with_paiement_electronique` | `POST /with-paiement-electronique` |
 | — | `GET /reference/{reference}` |
 
 Hors périmètre V1 : filtres `utilisateur`, `client`, compteurs `/count`, pagination `POST .../paged` (pas de `IdUtilisateur` / `IdClient` sur `EvenementReservation`).

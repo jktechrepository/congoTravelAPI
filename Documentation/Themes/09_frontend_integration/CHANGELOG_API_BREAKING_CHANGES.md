@@ -178,7 +178,7 @@ Les dashboards ont été **refactorés** : un seul `GET` racine retourne un DTO 
 | Billet | `POST /api/Billet/societe/{id}/passager/{id}/billet/{id}/embarquer` | Embarquement |
 | Auth | `POST /api/Utilisateur/revoke-token` | Révocation refresh token |
 | Auth | `POST /api/Utilisateur/revoke-all-tokens` | Révocation globale |
-| Événements | `api/events/*` | Billetterie événement (hors scope front actuel) |
+| Événements | `api/events/*` | Billetterie événement — voir [MODULE_05](MODULE_05_EVENEMENT_BILLETTERIE.md) |
 | Finance | `GET /api/FinanceReporting/paiements/summary` | Synthèse paiements |
 | Finance | `GET /api/FinanceReporting/rapport-caisse` | Rapport caisse multi-utilisateur |
 

@@ -88,7 +88,15 @@ GET /api/events/sessions/{id}/availability
 |---------|-------|------------|
 | POST | `/` | `Evenement.Session.Write` |
 | PUT | `/{id}/publish` | `Evenement.Session.Write` |
-| POST | `/{id}/holds` | `Evenement.Hold.Create` |
+
+Hold + paiement : `POST /api/events/reservations/with-paiement` (CASH) ou `with-paiement-electronique` (FlexPay).
+
+### Champ `idSite` (site opérationnel)
+
+- **Création Draft** (`POST /`) : `idSite` **obligatoire** — site de la société (validation multi-tenant).
+- **Liste / détail** : réponses exposent `idSite` + `nomSite`.
+- Colonne nullable en base pour sessions legacy (backfill site principal à la migration).
+- Sert de défaut pour `paiement.idSite` à l’achat (voir doc réservations) et prépare le reversement type Transport.
 
 ## Mapping transport → événement
 

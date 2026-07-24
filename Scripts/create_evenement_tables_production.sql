@@ -77,6 +77,7 @@ CREATE TABLE IF NOT EXISTS `EvenementClasses` (
 CREATE TABLE IF NOT EXISTS `EvenementSessions` (
     `IdEvenementSession` int NOT NULL AUTO_INCREMENT,
     `IdSociete` int NOT NULL,
+    `IdSite` int NULL,
     `CodeSession` varchar(64) CHARACTER SET utf8mb4 NOT NULL,
     `Libelle` varchar(255) CHARACTER SET utf8mb4 NOT NULL,
     `StartAtUtc` datetime(6) NOT NULL,
@@ -89,7 +90,9 @@ CREATE TABLE IF NOT EXISTS `EvenementSessions` (
     CONSTRAINT `CK_EvenementSessions_StartEnd`
         CHECK (`EndAtUtc` IS NULL OR `EndAtUtc` >= `StartAtUtc`),
     CONSTRAINT `FK_EvenementSessions_Societes_IdSociete`
-        FOREIGN KEY (`IdSociete`) REFERENCES `Societes` (`IdSociete`) ON DELETE RESTRICT
+        FOREIGN KEY (`IdSociete`) REFERENCES `Societes` (`IdSociete`) ON DELETE RESTRICT,
+    CONSTRAINT `FK_EvenementSessions_Sites_IdSite`
+        FOREIGN KEY (`IdSite`) REFERENCES `Sites` (`IdSite`) ON DELETE RESTRICT
 ) CHARACTER SET=utf8mb4;
 
 -- 2.3 Sections de salle (mode SeatNumbered)
@@ -144,6 +147,7 @@ CREATE TABLE IF NOT EXISTS `EvenementReservations` (
     `IdEvenementReservation` int NOT NULL AUTO_INCREMENT,
     `IdSociete` int NOT NULL,
     `IdEvenementSession` int NOT NULL,
+    `IdSite` int NULL,
     `ReferenceReservation` varchar(64) CHARACTER SET utf8mb4 NOT NULL,
     `CustomerRef` varchar(100) CHARACTER SET utf8mb4 NULL,
     `Status` enum('HOLD','CONFIRMED','CANCELLED','EXPIRED') CHARACTER SET utf8mb4 NOT NULL,
@@ -157,7 +161,9 @@ CREATE TABLE IF NOT EXISTS `EvenementReservations` (
     CONSTRAINT `FK_EvenementReservations_Societes_IdSociete`
         FOREIGN KEY (`IdSociete`) REFERENCES `Societes` (`IdSociete`) ON DELETE RESTRICT,
     CONSTRAINT `FK_EvenementReservations_EvenementSessions_IdEvenementSession`
-        FOREIGN KEY (`IdEvenementSession`) REFERENCES `EvenementSessions` (`IdEvenementSession`) ON DELETE RESTRICT
+        FOREIGN KEY (`IdEvenementSession`) REFERENCES `EvenementSessions` (`IdEvenementSession`) ON DELETE RESTRICT,
+    CONSTRAINT `FK_EvenementReservations_Sites_IdSite`
+        FOREIGN KEY (`IdSite`) REFERENCES `Sites` (`IdSite`) ON DELETE RESTRICT
 ) CHARACTER SET=utf8mb4;
 
 -- 2.7 Sièges numérotés (mode SeatNumbered)
@@ -220,6 +226,7 @@ CREATE TABLE IF NOT EXISTS `EvenementTickets` (
 CREATE TABLE IF NOT EXISTS `EvenementPayments` (
     `IdEvenementPayment` int NOT NULL AUTO_INCREMENT,
     `IdEvenementReservation` int NOT NULL,
+    `IdSite` int NULL,
     `ReferencePaiement` varchar(100) CHARACTER SET utf8mb4 NOT NULL,
     `Provider` varchar(40) CHARACTER SET utf8mb4 NOT NULL,
     `ProviderTxRef` varchar(120) CHARACTER SET utf8mb4 NULL,
@@ -231,7 +238,9 @@ CREATE TABLE IF NOT EXISTS `EvenementPayments` (
     `DateModification` datetime(6) NULL,
     CONSTRAINT `PK_EvenementPayments` PRIMARY KEY (`IdEvenementPayment`),
     CONSTRAINT `FK_EvenementPayments_EvenementReservations_IdEvenementReservation`
-        FOREIGN KEY (`IdEvenementReservation`) REFERENCES `EvenementReservations` (`IdEvenementReservation`) ON DELETE RESTRICT
+        FOREIGN KEY (`IdEvenementReservation`) REFERENCES `EvenementReservations` (`IdEvenementReservation`) ON DELETE RESTRICT,
+    CONSTRAINT `FK_EvenementPayments_Sites_IdSite`
+        FOREIGN KEY (`IdSite`) REFERENCES `Sites` (`IdSite`) ON DELETE RESTRICT
 ) CHARACTER SET=utf8mb4;
 
 -- ---------------------------------------------------------------------------
@@ -308,6 +317,12 @@ CALL sp_CreateIndexIfNotExists('EvenementClasses', 'IX_EvenementClasses_Societe_
 -- EvenementSessions
 CALL sp_CreateIndexIfNotExists('EvenementSessions', 'IX_EvenementSessions_IdSociete_StartAtUtc',
     'CREATE INDEX `IX_EvenementSessions_IdSociete_StartAtUtc` ON `EvenementSessions` (`IdSociete`, `StartAtUtc`)');
+CALL sp_CreateIndexIfNotExists('EvenementSessions', 'IX_EvenementSessions_IdSite',
+    'CREATE INDEX `IX_EvenementSessions_IdSite` ON `EvenementSessions` (`IdSite`)');
+CALL sp_CreateIndexIfNotExists('EvenementReservations', 'IX_EvenementReservations_IdSite',
+    'CREATE INDEX `IX_EvenementReservations_IdSite` ON `EvenementReservations` (`IdSite`)');
+CALL sp_CreateIndexIfNotExists('EvenementPayments', 'IX_EvenementPayments_IdSite',
+    'CREATE INDEX `IX_EvenementPayments_IdSite` ON `EvenementPayments` (`IdSite`)');
 CALL sp_CreateIndexIfNotExists('EvenementSessions', 'IX_EvenementSessions_Societe_CodeSession_UQ',
     'CREATE UNIQUE INDEX `IX_EvenementSessions_Societe_CodeSession_UQ` ON `EvenementSessions` (`IdSociete`, `CodeSession`)');
 

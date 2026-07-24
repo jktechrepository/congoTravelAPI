@@ -62,10 +62,10 @@ namespace CongoTravel.Tests
         public async Task ModeC_journey_publish_hold_confirm_check_use_availability()
         {
             await using var ctx = BuildDb(nameof(ModeC_journey_publish_hold_confirm_check_use_availability));
-            var idSociete = await SeedSocieteAsync(ctx);
+            var (idSociete, idSite) = await SeedSocieteAsync(ctx);
 
             var sessionService = new EvenementSessionService(
-                ctx, NullLogger<EvenementSessionService>.Instance);
+                ctx, new EvenementSessionPhotoService(ctx, NullLogger<EvenementSessionPhotoService>.Instance), NullLogger<EvenementSessionService>.Instance);
             var holdService = CreateHoldService(ctx);
             var availabilityService = new EvenementAvailabilityService(
                 ctx, NullLogger<EvenementAvailabilityService>.Instance);
@@ -76,6 +76,7 @@ namespace CongoTravel.Tests
             var draft = await sessionService.CreateDraftAsync(new EvenementCreateSessionRequestDto
             {
                 CodeSession = "SMOKE-2026",
+                IdSite = idSite,
                 Libelle = "Smoke Mode C",
                 StartAtUtc = DateTime.UtcNow.AddHours(-1),
                 EndAtUtc = DateTime.UtcNow.AddHours(6),
@@ -136,10 +137,10 @@ namespace CongoTravel.Tests
         public async Task ModeC_cancel_hold_restores_availability()
         {
             await using var ctx = BuildDb(nameof(ModeC_cancel_hold_restores_availability));
-            var idSociete = await SeedSocieteAsync(ctx);
+            var (idSociete, idSite) = await SeedSocieteAsync(ctx);
 
             var sessionService = new EvenementSessionService(
-                ctx, NullLogger<EvenementSessionService>.Instance);
+                ctx, new EvenementSessionPhotoService(ctx, NullLogger<EvenementSessionPhotoService>.Instance), NullLogger<EvenementSessionService>.Instance);
             var holdService = CreateHoldService(ctx);
             var cancelService = CreateCancelService(ctx);
             var availabilityService = new EvenementAvailabilityService(
@@ -149,6 +150,7 @@ namespace CongoTravel.Tests
                 (await sessionService.CreateDraftAsync(new EvenementCreateSessionRequestDto
                 {
                     CodeSession = "CANCEL-SMOKE",
+                IdSite = idSite,
                     Libelle = "Cancel smoke",
                     StartAtUtc = DateTime.UtcNow.AddDays(1),
                     InventoryMode = "GlobalQuota",
@@ -201,12 +203,9 @@ namespace CongoTravel.Tests
                     new Services.Evenement.Strategies.EvenementSeatNumberedCancelStrategy(ctx)),
                 NullLogger<EvenementReservationService>.Instance);
 
-        private static async Task<int> SeedSocieteAsync(CongoTravelDbContext ctx)
-        {
-            var societe = new Societe { Nom = "Smoke Societe", DateCreation = DateTime.UtcNow };
-            ctx.Societes.Add(societe);
-            await ctx.SaveChangesAsync();
-            return societe.IdSociete;
-        }
+        private static async Task<(int IdSociete, int IdSite)> SeedSocieteAsync(
+            CongoTravelDbContext ctx,
+            string nom = "Test Societe") =>
+            await EvenementTestFactories.SeedSocieteWithSiteAsync(ctx, nom);
     }
 }

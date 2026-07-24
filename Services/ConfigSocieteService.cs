@@ -59,6 +59,7 @@ namespace CongoTravel.Services
             config.CodeDeviseFraisPlateforme = dto.CodeDeviseFraisPlateforme;
             config.MontAddPaieElectronique = dto.MontAddPaieElectronique;
             config.CodeDeviseMontAddPaieElectronique = dto.CodeDeviseMontAddPaieElectronique;
+            config.PoidsBagageParKiloOffert = dto.PoidsBagageParKiloOffert;
             ConfigSocieteDefaults.Normalize(config);
             config.DateModification = DateTime.UtcNow;
 

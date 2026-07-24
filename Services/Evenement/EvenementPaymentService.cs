@@ -148,7 +148,8 @@ namespace CongoTravel.Services.Evenement
                         MontantTarif = reservation.MontantSousTotal,
                         CodeDeviseTarif = reservation.CodeDevise,
                         TauxVersDevisePaiement = 1m,
-                        IdempotencyKey = idempotencyKey
+                        IdempotencyKey = idempotencyKey,
+                        IdSite = reservation.IdSite
                     };
 
                     await _confirmationService.ConfirmHoldAndEmitTicketsAsync(

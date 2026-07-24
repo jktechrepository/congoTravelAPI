@@ -15,6 +15,9 @@ namespace CongoTravel.Models.Evenement
         [Required]
         public int IdEvenementReservation { get; set; }
 
+        /// <summary>Site marchand / bénéficiaire (miroir Transport Paiement.IdSite).</summary>
+        public int? IdSite { get; set; }
+
         [Required]
         [MaxLength(100)]
         public string ReferencePaiement { get; set; } = string.Empty;
@@ -65,5 +68,9 @@ namespace CongoTravel.Models.Evenement
         [JsonIgnore]
         [ValidateNever]
         public EvenementReservation? Reservation { get; set; }
+
+        [JsonIgnore]
+        [ValidateNever]
+        public Site? Site { get; set; }
     }
 }

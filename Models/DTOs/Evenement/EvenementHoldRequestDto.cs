@@ -2,7 +2,10 @@ using System.ComponentModel.DataAnnotations;
 
 namespace CongoTravel.Models.DTOs.Evenement
 {
-    /// <summary>Corps de <c>POST /api/events/sessions/{idSession}/holds</c>.</summary>
+    /// <summary>
+    /// Corps hold (items inventaire) — utiliséé via
+    /// <c>POST /api/events/reservations/with-paiement</c> et <c>with-paiement-electronique</c>.
+    /// </summary>
     public class EvenementHoldRequestDto
     {
         /// <summary>Référence opaque client (téléphone, code interne, etc.).</summary>
@@ -12,6 +15,12 @@ namespace CongoTravel.Models.DTOs.Evenement
         /// <summary>Clé d'idempotence (unique par société).</summary>
         [MaxLength(120)]
         public string? IdempotencyKey { get; set; }
+
+        /// <summary>
+        /// Site effectif à persister sur la réservation
+        /// (résolu par la façade : <c>paiement.idSite ?? session.idSite</c>).
+        /// </summary>
+        public int? IdSite { get; set; }
 
         [Required]
         [MinLength(1, ErrorMessage = "Au moins un item est requis.")]

@@ -189,6 +189,7 @@ namespace CongoTravel.Services.Evenement
             var payment = new EvenementPayment
             {
                 IdEvenementReservation = reservation.IdEvenementReservation,
+                IdSite = request.IdSite,
                 ReferencePaiement = paymentReference,
                 Provider = EvenementFlexPayConstants.Provider,
                 ProviderTxRef = pendingOrder,
@@ -201,6 +202,12 @@ namespace CongoTravel.Services.Evenement
                 IdempotencyKey = idempotencyKey,
                 DateCreation = utcNow
             };
+
+            if (reservation.IdSite != request.IdSite)
+            {
+                reservation.IdSite = request.IdSite;
+                reservation.DateModification = utcNow;
+            }
 
             _context.EvenementPayments.Add(payment);
             await _context.SaveChangesAsync(cancellationToken);

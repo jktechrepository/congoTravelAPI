@@ -69,6 +69,8 @@ namespace CongoTravel.Helpers
                         "CodeDeviseMontAddPaieElectronique invalide. Valeurs acceptées : CDF, USD, ou null (devise du voyage).");
                 }
             }
+
+            config.PoidsBagageParKiloOffert = Math.Max(0m, config.PoidsBagageParKiloOffert);
         }
 
         public static void EnsureReservationHorizon(Voyage voyage, ConfigSociete config)

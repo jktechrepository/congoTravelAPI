@@ -3,9 +3,7 @@ using System.ComponentModel.DataAnnotations;
 namespace CongoTravel.Models.DTOs.Evenement
 {
     /// <summary>
-    /// Corps de <c>POST /api/events/reservations/{idReservation}/confirm-payment</c>.
-    /// V1 CASH : <c>MethodePaiement = CASH</c>.
-    /// FlexPay : utiliser <c>POST .../initiate-flexpay</c> (Phase 5).
+    /// Confirmation paiement CASH (usage interne / façade <c>with-paiement</c>).
     /// </summary>
     public class EvenementConfirmPaymentRequestDto
     {

@@ -60,6 +60,7 @@ namespace CongoTravel.Helpers.Evenement
                 IdEvenementReservation = reservation.IdEvenementReservation,
                 IdSociete = reservation.IdSociete,
                 IdEvenementSession = reservation.IdEvenementSession,
+                IdSite = reservation.IdSite,
                 ReferenceReservation = reservation.ReferenceReservation,
                 CustomerRef = reservation.CustomerRef,
                 Status = reservation.Status.ToString(),
@@ -83,6 +84,7 @@ namespace CongoTravel.Helpers.Evenement
                 IdEvenementReservation = reservation.IdEvenementReservation,
                 IdSociete = reservation.IdSociete,
                 IdEvenementSession = reservation.IdEvenementSession,
+                IdSite = reservation.IdSite,
                 ReferenceReservation = reservation.ReferenceReservation,
                 CustomerRef = reservation.CustomerRef,
                 Status = reservation.Status.ToString(),
@@ -119,6 +121,7 @@ namespace CongoTravel.Helpers.Evenement
             new()
             {
                 IdEvenementPayment = payment.IdEvenementPayment,
+                IdSite = payment.IdSite,
                 ReferencePaiement = payment.ReferencePaiement,
                 Provider = payment.Provider,
                 ProviderTxRef = payment.ProviderTxRef,

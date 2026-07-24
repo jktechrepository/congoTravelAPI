@@ -15,6 +15,12 @@ namespace CongoTravel.Models.Evenement
         [Required]
         public int IdSociete { get; set; }
 
+        /// <summary>
+        /// Site opérationnel (lieu / guichet / bénéficiaire PayOut futur).
+        /// Nullable pour sessions legacy ; requis à la création Draft.
+        /// </summary>
+        public int? IdSite { get; set; }
+
         [Required]
         [MaxLength(64)]
         public string CodeSession { get; set; } = string.Empty;
@@ -46,6 +52,10 @@ namespace CongoTravel.Models.Evenement
 
         [JsonIgnore]
         [ValidateNever]
+        public Site? Site { get; set; }
+
+        [JsonIgnore]
+        [ValidateNever]
         public EvenementSessionGlobalQuota? GlobalQuota { get; set; }
 
         [JsonIgnore]
@@ -63,5 +73,9 @@ namespace CongoTravel.Models.Evenement
         [JsonIgnore]
         [ValidateNever]
         public ICollection<EvenementReservation> Reservations { get; set; } = new List<EvenementReservation>();
+
+        [JsonIgnore]
+        [ValidateNever]
+        public ICollection<EvenementSessionPhoto> Photos { get; set; } = new List<EvenementSessionPhoto>();
     }
 }

@@ -9,6 +9,8 @@ namespace CongoTravel.Models.DTOs.Evenement
 
         public int IdEvenementSession { get; set; }
 
+        public int? IdSite { get; set; }
+
         public string ReferenceReservation { get; set; } = string.Empty;
 
         public string? CustomerRef { get; set; }

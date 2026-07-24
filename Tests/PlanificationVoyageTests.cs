@@ -254,6 +254,67 @@ namespace CongoTravel.Tests
             Assert.Equal(DayOfWeek.Friday, dates[1].DayOfWeek);
         }
 
+        [Fact]
+        public void ResolvePeriode_mois_courant_demarre_au_jour_courant()
+        {
+            var now = new DateTime(2026, 7, 24, 0, 0, 0, DateTimeKind.Utc);
+            var (debut, fin) = PlanificationVoyageDateHelper.ResolvePeriode(
+                PlanificationGenerationMode.MoisCourant, null, null, now);
+
+            Assert.Equal(now, debut);
+            Assert.Equal(new DateTime(2026, 7, 31, 0, 0, 0, DateTimeKind.Utc), fin);
+        }
+
+        [Fact]
+        public void ResolvePeriode_mois_courant_premier_jour_reste_premier()
+        {
+            var now = new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc);
+            var (debut, fin) = PlanificationVoyageDateHelper.ResolvePeriode(
+                PlanificationGenerationMode.MoisCourant, null, null, now);
+
+            Assert.Equal(now, debut);
+            Assert.Equal(new DateTime(2026, 7, 31, 0, 0, 0, DateTimeKind.Utc), fin);
+        }
+
+        [Fact]
+        public void ResolvePeriode_mois_prochain_reste_mois_complet()
+        {
+            var now = new DateTime(2026, 7, 24, 0, 0, 0, DateTimeKind.Utc);
+            var (debut, fin) = PlanificationVoyageDateHelper.ResolvePeriode(
+                PlanificationGenerationMode.MoisProchain, null, null, now);
+
+            Assert.Equal(new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc), debut);
+            Assert.Equal(new DateTime(2026, 8, 31, 0, 0, 0, DateTimeKind.Utc), fin);
+        }
+
+        [Fact]
+        public void ResolvePeriode_semaine_courante_exclut_jours_passes()
+        {
+            // mercredi 22 juillet 2026 UTC
+            var now = new DateTime(2026, 7, 22, 0, 0, 0, DateTimeKind.Utc);
+            Assert.Equal(DayOfWeek.Wednesday, now.DayOfWeek);
+
+            var (debut, fin) = PlanificationVoyageDateHelper.ResolvePeriode(
+                PlanificationGenerationMode.SemaineCourante, null, null, now);
+
+            Assert.Equal(now, debut);
+            // dimanche 26 juillet
+            Assert.Equal(new DateTime(2026, 7, 26, 0, 0, 0, DateTimeKind.Utc), fin);
+        }
+
+        [Fact]
+        public void ResolvePeriode_semaine_courante_lundi_demarre_lundi()
+        {
+            var now = new DateTime(2026, 7, 20, 0, 0, 0, DateTimeKind.Utc); // lundi
+            Assert.Equal(DayOfWeek.Monday, now.DayOfWeek);
+
+            var (debut, fin) = PlanificationVoyageDateHelper.ResolvePeriode(
+                PlanificationGenerationMode.SemaineCourante, null, null, now);
+
+            Assert.Equal(now, debut);
+            Assert.Equal(new DateTime(2026, 7, 26, 0, 0, 0, DateTimeKind.Utc), fin);
+        }
+
         private static async Task<(int PlanifId, int IdSociete, int IdSite, int IdVehicule, int IdDestination)> SeedPlanificationAsync(
             CongoTravelDbContext ctx,
             List<int> joursSemaine,

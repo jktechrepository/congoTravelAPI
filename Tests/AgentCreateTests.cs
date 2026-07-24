@@ -34,6 +34,10 @@ namespace CongoTravel.Tests
                 Mock.Of<IUsernameGeneratorService>(),
                 emailMock.Object,
                 Mock.Of<IUtilisateurRepository>(),
+                Mock.Of<ICurrentUserService>(u =>
+                    u.PrimaryRole == "Super-Admin" &&
+                    u.IsSuperAdmin == true &&
+                    u.SocieteId == 1),
                 NullLogger<AgentService>.Instance);
         }
 

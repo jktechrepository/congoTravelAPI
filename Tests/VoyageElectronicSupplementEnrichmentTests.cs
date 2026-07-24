@@ -21,6 +21,7 @@ namespace CongoTravel.Tests
                 IdSociete = 10,
                 MontAddPaieElectronique = 500m,
                 CodeDeviseMontAddPaieElectronique = "CDF",
+                PoidsBagageParKiloOffert = 20m,
                 DateCreation = DateTime.UtcNow
             });
             await ctx.SaveChangesAsync();
@@ -34,6 +35,7 @@ namespace CongoTravel.Tests
 
             Assert.Equal(500m, dtos[0].MontAddPaieElectronique);
             Assert.Equal("CDF", dtos[0].CodeDeviseMontAddPaieElectronique);
+            Assert.Equal(20m, dtos[0].PoidsBagageParKiloOffert);
         }
 
         [Fact]
@@ -50,6 +52,7 @@ namespace CongoTravel.Tests
 
             Assert.Equal(0m, dtos[0].MontAddPaieElectronique);
             Assert.Null(dtos[0].CodeDeviseMontAddPaieElectronique);
+            Assert.Equal(0m, dtos[0].PoidsBagageParKiloOffert);
         }
 
         [Fact]
@@ -61,6 +64,7 @@ namespace CongoTravel.Tests
                 IdSociete = 5,
                 MontAddPaieElectronique = 250m,
                 CodeDeviseMontAddPaieElectronique = "USD",
+                PoidsBagageParKiloOffert = 15.5m,
                 DateCreation = DateTime.UtcNow
             });
             await ctx.SaveChangesAsync();
@@ -78,6 +82,7 @@ namespace CongoTravel.Tests
             {
                 Assert.Equal(250m, d.MontAddPaieElectronique);
                 Assert.Equal("USD", d.CodeDeviseMontAddPaieElectronique);
+                Assert.Equal(15.5m, d.PoidsBagageParKiloOffert);
             });
         }
     }

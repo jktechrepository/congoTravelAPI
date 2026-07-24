@@ -24,7 +24,7 @@ namespace CongoTravel.Tests
         public async Task CreateAsync_creates_classe()
         {
             await using var ctx = BuildDb(nameof(CreateAsync_creates_classe));
-            var idSociete = await SeedSocieteAsync(ctx);
+            var (idSociete, idSite) = await SeedSocieteAsync(ctx);
             var service = CreateService(ctx);
 
             var result = await service.CreateAsync(new EvenementCreateClasseRequestDto
@@ -42,7 +42,7 @@ namespace CongoTravel.Tests
         public async Task CreateAsync_throws_conflict_on_duplicate_code()
         {
             await using var ctx = BuildDb(nameof(CreateAsync_throws_conflict_on_duplicate_code));
-            var idSociete = await SeedSocieteAsync(ctx);
+            var (idSociete, idSite) = await SeedSocieteAsync(ctx);
             var service = CreateService(ctx);
             var request = new EvenementCreateClasseRequestDto { CodeClasse = "STD", Libelle = "Standard" };
 
@@ -56,8 +56,8 @@ namespace CongoTravel.Tests
         public async Task ListAsync_returns_societe_classes_ordered_by_code()
         {
             await using var ctx = BuildDb(nameof(ListAsync_returns_societe_classes_ordered_by_code));
-            var idSociete = await SeedSocieteAsync(ctx);
-            var otherSociete = await SeedSocieteAsync(ctx);
+            var (idSociete, idSite) = await SeedSocieteAsync(ctx);
+            var (otherSociete, _) = await SeedSocieteAsync(ctx);
             var service = CreateService(ctx);
 
             await service.CreateAsync(new EvenementCreateClasseRequestDto { CodeClasse = "VIP", Libelle = "VIP" }, idSociete);
@@ -75,7 +75,7 @@ namespace CongoTravel.Tests
         public async Task ListAsync_actifsSeulement_filters_inactive()
         {
             await using var ctx = BuildDb(nameof(ListAsync_actifsSeulement_filters_inactive));
-            var idSociete = await SeedSocieteAsync(ctx);
+            var (idSociete, idSite) = await SeedSocieteAsync(ctx);
             var service = CreateService(ctx);
 
             var active = await service.CreateAsync(
@@ -96,7 +96,7 @@ namespace CongoTravel.Tests
         public async Task UpdateAsync_updates_fields()
         {
             await using var ctx = BuildDb(nameof(UpdateAsync_updates_fields));
-            var idSociete = await SeedSocieteAsync(ctx);
+            var (idSociete, idSite) = await SeedSocieteAsync(ctx);
             var service = CreateService(ctx);
 
             var created = await service.CreateAsync(
@@ -120,8 +120,8 @@ namespace CongoTravel.Tests
         public async Task UpdateAsync_returns_null_for_other_societe()
         {
             await using var ctx = BuildDb(nameof(UpdateAsync_returns_null_for_other_societe));
-            var idSociete = await SeedSocieteAsync(ctx);
-            var otherSociete = await SeedSocieteAsync(ctx);
+            var (idSociete, idSite) = await SeedSocieteAsync(ctx);
+            var (otherSociete, _) = await SeedSocieteAsync(ctx);
             var service = CreateService(ctx);
 
             var created = await service.CreateAsync(
@@ -139,7 +139,7 @@ namespace CongoTravel.Tests
         public async Task ToggleStatutAsync_flips_statut()
         {
             await using var ctx = BuildDb(nameof(ToggleStatutAsync_flips_statut));
-            var idSociete = await SeedSocieteAsync(ctx);
+            var (idSociete, idSite) = await SeedSocieteAsync(ctx);
             var service = CreateService(ctx);
 
             var created = await service.CreateAsync(
@@ -158,7 +158,7 @@ namespace CongoTravel.Tests
         public async Task GetByLibelleAsync_returns_match_case_insensitive()
         {
             await using var ctx = BuildDb(nameof(GetByLibelleAsync_returns_match_case_insensitive));
-            var idSociete = await SeedSocieteAsync(ctx);
+            var (idSociete, idSite) = await SeedSocieteAsync(ctx);
             var service = CreateService(ctx);
 
             await service.CreateAsync(new EvenementCreateClasseRequestDto
@@ -177,7 +177,7 @@ namespace CongoTravel.Tests
         public async Task GetByLibelleAsync_returns_null_when_not_found()
         {
             await using var ctx = BuildDb(nameof(GetByLibelleAsync_returns_null_when_not_found));
-            var idSociete = await SeedSocieteAsync(ctx);
+            var (idSociete, idSite) = await SeedSocieteAsync(ctx);
             var service = CreateService(ctx);
 
             var found = await service.GetByLibelleAsync("Inexistant", idSociete);
@@ -185,13 +185,10 @@ namespace CongoTravel.Tests
             Assert.Null(found);
         }
 
-        private static async Task<int> SeedSocieteAsync(CongoTravelDbContext ctx)
-        {
-            var societe = new Societe { Nom = "Classe Societe", DateCreation = DateTime.UtcNow };
-            ctx.Societes.Add(societe);
-            await ctx.SaveChangesAsync();
-            return societe.IdSociete;
-        }
+        private static async Task<(int IdSociete, int IdSite)> SeedSocieteAsync(
+            CongoTravelDbContext ctx,
+            string nom = "Test Societe") =>
+            await EvenementTestFactories.SeedSocieteWithSiteAsync(ctx, nom);
     }
 
     public class EvenementSessionClassQuotaCreateTests
@@ -206,13 +203,14 @@ namespace CongoTravel.Tests
         public async Task CreateDraftAsync_creates_class_quota_session()
         {
             await using var ctx = BuildDb(nameof(CreateDraftAsync_creates_class_quota_session));
-            var (idSociete, idClasseVip, idClasseStd) = await SeedClassesAsync(ctx);
+            var (idSociete, idSite, idClasseVip, idClasseStd) = await SeedClassesAsync(ctx);
             var service = new EvenementSessionService(
-                ctx, Microsoft.Extensions.Logging.Abstractions.NullLogger<EvenementSessionService>.Instance);
+                ctx, new EvenementSessionPhotoService(ctx, Microsoft.Extensions.Logging.Abstractions.NullLogger<EvenementSessionPhotoService>.Instance), Microsoft.Extensions.Logging.Abstractions.NullLogger<EvenementSessionService>.Instance);
 
             var created = await service.CreateDraftAsync(new EvenementCreateSessionRequestDto
             {
                 CodeSession = "CONCERT-B",
+                IdSite = idSite,
                 Libelle = "Concert mode B",
                 StartAtUtc = DateTime.UtcNow.AddDays(7),
                 InventoryMode = "ClassQuota",
@@ -234,13 +232,14 @@ namespace CongoTravel.Tests
         public async Task PublishAsync_publishes_class_quota_session()
         {
             await using var ctx = BuildDb(nameof(PublishAsync_publishes_class_quota_session));
-            var (idSociete, idClasse, _) = await SeedClassesAsync(ctx);
+            var (idSociete, idSite, idClasse, _) = await SeedClassesAsync(ctx);
             var service = new EvenementSessionService(
-                ctx, Microsoft.Extensions.Logging.Abstractions.NullLogger<EvenementSessionService>.Instance);
+                ctx, new EvenementSessionPhotoService(ctx, Microsoft.Extensions.Logging.Abstractions.NullLogger<EvenementSessionPhotoService>.Instance), Microsoft.Extensions.Logging.Abstractions.NullLogger<EvenementSessionService>.Instance);
 
             var draft = await service.CreateDraftAsync(new EvenementCreateSessionRequestDto
             {
                 CodeSession = "PUB-B",
+                IdSite = idSite,
                 Libelle = "Publish B",
                 StartAtUtc = DateTime.UtcNow.AddDays(3),
                 InventoryMode = "ClassQuota",
@@ -258,14 +257,15 @@ namespace CongoTravel.Tests
         public async Task CreateDraftAsync_rejects_duplicate_classe_in_class_quotas()
         {
             await using var ctx = BuildDb(nameof(CreateDraftAsync_rejects_duplicate_classe_in_class_quotas));
-            var (idSociete, idClasse, _) = await SeedClassesAsync(ctx);
+            var (idSociete, idSite, idClasse, _) = await SeedClassesAsync(ctx);
             var service = new EvenementSessionService(
-                ctx, Microsoft.Extensions.Logging.Abstractions.NullLogger<EvenementSessionService>.Instance);
+                ctx, new EvenementSessionPhotoService(ctx, Microsoft.Extensions.Logging.Abstractions.NullLogger<EvenementSessionPhotoService>.Instance), Microsoft.Extensions.Logging.Abstractions.NullLogger<EvenementSessionService>.Instance);
 
             await Assert.ThrowsAsync<InvalidOperationException>(() =>
                 service.CreateDraftAsync(new EvenementCreateSessionRequestDto
                 {
                     CodeSession = "DUPE-B",
+                IdSite = idSite,
                     Libelle = "Dupe",
                     StartAtUtc = DateTime.UtcNow.AddDays(1),
                     InventoryMode = "ClassQuota",
@@ -277,16 +277,14 @@ namespace CongoTravel.Tests
                 }, idSociete));
         }
 
-        private static async Task<(int IdSociete, int IdClasseVip, int IdClasseStd)> SeedClassesAsync(
+        private static async Task<(int IdSociete, int IdSite, int IdClasseVip, int IdClasseStd)> SeedClassesAsync(
             CongoTravelDbContext ctx)
         {
-            var societe = new Societe { Nom = "Session B", DateCreation = DateTime.UtcNow };
-            ctx.Societes.Add(societe);
-            await ctx.SaveChangesAsync();
+            var (idSociete, idSite) = await EvenementTestFactories.SeedSocieteWithSiteAsync(ctx, "Session B");
 
             var vip = new EvenementClasse
             {
-                IdSociete = societe.IdSociete,
+                IdSociete = idSociete,
                 CodeClasse = "VIP",
                 Libelle = "VIP",
                 Statut = true,
@@ -294,7 +292,7 @@ namespace CongoTravel.Tests
             };
             var std = new EvenementClasse
             {
-                IdSociete = societe.IdSociete,
+                IdSociete = idSociete,
                 CodeClasse = "STD",
                 Libelle = "Standard",
                 Statut = true,
@@ -302,7 +300,7 @@ namespace CongoTravel.Tests
             };
             ctx.EvenementClasses.AddRange(vip, std);
             await ctx.SaveChangesAsync();
-            return (societe.IdSociete, vip.IdEvenementClasse, std.IdEvenementClasse);
+            return (idSociete, idSite, vip.IdEvenementClasse, std.IdEvenementClasse);
         }
     }
 }

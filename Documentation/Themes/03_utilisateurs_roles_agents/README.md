@@ -15,3 +15,7 @@
 ## Objectif
 
 Comprendre la gestion des comptes, les flux d'inscription, les synchronisations Agent/Utilisateur et la gouvernance des identites.
+
+## Visibilité GET Agent
+
+Les listes et détails `GET /api/Agent*` filtrent par hiérarchie de rôles + société JWT (hors Super-Admin). Matrice : `Documentation/Themes/09_frontend_integration/MATRICE_ROLES_PERMISSIONS.md` (§ Visibilité lecture agents).

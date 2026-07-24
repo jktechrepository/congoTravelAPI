@@ -92,6 +92,11 @@ namespace CongoTravel.Services.Repositories
         bool IsAuthenticated { get; }
 
         /// <summary>
+        /// Rôle principal JWT (<c>primaryRole</c>), sinon premier claim Role.
+        /// </summary>
+        string PrimaryRole { get; }
+
+        /// <summary>
         /// Indique si l'utilisateur est Super-Admin
         /// </summary>
         bool IsSuperAdmin { get; }

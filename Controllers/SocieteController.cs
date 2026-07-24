@@ -429,6 +429,7 @@ namespace CongoTravel.Controllers
                 CodeDeviseFraisPlateforme = config.CodeDeviseFraisPlateforme,
                 MontAddPaieElectronique = config.MontAddPaieElectronique,
                 CodeDeviseMontAddPaieElectronique = config.CodeDeviseMontAddPaieElectronique,
+                PoidsBagageParKiloOffert = config.PoidsBagageParKiloOffert,
                 CodeDevisePrincipale = codeDevisePrincipale,
                 DateCreation = config.DateCreation,
                 DateModification = config.DateModification

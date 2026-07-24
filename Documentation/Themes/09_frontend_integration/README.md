@@ -4,7 +4,8 @@
 
 - **`DOCUMENTATION_COMPLETE_INTEGRATION_FRONTEND.md`** — point d'entrée unique (Vue.js + Flutter, 3 personas)
 - Fiches modules : `MODULE_01` à `MODULE_09` (voir index dans le document maître)
-- **`INTEGRATION_FLUTTER_FLEXPAY.md`** — paiement Mobile Money / carte (modèle unifié + verifier + billets)
+- **`MODULE_05_EVENEMENT_BILLETTERIE.md`** — billetterie événement (catalogue, `with-paiement` / électronique, Vue guichet + Flutter voyageur / gate)
+- **`INTEGRATION_FLUTTER_FLEXPAY.md`** — paiement Mobile Money / carte **transport** (modèle unifié + verifier + billets)
 
 ## Ensuite
 

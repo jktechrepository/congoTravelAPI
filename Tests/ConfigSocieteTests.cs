@@ -47,13 +47,24 @@ namespace CongoTravel.Tests
                 HeuresOuvertureEmbarquementAvantDepart = 2,
                 HeuresFermetureEmbarquementApresJourDepart = 12,
                 DureeHoldFlexPayMinutes = 20,
-                ReaffectationActive = false
+                ReaffectationActive = false,
+                PoidsBagageParKiloOffert = 25m
             });
 
             Assert.Equal(14, updated.DureeValiditeBilletJours);
             Assert.Equal(10m, updated.PenaliteReaffectationPourcentage);
             Assert.Equal(60, updated.JoursAvanceMaxReservation);
             Assert.False(updated.ReaffectationActive);
+            Assert.Equal(25m, updated.PoidsBagageParKiloOffert);
+        }
+
+        [Fact]
+        public void Normalize_clamps_poids_bagage_to_non_negative()
+        {
+            var config = ConfigSocieteDefaults.CreateForSociete(1);
+            config.PoidsBagageParKiloOffert = -5m;
+            ConfigSocieteDefaults.Normalize(config);
+            Assert.Equal(0m, config.PoidsBagageParKiloOffert);
         }
 
         [Fact]

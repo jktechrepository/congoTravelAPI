@@ -4,6 +4,10 @@ using CongoTravel.Models.DTOs;
 
 namespace CongoTravel.Helpers
 {
+    /// <summary>
+    /// Enrichit les réponses voyage avec des champs dérivés de <c>ConfigSociete</c>
+    /// (supplément paiement électronique, poids bagage offert, etc.).
+    /// </summary>
     public static class VoyageConfigEnrichmentHelper
     {
         public static async Task EnrichElectronicSupplementAsync(
@@ -26,6 +30,7 @@ namespace CongoTravel.Helpers
 
                 dto.MontAddPaieElectronique = config.MontAddPaieElectronique;
                 dto.CodeDeviseMontAddPaieElectronique = config.CodeDeviseMontAddPaieElectronique;
+                dto.PoidsBagageParKiloOffert = config.PoidsBagageParKiloOffert;
             }
         }
     }

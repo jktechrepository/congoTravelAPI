@@ -1,5 +1,7 @@
 using CongoTravel.Data;
+using CongoTravel.Helpers;
 using CongoTravel.Models;
+using CongoTravel.Models.Enums;
 using CongoTravel.Services.Repositories;
 using Microsoft.EntityFrameworkCore;
 
@@ -28,45 +30,19 @@ namespace CongoTravel.Services
 
         public async Task<IEnumerable<Role>> GetAllAsync(string nomRole)
         {
-            if (!string.IsNullOrEmpty(nomRole))
-            {
-                if (nomRole == "Super-Admin")
-                {
-                    return await _context.Roles
-                        .Where(r => r.Statut == true) // ✅ Filtrer uniquement les rôles actifs
-                        .OrderBy(r => r.Nom)
-                        .ToListAsync();
-                }
-                else if (nomRole == "Admin")
-                {
-                    return await _context.Roles
-                        .Where(r => r.Statut == true) // ✅ Filtrer uniquement les rôles actifs
-                        .Where(r => r.Nom != "Super-Admin")
-                        .OrderBy(r => r.Nom)
-                        .ToListAsync();
-                }
-                else if (nomRole == "Gerant")
-                {
-                    return await _context.Roles
-                        .Where(r => r.Statut == true) // ✅ Filtrer uniquement les rôles actifs
-                        .Where(r => r.Nom != "Super-Admin" && r.Nom != "Admin")
-                        .OrderBy(r => r.Nom)
-                        .ToListAsync();
-                }
-                else
-                {
-                    return await _context.Roles
-                        .Where(r => r.Statut == true) // ✅ Filtrer uniquement les rôles actifs
-                        .Where(r => r.Nom != "Super-Admin" && r.Nom != "Admin" && r.Nom != "Gerant")
-                        .OrderBy(r => r.Nom)
-                        .ToListAsync();
-                }
+            if (string.IsNullOrEmpty(nomRole))
+                return null!;
 
-            }
-            else
+            var hidden = RoleVisibilityHelper.GetHiddenRoleNamesForCaller(nomRole);
+            var query = _context.Roles.Where(r => r.Statut == true);
+
+            if (hidden.Count > 0)
             {
-                return null;
+                var hiddenList = hidden.ToList();
+                query = query.Where(r => !hiddenList.Contains(r.Nom));
             }
+
+            return await query.OrderBy(r => r.Nom).ToListAsync();
         }
 
         public async Task<Role> GetByIdAsync(int id)

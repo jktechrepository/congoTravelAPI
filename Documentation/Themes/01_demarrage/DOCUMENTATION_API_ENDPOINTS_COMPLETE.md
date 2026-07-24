@@ -491,7 +491,7 @@ Exemples `GET /api/Voyage/search` :
 - `POST /api/events/sessions`
 - `PUT /api/events/sessions/{id}/publish`
 - `GET /api/events/sessions/{id}/availability`
-- `POST /api/events/sessions/{id}/holds`
+- `POST /api/events/sessions`
 
 ### EvenementReservationController
 - Base route: `api/events/reservations`
@@ -505,8 +505,8 @@ Exemples `GET /api/Voyage/search` :
 - `GET /api/events/reservations/daterange`
 - `GET /api/events/reservations/{id}/tickets`
 - `GET /api/events/reservations/{id}`
-- `POST /api/events/reservations/{id}/confirm-payment`
-- `POST /api/events/reservations/{id}/initiate-flexpay`
+- `POST /api/events/reservations/with-paiement`
+- `POST /api/events/reservations/with-paiement-electronique`
 - `POST /api/events/reservations/{id}/cancel`
 
 ### EvenementTicketController

@@ -84,6 +84,7 @@ namespace CongoTravel.Services
                     HeuresLimiteReaffectation = configEntity.HeuresLimiteReaffectation,
                     DureeHoldFlexPayMinutes = configEntity.DureeHoldFlexPayMinutes,
                     PenaliteReaffectationPourcentage = configEntity.PenaliteReaffectationPourcentage,
+                    PoidsBagageParKiloOffert = configEntity.PoidsBagageParKiloOffert,
                     UpdatedAt = (configEntity.DateModification ?? configEntity.DateCreation).ToUniversalTime()
                 };
             }

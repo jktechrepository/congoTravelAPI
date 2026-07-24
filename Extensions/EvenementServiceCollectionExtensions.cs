@@ -32,11 +32,13 @@ namespace CongoTravel.Extensions
             services.AddScoped<IEvenementFlexPayCallbackService, EvenementFlexPayCallbackService>();
             services.AddScoped<IEvenementDashboardService, EvenementDashboardService>();
             services.AddScoped<IEvenementSessionService, EvenementSessionService>();
+            services.AddScoped<IEvenementSessionPhotoService, EvenementSessionPhotoService>();
             services.AddScoped<IEvenementClasseService, EvenementClasseService>();
             services.AddScoped<IEvenementHoldService, EvenementHoldService>();
             services.AddScoped<IEvenementAvailabilityService, EvenementAvailabilityService>();
             services.AddScoped<IEvenementPaymentService, EvenementPaymentService>();
             services.AddScoped<IEvenementReservationService, EvenementReservationService>();
+            services.AddScoped<IEvenementReservationWithPaiementService, EvenementReservationWithPaiementService>();
             services.AddScoped<IEvenementTicketService, EvenementTicketService>();
 
             return services;

@@ -124,6 +124,38 @@ namespace CongoTravel.Tests
                 NullLogger<EvenementFlexPayInitiationService>.Instance);
         }
 
+        public static Site CreateSiteEntity(
+            int idSociete,
+            string nomSite = "Site Test",
+            bool isPrincipal = true,
+            string codeSite = "ST01") =>
+            new()
+            {
+                IdSociete = idSociete,
+                CodeSite = codeSite,
+                NomSite = nomSite,
+                NomResponsableSite = "Responsable",
+                Genre = "Masculin",
+                Statut = true,
+                IsSitePrincipal = isPrincipal,
+                DateCreation = DateTime.UtcNow
+            };
+
+        public static async Task<(int IdSociete, int IdSite)> SeedSocieteWithSiteAsync(
+            CongoTravelDbContext ctx,
+            string nomSociete = "EVT Societe")
+        {
+            var societe = new Societe { Nom = nomSociete, DateCreation = DateTime.UtcNow };
+            ctx.Societes.Add(societe);
+            await ctx.SaveChangesAsync();
+
+            var site = CreateSiteEntity(societe.IdSociete);
+            ctx.Sites.Add(site);
+            await ctx.SaveChangesAsync();
+
+            return (societe.IdSociete, site.IdSite);
+        }
+
         public static async Task<(int IdSociete, int IdSite, int IdReservation)> SeedHoldWithFlexPayConfigAsync(
             CongoTravelDbContext ctx,
             int quantity)
@@ -132,13 +164,7 @@ namespace CongoTravel.Tests
             ctx.Societes.Add(societe);
             await ctx.SaveChangesAsync();
 
-            var site = new Site
-            {
-                IdSociete = societe.IdSociete,
-                NomSite = "Site EVT",
-                Statut = true,
-                DateCreation = DateTime.UtcNow
-            };
+            var site = CreateSiteEntity(societe.IdSociete, "Site EVT");
             ctx.Sites.Add(site);
             await ctx.SaveChangesAsync();
 
@@ -156,6 +182,7 @@ namespace CongoTravel.Tests
             var session = new EvenementSession
             {
                 IdSociete = societe.IdSociete,
+                IdSite = site.IdSite,
                 CodeSession = $"FP-{Guid.NewGuid():N}"[..10],
                 Libelle = "FlexPay test",
                 StartAtUtc = DateTime.UtcNow.AddDays(2),

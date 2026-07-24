@@ -21,6 +21,9 @@ namespace CongoTravel.Services
 
         public string UserRole => GetClaim(ClaimTypes.Role) ?? string.Empty;
 
+        /// <inheritdoc />
+        public string PrimaryRole => GetClaim("primaryRole") ?? UserRole;
+
         public int SocieteId => GetClaimAsInt("SocieteId", "idSociete");
 
         public string? SocieteNom => GetClaim("SocieteNom", "societe");
@@ -41,7 +44,9 @@ namespace CongoTravel.Services
 
         public bool IsAuthenticated => _httpContextAccessor.HttpContext?.User?.Identity?.IsAuthenticated ?? false;
 
-        public bool IsSuperAdmin => UserRole == UserRoles.SUPER_ADMIN;
+        public bool IsSuperAdmin =>
+            string.Equals(PrimaryRole, UserRoles.SUPER_ADMIN, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(UserRole, UserRoles.SUPER_ADMIN, StringComparison.OrdinalIgnoreCase);
 
         public bool IsAdmin => UserRoles.IsAdminRole(UserRole);
 

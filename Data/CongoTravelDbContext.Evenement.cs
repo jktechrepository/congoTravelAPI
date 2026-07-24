@@ -19,6 +19,7 @@ namespace CongoTravel.Data
             ConfigureEvenementReservationLine(modelBuilder);
             ConfigureEvenementTicket(modelBuilder);
             ConfigureEvenementPayment(modelBuilder);
+            ConfigureEvenementSessionPhoto(modelBuilder);
         }
 
         private static void ConfigureEvenementSession(ModelBuilder modelBuilder)
@@ -44,6 +45,11 @@ namespace CongoTravel.Data
                     .HasForeignKey(e => e.IdSociete)
                     .OnDelete(DeleteBehavior.Restrict);
 
+                entity.HasOne(e => e.Site)
+                    .WithMany()
+                    .HasForeignKey(e => e.IdSite)
+                    .OnDelete(DeleteBehavior.Restrict);
+
                 entity.HasOne(e => e.GlobalQuota)
                     .WithOne(q => q.Session)
                     .HasForeignKey<EvenementSessionGlobalQuota>(q => q.IdEvenementSession)
@@ -55,6 +61,9 @@ namespace CongoTravel.Data
 
                 entity.HasIndex(e => new { e.IdSociete, e.StartAtUtc })
                     .HasDatabaseName("IX_EvenementSessions_IdSociete_StartAtUtc");
+
+                entity.HasIndex(e => e.IdSite)
+                    .HasDatabaseName("IX_EvenementSessions_IdSite");
             });
         }
 
@@ -175,6 +184,11 @@ namespace CongoTravel.Data
                     .HasForeignKey(e => e.IdSociete)
                     .OnDelete(DeleteBehavior.Restrict);
 
+                entity.HasOne(e => e.Site)
+                    .WithMany()
+                    .HasForeignKey(e => e.IdSite)
+                    .OnDelete(DeleteBehavior.Restrict);
+
                 entity.HasOne(e => e.Session)
                     .WithMany(s => s.Reservations)
                     .HasForeignKey(e => e.IdEvenementSession)
@@ -193,6 +207,9 @@ namespace CongoTravel.Data
 
                 entity.HasIndex(e => new { e.IdEvenementSession, e.Status })
                     .HasDatabaseName("IX_EvenementReservations_Session_Status");
+
+                entity.HasIndex(e => e.IdSite)
+                    .HasDatabaseName("IX_EvenementReservations_IdSite");
             });
         }
 
@@ -326,6 +343,11 @@ namespace CongoTravel.Data
                     .HasForeignKey(e => e.IdEvenementReservation)
                     .OnDelete(DeleteBehavior.Restrict);
 
+                entity.HasOne(e => e.Site)
+                    .WithMany()
+                    .HasForeignKey(e => e.IdSite)
+                    .OnDelete(DeleteBehavior.Restrict);
+
                 entity.HasIndex(e => e.ReferencePaiement)
                     .IsUnique()
                     .HasDatabaseName("IX_EvenementPayments_ReferencePaiement_UQ");
@@ -336,6 +358,34 @@ namespace CongoTravel.Data
 
                 entity.HasIndex(e => new { e.IdEvenementReservation, e.Status })
                     .HasDatabaseName("IX_EvenementPayments_Reservation_Status");
+
+                entity.HasIndex(e => e.IdSite)
+                    .HasDatabaseName("IX_EvenementPayments_IdSite");
+            });
+        }
+
+        private static void ConfigureEvenementSessionPhoto(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<EvenementSessionPhoto>(entity =>
+            {
+                entity.Property(e => e.PhotoData).IsRequired().HasColumnType("mediumblob");
+                entity.Property(e => e.Ordre).IsRequired();
+                entity.Property(e => e.Statut).IsRequired().HasDefaultValue(true);
+                entity.Property(e => e.OriginalFileName).HasMaxLength(100);
+                entity.Property(e => e.TypeMIME).HasMaxLength(50);
+
+                entity.HasOne(e => e.Session)
+                    .WithMany(s => s.Photos)
+                    .HasForeignKey(e => e.IdEvenementSession)
+                    .IsRequired()
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(e => new { e.IdEvenementSession, e.Ordre })
+                    .IsUnique()
+                    .HasDatabaseName("IX_EvenementSessionPhotos_Session_Ordre_UQ");
+
+                entity.HasIndex(e => e.IdEvenementSession)
+                    .HasDatabaseName("IX_EvenementSessionPhotos_IdEvenementSession");
             });
         }
 

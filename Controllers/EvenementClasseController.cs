@@ -30,7 +30,7 @@ namespace CongoTravel.Controllers
 
         /// <summary>Liste les classes événement de la société (JWT ou idSociete Super-Admin).</summary>
         [HttpGet]
-        [Permission("Evenement.Session.Read")]
+        [AllowAnonymous]
         [ProducesResponseType(typeof(IEnumerable<EvenementClasseResponseDto>), 200)]
         public async Task<ActionResult<IEnumerable<EvenementClasseResponseDto>>> GetList(
             [FromQuery] int? idSociete,
@@ -61,7 +61,7 @@ namespace CongoTravel.Controllers
 
         /// <summary>Liste les classes événement d'une société (alias explicite, comme CategorieSiege).</summary>
         [HttpGet("societe/{idSociete:int}")]
-        [Permission("Evenement.Session.Read")]
+        [AllowAnonymous]
         [ProducesResponseType(typeof(IEnumerable<EvenementClasseResponseDto>), 200)]
         public async Task<ActionResult<IEnumerable<EvenementClasseResponseDto>>> GetBySociete(
             int idSociete,
@@ -92,7 +92,7 @@ namespace CongoTravel.Controllers
 
         /// <summary>Recherche une classe par libellé exact (insensible à la casse) dans la société.</summary>
         [HttpGet("by-libelle")]
-        [Permission("Evenement.Session.Read")]
+        [AllowAnonymous]
         [ProducesResponseType(typeof(EvenementClasseResponseDto), 200)]
         [ProducesResponseType(404)]
         public async Task<ActionResult<EvenementClasseResponseDto>> GetByLibelle(
@@ -130,7 +130,7 @@ namespace CongoTravel.Controllers
         }
 
         [HttpGet("{id:int}")]
-        [Permission("Evenement.Session.Read")]
+        [AllowAnonymous]
         public async Task<ActionResult<EvenementClasseResponseDto>> GetById(int id)
         {
             try

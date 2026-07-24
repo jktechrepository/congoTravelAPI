@@ -1838,3 +1838,12 @@ VALUES ('20260703120104_EvenementSessionGlobalQuotaPricing', '6.0.25');
 
 COMMIT;
 
+
+START TRANSACTION;
+
+ALTER TABLE `ConfigSocietes` ADD `PoidsBagageParKiloOffert` decimal(18,2) NOT NULL DEFAULT 0.0;
+
+INSERT INTO `__EFMigrationsHistory` (`MigrationId`, `ProductVersion`)
+VALUES ('20260724174943_AddConfigSocietePoidsBagageParKiloOffert', '6.0.25');
+
+COMMIT;

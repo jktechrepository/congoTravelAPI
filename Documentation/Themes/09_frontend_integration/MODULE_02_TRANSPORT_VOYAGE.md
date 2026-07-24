@@ -35,6 +35,8 @@ Le backend expose `heureDepart` en **string** `HH:mm:ss`, pas en objet.
 }
 ```
 
+Les listes / détail (`VoyageResponseDto`) exposent aussi des champs dérivés (non persistés sur `Voyage`) : `nomSociete`, **`logoSociete`** (depuis `Societe.Logo` via le véhicule), `aliasVehicule`, `photosVehicules`, **`poidsBagageParKiloOffert`** (depuis `ConfigSociete`, kg offerts ; 0 = aucun), etc.
+
 ---
 
 ## Recherche voyages (app client)
@@ -129,6 +131,10 @@ POST /api/PlanificationVoyage/{id}/generer
 ```
 
 Body : `{ "mode": "SemaineCourante" | "MoisCourant" | "MoisProchain" | "PeriodePersonnalisee", ... }`
+
+- `MoisCourant` / `SemaineCourante` : partent du **jour UTC courant** (pas de jours déjà passés).
+- `MoisProchain` : mois suivant complet.
+- Rétroactif : `PeriodePersonnalisee` avec `dateDebut` / `dateFin`.
 
 ---
 

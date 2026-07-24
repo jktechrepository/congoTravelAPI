@@ -3,8 +3,8 @@ using System.ComponentModel.DataAnnotations;
 namespace CongoTravel.Models.DTOs.Evenement
 {
     /// <summary>
-    /// Corps de <c>POST /api/events/reservations/{idReservation}/initiate-flexpay</c>.
-    /// La réservation doit déjà être en <c>HOLD</c> (créée via <c>POST .../holds</c>).
+    /// Initiation FlexPay sur une réservation événement <c>HOLD</c>
+    /// (usage interne / façade <c>with-paiement-electronique</c>).
     /// </summary>
     public class EvenementInitiateFlexPayRequestDto
     {

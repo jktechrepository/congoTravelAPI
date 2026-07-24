@@ -19,21 +19,22 @@ namespace CongoTravel.Tests
                 .Options);
 
         private static EvenementSessionService CreateService(CongoTravelDbContext ctx) =>
-            new(ctx, Microsoft.Extensions.Logging.Abstractions.NullLogger<EvenementSessionService>.Instance);
+            new(ctx, new EvenementSessionPhotoService(ctx, Microsoft.Extensions.Logging.Abstractions.NullLogger<EvenementSessionPhotoService>.Instance), Microsoft.Extensions.Logging.Abstractions.NullLogger<EvenementSessionService>.Instance);
 
         [Fact]
         public async Task ListAsync_filters_by_status_and_inventory_mode()
         {
             await using var ctx = BuildDb(nameof(ListAsync_filters_by_status_and_inventory_mode));
-            var idSociete = await SeedSocieteAsync(ctx);
+            var (idSociete, idSite) = await SeedSocieteAsync(ctx);
             var service = CreateService(ctx);
 
-            var draft = await service.CreateDraftAsync(BuildValidCreateRequest("DRAFT-1"), idSociete);
+            var draft = await service.CreateDraftAsync(BuildValidCreateRequest("DRAFT-1", idSite), idSociete);
             await service.PublishAsync(draft.IdEvenementSession, idSociete);
 
             var classSession = await service.CreateDraftAsync(new EvenementCreateSessionRequestDto
             {
                 CodeSession = "CLASS-1",
+                IdSite = idSite,
                 Libelle = "Session classe",
                 StartAtUtc = DateTime.UtcNow.AddDays(20),
                 InventoryMode = "ClassQuota",
@@ -72,10 +73,10 @@ namespace CongoTravel.Tests
         public async Task GetByCodeAsync_returns_session_for_own_societe()
         {
             await using var ctx = BuildDb(nameof(GetByCodeAsync_returns_session_for_own_societe));
-            var idSociete = await SeedSocieteAsync(ctx);
+            var (idSociete, idSite) = await SeedSocieteAsync(ctx);
             var service = CreateService(ctx);
 
-            await service.CreateDraftAsync(BuildValidCreateRequest("CODE-READ"), idSociete);
+            await service.CreateDraftAsync(BuildValidCreateRequest("CODE-READ", idSite), idSociete);
             var found = await service.GetByCodeAsync("CODE-READ", idSociete);
             var missing = await service.GetByCodeAsync("CODE-READ", idSociete + 999);
 
@@ -88,10 +89,10 @@ namespace CongoTravel.Tests
         public async Task ListByDateRangeAsync_returns_sessions_in_range()
         {
             await using var ctx = BuildDb(nameof(ListByDateRangeAsync_returns_sessions_in_range));
-            var idSociete = await SeedSocieteAsync(ctx);
+            var (idSociete, idSite) = await SeedSocieteAsync(ctx);
             var service = CreateService(ctx);
 
-            await service.CreateDraftAsync(BuildValidCreateRequest("FUTURE"), idSociete);
+            await service.CreateDraftAsync(BuildValidCreateRequest("FUTURE", idSite), idSociete);
 
             var oldSession = new EvenementSession
             {
@@ -125,19 +126,364 @@ namespace CongoTravel.Tests
         public async Task GetByIdAsync_still_returns_null_for_other_societe()
         {
             await using var ctx = BuildDb(nameof(GetByIdAsync_still_returns_null_for_other_societe));
-            var idSociete1 = await SeedSocieteAsync(ctx, "Societe A");
-            var idSociete2 = await SeedSocieteAsync(ctx, "Societe B");
+            var (idSociete1, idSite1) = await SeedSocieteAsync(ctx, "Societe A");
+            var (idSociete2, idSite2) = await SeedSocieteAsync(ctx, "Societe B");
             var service = CreateService(ctx);
 
-            var created = await service.CreateDraftAsync(BuildValidCreateRequest("ISO-READ"), idSociete1);
+            var created = await service.CreateDraftAsync(BuildValidCreateRequest("ISO-READ", idSite1), idSociete1);
             var other = await service.GetByIdAsync(created.IdEvenementSession, idSociete2);
 
             Assert.Null(other);
         }
 
-        private static EvenementCreateSessionRequestDto BuildValidCreateRequest(string code) => new()
+        [Fact]
+        public async Task ListPublishedGlobalAsync_returns_published_from_all_societes_only()
+        {
+            await using var ctx = BuildDb(nameof(ListPublishedGlobalAsync_returns_published_from_all_societes_only));
+            var (idA, idSiteA) = await SeedSocieteAsync(ctx, "Societe A");
+            var (idB, idSiteB) = await SeedSocieteAsync(ctx, "Societe B");
+            var service = CreateService(ctx);
+
+            var draftA = await service.CreateDraftAsync(BuildValidCreateRequest("A-DRAFT", idSiteA), idA);
+            var pubA = await service.CreateDraftAsync(BuildValidCreateRequest("A-PUB", idSiteA), idA);
+            await service.PublishAsync(pubA.IdEvenementSession, idA);
+
+            var pubB = await service.CreateDraftAsync(BuildValidCreateRequest("B-PUB", idSiteB), idB);
+            await service.PublishAsync(pubB.IdEvenementSession, idB);
+
+            // Even with a Draft filter in the object, global list must stay Published-only
+            var global = await service.ListPublishedGlobalAsync(new EvenementSessionListFilter
+            {
+                Status = EvenementSessionStatus.Draft
+            });
+
+            Assert.Equal(2, global.Count);
+            Assert.All(global, s => Assert.Equal("Published", s.Status));
+            Assert.Contains(global, s => s.CodeSession == "A-PUB" && s.IdSociete == idA);
+            Assert.Contains(global, s => s.CodeSession == "B-PUB" && s.IdSociete == idB);
+            Assert.DoesNotContain(global, s => s.IdEvenementSession == draftA.IdEvenementSession);
+        }
+
+        [Fact]
+        public async Task ListPublishedGlobalAsync_respects_inventory_mode_filter()
+        {
+            await using var ctx = BuildDb(nameof(ListPublishedGlobalAsync_respects_inventory_mode_filter));
+            var (idSociete, idSite) = await SeedSocieteAsync(ctx);
+            var service = CreateService(ctx);
+
+            var globalQuota = await service.CreateDraftAsync(BuildValidCreateRequest("GQ-PUB", idSite), idSociete);
+            await service.PublishAsync(globalQuota.IdEvenementSession, idSociete);
+
+            var classDraft = await service.CreateDraftAsync(new EvenementCreateSessionRequestDto
+            {
+                CodeSession = "CQ-PUB",
+                IdSite = idSite,
+                Libelle = "Class published",
+                StartAtUtc = DateTime.UtcNow.AddDays(8),
+                InventoryMode = "ClassQuota",
+                ClassQuotas = new List<EvenementCreateSessionClassQuotaDto>
+                {
+                    new()
+                    {
+                        IdEvenementClasse = await SeedClasseAsync(ctx, idSociete),
+                        CapaciteTotale = 20,
+                        PrixUnitaire = 12m,
+                        CodeDevise = "CDF"
+                    }
+                }
+            }, idSociete);
+            await service.PublishAsync(classDraft.IdEvenementSession, idSociete);
+
+            var filtered = await service.ListPublishedGlobalAsync(new EvenementSessionListFilter
+            {
+                InventoryMode = EvenementInventoryMode.GlobalQuota
+            });
+
+            Assert.Single(filtered);
+            Assert.Equal("GQ-PUB", filtered[0].CodeSession);
+        }
+
+        [Fact]
+        public async Task ListPublishedGlobalAsync_filters_by_optional_idSociete()
+        {
+            await using var ctx = BuildDb(nameof(ListPublishedGlobalAsync_filters_by_optional_idSociete));
+            var (idA, idSiteA) = await SeedSocieteAsync(ctx, "Societe A");
+            var (idB, idSiteB) = await SeedSocieteAsync(ctx, "Societe B");
+            var service = CreateService(ctx);
+
+            var pubA = await service.CreateDraftAsync(BuildValidCreateRequest("A-ONLY", idSiteA), idA);
+            await service.PublishAsync(pubA.IdEvenementSession, idA);
+            var pubB = await service.CreateDraftAsync(BuildValidCreateRequest("B-ONLY", idSiteB), idB);
+            await service.PublishAsync(pubB.IdEvenementSession, idB);
+
+            var filtered = await service.ListPublishedGlobalAsync(new EvenementSessionListFilter
+            {
+                IdSociete = idB
+            });
+
+            Assert.Single(filtered);
+            Assert.Equal("B-ONLY", filtered[0].CodeSession);
+            Assert.Equal(idB, filtered[0].IdSociete);
+        }
+
+        [Fact]
+        public async Task GetPublishedByIdAsync_returns_published_from_any_societe()
+        {
+            await using var ctx = BuildDb(nameof(GetPublishedByIdAsync_returns_published_from_any_societe));
+            var (idA, idSiteA) = await SeedSocieteAsync(ctx, "Societe A");
+            var (idB, idSiteB) = await SeedSocieteAsync(ctx, "Societe B");
+            var service = CreateService(ctx);
+
+            var draft = await service.CreateDraftAsync(BuildValidCreateRequest("PUB-X", idSiteA), idA);
+            await service.PublishAsync(draft.IdEvenementSession, idA);
+
+            var found = await service.GetPublishedByIdAsync(draft.IdEvenementSession);
+            var missingOtherTenant = await service.GetByIdAsync(draft.IdEvenementSession, idB);
+
+            Assert.NotNull(found);
+            Assert.Equal(idA, found!.IdSociete);
+            Assert.Equal("Published", found.Status);
+            Assert.Null(missingOtherTenant);
+        }
+
+        [Fact]
+        public async Task GetPublishedByIdAsync_returns_null_for_draft()
+        {
+            await using var ctx = BuildDb(nameof(GetPublishedByIdAsync_returns_null_for_draft));
+            var (idSociete, idSite) = await SeedSocieteAsync(ctx);
+            var service = CreateService(ctx);
+
+            var draft = await service.CreateDraftAsync(BuildValidCreateRequest("DRAFT-HIDE", idSite), idSociete);
+            var publishedOnly = await service.GetPublishedByIdAsync(draft.IdEvenementSession);
+            var byId = await service.GetByIdAsync(draft.IdEvenementSession, idSociete);
+
+            Assert.Null(publishedOnly);
+            Assert.NotNull(byId);
+            Assert.Equal("Draft", byId!.Status);
+        }
+
+        [Fact]
+        public async Task GetByIdAsync_without_societe_returns_any_status()
+        {
+            await using var ctx = BuildDb(nameof(GetByIdAsync_without_societe_returns_any_status));
+            var (idSociete, idSite) = await SeedSocieteAsync(ctx);
+            var service = CreateService(ctx);
+
+            var draft = await service.CreateDraftAsync(BuildValidCreateRequest("SA-DRAFT", idSite), idSociete);
+            var found = await service.GetByIdAsync(draft.IdEvenementSession);
+
+            Assert.NotNull(found);
+            Assert.Equal("Draft", found!.Status);
+        }
+
+        [Fact]
+        public async Task GetPublishedByCodeAsync_requires_idSociete_when_ambiguous()
+        {
+            await using var ctx = BuildDb(nameof(GetPublishedByCodeAsync_requires_idSociete_when_ambiguous));
+            var (idA, idSiteA) = await SeedSocieteAsync(ctx, "Societe A");
+            var (idB, idSiteB) = await SeedSocieteAsync(ctx, "Societe B");
+            var service = CreateService(ctx);
+
+            var a = await service.CreateDraftAsync(BuildValidCreateRequest("SAME-CODE", idSiteA), idA);
+            await service.PublishAsync(a.IdEvenementSession, idA);
+            var b = await service.CreateDraftAsync(BuildValidCreateRequest("SAME-CODE", idSiteB), idB);
+            await service.PublishAsync(b.IdEvenementSession, idB);
+
+            await Assert.ThrowsAsync<ArgumentException>(() =>
+                service.GetPublishedByCodeAsync("SAME-CODE"));
+
+            var filtered = await service.GetPublishedByCodeAsync("SAME-CODE", idB);
+            Assert.NotNull(filtered);
+            Assert.Equal(idB, filtered!.IdSociete);
+        }
+
+        [Fact]
+        public async Task GetByIdAsync_enriches_cover_price_availability_and_societe()
+        {
+            await using var ctx = BuildDb(nameof(GetByIdAsync_enriches_cover_price_availability_and_societe));
+            var (idSociete, idSite) = await SeedSocieteAsync(ctx, "Detail Co");
+            var service = CreateService(ctx);
+
+            var created = await service.CreateDraftAsync(new EvenementCreateSessionRequestDto
+            {
+                CodeSession = "DETAIL-ENRICH",
+                IdSite = idSite,
+                Libelle = "Détail enrichi",
+                StartAtUtc = DateTime.UtcNow.AddDays(2),
+                InventoryMode = "GlobalQuota",
+                GlobalQuota = new EvenementCreateSessionGlobalQuotaDto
+                {
+                    CapaciteTotale = 40,
+                    PrixUnitaire = 12m,
+                    CodeDevise = "CDF"
+                },
+                Photos = new List<AddEvenementSessionPhotoDto>
+                {
+                    new()
+                    {
+                        PhotoBase64 = TinyJpegBase64(),
+                        FileName = "cover.jpg",
+                        Ordre = 1
+                    },
+                    new()
+                    {
+                        PhotoBase64 = TinyJpegBase64(),
+                        FileName = "second.jpg",
+                        Ordre = 2
+                    }
+                }
+            }, idSociete);
+
+            var detail = await service.GetByIdAsync(created.IdEvenementSession, idSociete);
+
+            Assert.NotNull(detail);
+            Assert.Equal("Detail Co", detail!.NomSociete);
+            Assert.NotNull(detail.PhotoCouverture);
+            Assert.Equal(1, detail.PhotoCouverture!.Ordre);
+            Assert.Equal(2, detail.Photos.Count);
+            Assert.Equal(12m, detail.PrixMin);
+            Assert.Equal(12m, detail.PrixMax);
+            Assert.Equal("CDF", detail.CodeDevise);
+            Assert.Equal(40, detail.PlacesTotales);
+            Assert.Equal(40, detail.PlacesRestantes);
+            Assert.False(detail.IsSoldOut);
+            Assert.NotNull(detail.GlobalQuota);
+        }
+
+        [Fact]
+        public async Task GetByIdAsync_without_photo_has_null_cover_and_empty_photos()
+        {
+            await using var ctx = BuildDb(nameof(GetByIdAsync_without_photo_has_null_cover_and_empty_photos));
+            var (idSociete, idSite) = await SeedSocieteAsync(ctx, "No Pic Co");
+            var service = CreateService(ctx);
+
+            var draft = await service.CreateDraftAsync(BuildValidCreateRequest("NO-PIC", idSite), idSociete);
+            var detail = await service.GetByIdAsync(draft.IdEvenementSession, idSociete);
+
+            Assert.NotNull(detail);
+            Assert.Null(detail!.PhotoCouverture);
+            Assert.Empty(detail.Photos);
+            Assert.Equal("No Pic Co", detail.NomSociete);
+            Assert.Equal(10m, detail.PrixMin);
+            Assert.Equal(50, detail.PlacesTotales);
+            Assert.Equal(50, detail.PlacesRestantes);
+            Assert.False(detail.IsSoldOut);
+        }
+
+        [Fact]
+        public async Task ListAsync_enriches_cover_price_and_societe_name()
+        {
+            await using var ctx = BuildDb(nameof(ListAsync_enriches_cover_price_and_societe_name));
+            var (idSociete, idSite) = await SeedSocieteAsync(ctx, "Catalogue Co");
+            var service = CreateService(ctx);
+
+            var created = await service.CreateDraftAsync(new EvenementCreateSessionRequestDto
+            {
+                CodeSession = "ENRICH-GQ",
+                IdSite = idSite,
+                Libelle = "Session enrichie",
+                StartAtUtc = DateTime.UtcNow.AddDays(3),
+                InventoryMode = "GlobalQuota",
+                GlobalQuota = new EvenementCreateSessionGlobalQuotaDto
+                {
+                    CapaciteTotale = 40,
+                    PrixUnitaire = 25m,
+                    CodeDevise = "USD"
+                },
+                Photos = new List<AddEvenementSessionPhotoDto>
+                {
+                    new()
+                    {
+                        PhotoBase64 = TinyJpegBase64(),
+                        FileName = "cover.jpg",
+                        Ordre = 1
+                    }
+                }
+            }, idSociete);
+            await service.PublishAsync(created.IdEvenementSession, idSociete);
+
+            var list = await service.ListAsync(idSociete);
+            var item = Assert.Single(list);
+
+            Assert.Equal("Catalogue Co", item.NomSociete);
+            Assert.NotNull(item.PhotoCouverture);
+            Assert.StartsWith("data:image/jpeg;base64,", item.PhotoCouverture!.PhotoBase64);
+            Assert.Equal(1, item.PhotoCouverture.Ordre);
+            Assert.Equal(25m, item.PrixMin);
+            Assert.Equal(25m, item.PrixMax);
+            Assert.Equal("USD", item.CodeDevise);
+        }
+
+        [Fact]
+        public async Task ListAsync_class_quota_sets_prix_min_max()
+        {
+            await using var ctx = BuildDb(nameof(ListAsync_class_quota_sets_prix_min_max));
+            var (idSociete, idSite) = await SeedSocieteAsync(ctx);
+            var service = CreateService(ctx);
+            var idVip = await SeedClasseAsync(ctx, idSociete, "VIP", "VIP");
+            var idStd = await SeedClasseAsync(ctx, idSociete, "STD", "Standard");
+
+            await service.CreateDraftAsync(new EvenementCreateSessionRequestDto
+            {
+                CodeSession = "ENRICH-CQ",
+                IdSite = idSite,
+                Libelle = "Classes",
+                StartAtUtc = DateTime.UtcNow.AddDays(4),
+                InventoryMode = "ClassQuota",
+                ClassQuotas = new List<EvenementCreateSessionClassQuotaDto>
+                {
+                    new()
+                    {
+                        IdEvenementClasse = idVip,
+                        CapaciteTotale = 10,
+                        PrixUnitaire = 50m,
+                        CodeDevise = "CDF"
+                    },
+                    new()
+                    {
+                        IdEvenementClasse = idStd,
+                        CapaciteTotale = 30,
+                        PrixUnitaire = 15m,
+                        CodeDevise = "CDF"
+                    }
+                }
+            }, idSociete);
+
+            var list = await service.ListAsync(idSociete);
+            var item = Assert.Single(list);
+
+            Assert.Equal(15m, item.PrixMin);
+            Assert.Equal(50m, item.PrixMax);
+            Assert.Equal("CDF", item.CodeDevise);
+            Assert.Null(item.PhotoCouverture);
+        }
+
+        [Fact]
+        public async Task ListPublishedGlobalAsync_without_photo_has_null_cover()
+        {
+            await using var ctx = BuildDb(nameof(ListPublishedGlobalAsync_without_photo_has_null_cover));
+            var (idSociete, idSite) = await SeedSocieteAsync(ctx, "No Photo Co");
+            var service = CreateService(ctx);
+
+            var draft = await service.CreateDraftAsync(BuildValidCreateRequest("NO-COVER", idSite), idSociete);
+            await service.PublishAsync(draft.IdEvenementSession, idSociete);
+
+            var list = await service.ListPublishedGlobalAsync();
+            var item = Assert.Single(list);
+
+            Assert.Null(item.PhotoCouverture);
+            Assert.Equal("No Photo Co", item.NomSociete);
+            Assert.Equal(10m, item.PrixMin);
+            Assert.Equal("CDF", item.CodeDevise);
+        }
+
+        private static string TinyJpegBase64() =>
+            Convert.ToBase64String(new byte[] { 0xFF, 0xD8, 0xFF, 0xD9 });
+
+        private static EvenementCreateSessionRequestDto BuildValidCreateRequest(string code, int idSite) => new()
         {
             CodeSession = code,
+            IdSite = idSite,
             Libelle = "Test session",
             StartAtUtc = DateTime.UtcNow.AddDays(5),
             InventoryMode = "GlobalQuota",
@@ -149,21 +495,22 @@ namespace CongoTravel.Tests
             }
         };
 
-        private static async Task<int> SeedSocieteAsync(CongoTravelDbContext ctx, string nom = "Read Societe")
-        {
-            var societe = new Societe { Nom = nom, DateCreation = DateTime.UtcNow };
-            ctx.Societes.Add(societe);
-            await ctx.SaveChangesAsync();
-            return societe.IdSociete;
-        }
+        private static async Task<(int IdSociete, int IdSite)> SeedSocieteAsync(
+            CongoTravelDbContext ctx,
+            string nom = "Test Societe") =>
+            await EvenementTestFactories.SeedSocieteWithSiteAsync(ctx, nom);
 
-        private static async Task<int> SeedClasseAsync(CongoTravelDbContext ctx, int idSociete)
+        private static async Task<int> SeedClasseAsync(
+            CongoTravelDbContext ctx,
+            int idSociete,
+            string code = "VIP",
+            string libelle = "VIP")
         {
             var classe = new EvenementClasse
             {
                 IdSociete = idSociete,
-                CodeClasse = "VIP",
-                Libelle = "VIP",
+                CodeClasse = code,
+                Libelle = libelle,
                 Statut = true,
                 DateCreation = DateTime.UtcNow
             };

@@ -79,6 +79,7 @@ namespace CongoTravel.Data
         public DbSet<EvenementReservationLine> EvenementReservationLines { get; set; }
         public DbSet<EvenementTicket> EvenementTickets { get; set; }
         public DbSet<EvenementPayment> EvenementPayments { get; set; }
+        public DbSet<EvenementSessionPhoto> EvenementSessionPhotos { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -625,6 +626,7 @@ namespace CongoTravel.Data
                 entity.Property(e => e.CodeDeviseFraisPlateforme).HasMaxLength(3);
                 entity.Property(e => e.MontAddPaieElectronique).HasColumnType("decimal(18,2)").HasDefaultValue(0m);
                 entity.Property(e => e.CodeDeviseMontAddPaieElectronique).HasMaxLength(3);
+                entity.Property(e => e.PoidsBagageParKiloOffert).HasColumnType("decimal(18,2)").HasDefaultValue(0m);
             });
 
             modelBuilder.Entity<ConfigSociete>()

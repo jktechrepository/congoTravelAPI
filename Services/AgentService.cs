@@ -1,6 +1,8 @@
 using CongoTravel.Data;
+using CongoTravel.Helpers;
 using CongoTravel.Models;
 using CongoTravel.Models.DTOs;
+using CongoTravel.Models.Enums;
 using CongoTravel.Services.Repositories;
 using Microsoft.EntityFrameworkCore;
 using CongoTravel.Models.DTOs.Pagination;
@@ -15,91 +17,101 @@ namespace CongoTravel.Services
         private readonly IUsernameGeneratorService _usernameGenerator;
         private readonly CongoTravel.Services.Repositories.IEmailService _emailService;
         private readonly IUtilisateurRepository _utilisateurRepository;
+        private readonly ICurrentUserService _currentUser;
         private readonly ILogger<AgentService> _logger;
+
+        private static readonly HashSet<string> SystemEmailsToExclude = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "admin@kenergie.cd",
+            "superadmin@kenergie.cd",
+            "admin@congotravel.cd",
+            "superadmin@congotravel.cd"
+        };
 
         public AgentService(
             CongoTravelDbContext context,
             IUsernameGeneratorService usernameGenerator,
             CongoTravel.Services.Repositories.IEmailService emailService,
             IUtilisateurRepository utilisateurRepository,
+            ICurrentUserService currentUser,
             ILogger<AgentService> logger)
         {
             _context = context;
             _usernameGenerator = usernameGenerator;
             _emailService = emailService;
             _utilisateurRepository = utilisateurRepository;
+            _currentUser = currentUser;
             _logger = logger;
         }
 
         public async Task<IEnumerable<Agent>> GetAllAsync()
         {
-            // 🔒 Restriction: exclure les comptes système (admin/superadmin)
-            var emailsAExclure = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-            {
-                "admin@kenergie.cd",
-                "superadmin@kenergie.cd"
-            };
-            
-            // ✅ FIX: Charger explicitement les agents avec gestion des valeurs NULL
-            // Utiliser AsNoTracking pour éviter les problèmes de suivi des entités
-            return await _context.Agents
-                .AsNoTracking() // ✅ Évite les problèmes de suivi des entités
-                .Where(a => !emailsAExclure.Contains(a.EmailAgent.Trim()))
-                .Where(e => e.Statut == true) // ✅ Filtrer uniquement les agents actifs
+            return await ApplyVisibilityFilters(_context.Agents.AsNoTracking())
+                .Where(e => e.Statut == true)
                 .OrderByDescending(e => e.DateCreation)
                 .ToListAsync();
-            
         }
 
         public async Task<Agent> GetByIdAsync(int id)
         {
-            return await _context.Agents
-               // .Include(e => e.Societe)
-                .Where(e => e.Statut == true) // ✅ Filtrer uniquement les agents actifs
+            return await ApplyVisibilityFilters(_context.Agents)
+                .Where(e => e.Statut == true)
                 .FirstOrDefaultAsync(e => e.IdAgent == id);
         }
 
         public async Task<Agent> GetByMatriculeAsync(string matricule)
         {
-            return await _context.Agents
-               // .Include(e => e.Societe)
-                .Where(e => e.Statut == true) // ✅ Filtrer uniquement les agents actifs
+            return await ApplyVisibilityFilters(_context.Agents)
+                .Where(e => e.Statut == true)
                 .FirstOrDefaultAsync(e => e.Matricule == matricule);
         }
 
         public async Task<IEnumerable<Agent>> GetBySocieteAsync(int idSociete)
         {
-            // 🔒 Restriction: exclure les comptes système (admin/superadmin)
-            var emailsAExclure = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-            {
-                "admin@kenergie.cd",
-                "superadmin@kenergie.cd"
-            };
-            
-            return await _context.Agents
+            var query = ApplyVisibilityFilters(_context.Agents.AsNoTracking())
                 .Where(e => e.IdSociete == idSociete)
-                .Where(a => !emailsAExclure.Contains(a.EmailAgent.Trim()))
-                .Where(e => e.Statut == true) // ✅ Filtrer uniquement les agents actifs
+                .Where(e => e.Statut == true);
+
+            // Non Super-Admin : ne peut cibler que sa société (déjà appliqué dans ApplyVisibilityFilters)
+            return await query
                 .OrderByDescending(e => e.DateCreation)
                 .ToListAsync();
         }
 
-        //public async Task<IEnumerable<Agent>> GetBySpecialiteAsync(string specialite)
-        //{
-        //    return await _context.Agents
-        //        .Include(e => e.Societe)
-        //        .Where(e => e.Specialite == specialite)
-        //        .OrderByDescending(e => e.DateCreation)
-        //        .ToListAsync();
-        //}
-
         public async Task<IEnumerable<Agent>> GetByStatutAsync(bool statut)
         {
-            return await _context.Agents
-              //  .Include(e => e.Societe)
+            return await ApplyVisibilityFilters(_context.Agents.AsNoTracking())
                 .Where(e => e.Statut == statut)
                 .OrderByDescending(e => e.DateCreation)
                 .ToListAsync();
+        }
+
+        /// <summary>
+        /// Filtre hiérarchie de rôles + tenancy société (sauf Super-Admin) + emails système.
+        /// </summary>
+        private IQueryable<Agent> ApplyVisibilityFilters(IQueryable<Agent> query)
+        {
+            query = query.Where(a =>
+                string.IsNullOrWhiteSpace(a.EmailAgent) ||
+                !SystemEmailsToExclude.Contains(a.EmailAgent.Trim()));
+
+            var callerRole = _currentUser.PrimaryRole;
+            var hiddenRoles = RoleVisibilityHelper.GetHiddenRoleNamesForCaller(callerRole);
+            if (hiddenRoles.Count > 0)
+            {
+                var hiddenList = hiddenRoles.Select(r => r.ToLowerInvariant()).ToList();
+                query = query.Where(a =>
+                    string.IsNullOrEmpty(a.RoleAgent) ||
+                    !hiddenList.Contains(a.RoleAgent.ToLower()));
+            }
+
+            if (!_currentUser.IsSuperAdmin)
+            {
+                var idSociete = _currentUser.SocieteId;
+                query = query.Where(a => a.IdSociete == idSociete);
+            }
+
+            return query;
         }
         public async Task<Agent> CreateAsync(Agent agent)
         {
@@ -1459,25 +1471,21 @@ namespace CongoTravel.Services
         
         public async Task<PagedResult<Agent>> GetPagedAsync(int idSociete, PagedRequest request)
         {
-
-            // 🔒 Restriction: exclure les comptes système (admin/superadmin)
-            var emailsAExclure = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-            {
-                "admin@kenergie.cd",
-                "superadmin@kenergie.cd"
-            };
-            
             request ??= new PagedRequest();
 
-            var query = _context.Agents
-                .Where(a => !emailsAExclure.Contains(a.EmailAgent.Trim()))
+            var effectiveSocieteId = _currentUser.IsSuperAdmin ? idSociete : _currentUser.SocieteId;
+
+            var query = ApplyVisibilityFilters(_context.Agents.AsNoTracking())
                 .Where(a => a.Statut == true);
+
+            if (effectiveSocieteId > 0)
+                query = query.Where(a => a.IdSociete == effectiveSocieteId);
 
             if (!string.IsNullOrWhiteSpace(request.SearchTerm))
             {
                 var term = request.SearchTerm.Trim().ToLower();
                 query = query.Where(a =>
-                    a.NomComplet.ToLower().Contains(term) );
+                    a.NomComplet.ToLower().Contains(term));
             }
 
             query = request.SortBy switch

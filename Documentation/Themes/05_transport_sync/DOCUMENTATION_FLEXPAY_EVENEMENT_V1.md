@@ -4,7 +4,7 @@ Pipeline **autonome** du transport : tables `EvenementPayments` uniquement, pas 
 
 ## Prérequis
 
-- Session publiée + réservation `HOLD` existante (`POST /api/events/reservations/holds` ou flux équivalent).
+- Session publiée ; achat via `POST /api/events/reservations/with-paiement-electronique` (crée le hold + initie FlexPay).
 - `FlexPay:Enabled` et `FlexPay:EventEnabled` (ou fallback sur `Enabled`) à `true`.
 - `InfoPaiementSociete` active pour le `IdSite` marchand.
 - Devise tarif réservation (`D_t`) : `CDF` ou `USD` (figée au hold).
@@ -28,7 +28,7 @@ L'URL callback envoyée à FlexPay est dérivée de `CallbackBaseUrl` + `EventCa
 
 | Méthode | Route | Auth | Permission |
 |---------|-------|------|------------|
-| `POST` | `/api/events/reservations/{id}/initiate-flexpay` | JWT | `Evenement.Reservation.Confirm` |
+| `POST` | `/api/events/reservations/with-paiement-electronique` | JWT | `Evenement.Hold.Create` + `Evenement.Reservation.Confirm` |
 | `POST` | `/api/events/flexpay/callback` | Public | — |
 | `GET` | `/api/events/flexpay/verifier/{orderNumber}` | JWT | `Evenement.Reservation.Confirm` |
 | `GET` | `/api/events/flexpay/approve` \| `cancel` \| `decline` | Public | Redirections carte |
@@ -42,8 +42,7 @@ sequenceDiagram
     participant Client
     participant API
     participant FlexPay
-  Client->>API: POST hold
-  Client->>API: POST initiate-flexpay
+  Client->>API: POST with-paiement-electronique
   API->>FlexPay: InitierPaiementMobileMoney
   FlexPay-->>Client: Push MM
   FlexPay->>API: POST events/flexpay/callback
@@ -53,15 +52,19 @@ sequenceDiagram
 
 ### 1. Initiation
 
-`POST /api/events/reservations/{idReservation}/initiate-flexpay`
+`POST /api/events/reservations/with-paiement-electronique`
 
 ```json
 {
-  "methodePaiement": "MOBILE_MONEY",
-  "phone": "243900000001",
-  "idSite": 1,
-  "codeDevisePaiement": "CDF",
-  "idempotencyKey": "optional-uuid"
+  "idEvenementSession": 12,
+  "idempotencyKey": "optional-uuid",
+  "items": [{ "quantity": 2 }],
+  "paiement": {
+    "methodePaiement": "MOBILE_MONEY",
+    "phone": "243900000001",
+    "idSite": 1,
+    "codeDevisePaiement": "CDF"
+  }
 }
 ```
 

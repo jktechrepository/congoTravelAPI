@@ -182,6 +182,13 @@ namespace CongoTravel.Tests
                 {
                     IdVehicule = 42,
                     AliasVehicule = "BUS",
+                    Societe = new Societe
+                    {
+                        IdSociete = 1,
+                        Nom = "Congo Travel",
+                        Logo = "https://cdn.example/logo.png",
+                        Statut = true
+                    },
                     Photos = new List<PhotoVehicule>
                     {
                         new()
@@ -203,6 +210,34 @@ namespace CongoTravel.Tests
             Assert.Single(dto.PhotosVehicules);
             Assert.StartsWith("data:image/jpeg;base64,", dto.PhotosVehicules[0].PhotoBase64);
             Assert.Equal(42, dto.IdVehicule);
+            Assert.Equal("Congo Travel", dto.NomSociete);
+            Assert.Equal("https://cdn.example/logo.png", dto.LogoSociete);
+        }
+
+        [Fact]
+        public void Voyage_response_logo_societe_null_when_societe_not_loaded()
+        {
+            var mapper = new MapperConfiguration(
+                cfg => cfg.AddProfile<VehiculeMappingProfile>(),
+                NullLoggerFactory.Instance).CreateMapper();
+
+            var voyage = new Voyage
+            {
+                Id = 1,
+                IdVehicule = 1,
+                DateDepart = DateTime.Today,
+                HeureDepart = TimeSpan.FromHours(8),
+                Prix = 100,
+                IdDestination = 1,
+                IdSociete = 1,
+                Statut = true,
+                Vehicule = new Vehicule { IdVehicule = 1, AliasVehicule = "BUS", Societe = null }
+            };
+
+            var dto = mapper.Map<VoyageResponseDto>(voyage);
+
+            Assert.Null(dto.LogoSociete);
+            Assert.Null(dto.NomSociete);
         }
     }
 }

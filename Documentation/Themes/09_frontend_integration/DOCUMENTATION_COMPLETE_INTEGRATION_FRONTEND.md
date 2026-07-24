@@ -67,7 +67,7 @@ X-Device-Id: <uuid-stable>             # inscription client (recommandé mobile)
 | 5. Réservations | [MODULE_03](MODULE_03_RESERVATION_BILLET.md) | Réservation multi-passagers |
 | 6. Paiements | [MODULE_04](MODULE_04_PAIEMENT_FLEXPAY.md) | Cash, FlexPay, multi-devise |
 | 7. Reporting | [MODULE_07](MODULE_07_DASHBOARDS_ADMIN.md) | Dashboards gérant, financier |
-| 8. Événements | [MODULE_05](MODULE_05_EVENEMENT_BILLETTERIE.md) | Sessions, tickets (optionnel) |
+| 8. Événements | [MODULE_05](MODULE_05_EVENEMENT_BILLETTERIE.md) | Guichet `with-paiement` / FlexPay, sessions, tickets |
 
 **Stack recommandée** : Vue 3, Vue Router, Pinia, Axios, Chart.js.
 
@@ -82,6 +82,7 @@ X-Device-Id: <uuid-stable>             # inscription client (recommandé mobile)
 | 5. Embarquement | MODULE_03 | `POST .../embarquer` |
 | 6. Sync offline | [MODULE_08](MODULE_08_SYNC_OFFLINE_AGENT.md) | `/sync/*` |
 | 7. FlexPay | MODULE_04 | Paiement électronique + `verifier` |
+| 8. Événements (optionnel) | [MODULE_05](MODULE_05_EVENEMENT_BILLETTERIE.md) | Contrôle entrée tickets événement (`check` / `use`) |
 
 **Stack recommandée** : Flutter, Dio, flutter_secure_storage, mobile_scanner.
 
@@ -96,6 +97,7 @@ X-Device-Id: <uuid-stable>             # inscription client (recommandé mobile)
 | 5. Paiement FlexPay | MODULE_04 | Mobile Money |
 | 6. Mes billets | MODULE_03 + MODULE_06 | QR codes, historique |
 | 7. Dashboard client | MODULE_06 | `GET /ClientDashboard` |
+| 8. Événements (optionnel) | [MODULE_05](MODULE_05_EVENEMENT_BILLETTERIE.md) | Catalogue → `with-paiement-electronique` → tickets QR |
 
 **Stack recommandée** : Flutter, Dio, SignalR (notifications paiement).
 
@@ -298,7 +300,7 @@ void initApi(String baseUrl) {
 | 02 | [MODULE_02_TRANSPORT_VOYAGE.md](MODULE_02_TRANSPORT_VOYAGE.md) | Admin, Agent, Client | Voyages, destinations, véhicules, tarifs |
 | 03 | [MODULE_03_RESERVATION_BILLET.md](MODULE_03_RESERVATION_BILLET.md) | Tous | Réservation, billets, scan QR, embarquement |
 | 04 | [MODULE_04_PAIEMENT_FLEXPAY.md](MODULE_04_PAIEMENT_FLEXPAY.md) | Admin, Agent, Client | Cash, FlexPay, multi-devise, remboursement |
-| 05 | [MODULE_05_EVENEMENT_BILLETTERIE.md](MODULE_05_EVENEMENT_BILLETTERIE.md) | Admin, Client | Billetterie événement `api/events/*` |
+| 05 | [MODULE_05_EVENEMENT_BILLETTERIE.md](MODULE_05_EVENEMENT_BILLETTERIE.md) | Admin, Client, Gate | Billetterie `api/events/*` — Vue guichet + Flutter catalogue/FlexPay/contrôle entrée |
 | 06 | [MODULE_06_CLIENT_APP_VOYAGEUR.md](MODULE_06_CLIENT_APP_VOYAGEUR.md) | Client | Inscription, dashboard, plaintes |
 | 07 | [MODULE_07_DASHBOARDS_ADMIN.md](MODULE_07_DASHBOARDS_ADMIN.md) | Admin (Vue) | KPIs, reporting, graphiques |
 | 08 | [MODULE_08_SYNC_OFFLINE_AGENT.md](MODULE_08_SYNC_OFFLINE_AGENT.md) | Agent (Flutter) | Sync offline, batch paiements |

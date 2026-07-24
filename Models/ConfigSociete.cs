@@ -61,6 +61,10 @@ namespace CongoTravel.Models
         [MaxLength(3)]
         public string? CodeDeviseMontAddPaieElectronique { get; set; }
 
+        /// <summary>Poids de bagage offert (kg) par société ; 0 = aucun.</summary>
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal PoidsBagageParKiloOffert { get; set; }
+
         public DateTime DateCreation { get; set; } = DateTime.UtcNow;
 
         public DateTime? DateModification { get; set; }

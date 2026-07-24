@@ -85,6 +85,7 @@ namespace CongoTravel.Controllers
         [ProducesResponseType(typeof(object), 201)]
         [ProducesResponseType(400)]
         [ProducesResponseType(409)]
+        [Permission("Site.Create")]
         public async Task<ActionResult<object>> Create([FromBody] SiteCreateDto dto, CancellationToken ct)
         {
             if (!ModelState.IsValid)

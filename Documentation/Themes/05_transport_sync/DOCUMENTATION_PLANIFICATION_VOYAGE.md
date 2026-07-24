@@ -22,6 +22,17 @@ Body exemple :
 }
 ```
 
+### Modes de période
+
+| Mode | Plage (dates UTC) |
+|------|-------------------|
+| `MoisCourant` | **Du jour courant** au dernier jour du mois (pas de jours déjà passés) |
+| `SemaineCourante` | **Du jour courant** au dimanche de la semaine (lundi→dimanche) |
+| `MoisProchain` | 1er → dernier jour du mois suivant (mois complet) |
+| `PeriodePersonnalisee` | `dateDebut` / `dateFin` fournis par le client |
+
+Pour régénérer volontairement des jours passés : utiliser `PeriodePersonnalisee`.
+
 Ou période personnalisée :
 
 ```json

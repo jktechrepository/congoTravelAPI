@@ -12,6 +12,8 @@ namespace CongoTravel.Models.DTOs.Sync
         public int HeuresLimiteReaffectation { get; set; }
         public decimal PenaliteReaffectationPourcentage { get; set; }
         public int DureeHoldFlexPayMinutes { get; set; }
+        /// <summary>Poids de bagage offert (kg) ; 0 = aucun.</summary>
+        public decimal PoidsBagageParKiloOffert { get; set; }
         public DateTime UpdatedAt { get; set; }
     }
 }

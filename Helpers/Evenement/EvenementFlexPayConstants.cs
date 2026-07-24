@@ -8,7 +8,5 @@ namespace CongoTravel.Helpers.Evenement
         public const string CallbackRoute = "/api/events/flexpay/callback";
 
         public const string VerifierRoutePrefix = "/api/events/flexpay/verifier";
-
-        public const string InitiateRouteSuffix = "/initiate-flexpay";
     }
 }

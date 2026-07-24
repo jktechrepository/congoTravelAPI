@@ -128,6 +128,7 @@ namespace CongoTravel.Services.Evenement
                     {
                         IdSociete = idSociete,
                         IdEvenementSession = session.IdEvenementSession,
+                        IdSite = request.IdSite ?? session.IdSite,
                         ReferenceReservation = reference,
                         CustomerRef = string.IsNullOrWhiteSpace(request.CustomerRef)
                             ? null

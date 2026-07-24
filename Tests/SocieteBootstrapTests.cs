@@ -63,7 +63,7 @@ namespace CongoTravel.Tests
         {
             var db = nameof(CreateWithBootstrapAsync_creates_societe_site_gerant_and_admin_links);
             await using var ctx = new CongoTravelDbContext(Options(db));
-            var svc = new SocieteService(ctx, EmailMock().Object, NullLogger<SocieteService>.Instance);
+            var svc = new SocieteService(ctx, EmailMock().Object, Mock.Of<ICurrentUserService>(u => u.PrimaryRole == "Super-Admin" && u.IsSuperAdmin == true), NullLogger<SocieteService>.Instance);
 
             var dto = SampleDto("a");
             var result = await svc.CreateWithBootstrapAsync(dto);
@@ -110,7 +110,7 @@ namespace CongoTravel.Tests
         {
             var db = nameof(CreateWithBootstrapAsync_seeds_default_type_vehicule_terrestre_idempotent);
             await using var ctx = new CongoTravelDbContext(Options(db));
-            var svc = new SocieteService(ctx, EmailMock().Object, NullLogger<SocieteService>.Instance);
+            var svc = new SocieteService(ctx, EmailMock().Object, Mock.Of<ICurrentUserService>(u => u.PrimaryRole == "Super-Admin" && u.IsSuperAdmin == true), NullLogger<SocieteService>.Instance);
 
             var result = await svc.CreateWithBootstrapAsync(SampleDto("type"));
 
@@ -130,7 +130,7 @@ namespace CongoTravel.Tests
         {
             var db = nameof(CreateWithBootstrapAsync_throws_when_site_contact_equals_societe_contact);
             await using var ctx = new CongoTravelDbContext(Options(db));
-            var svc = new SocieteService(ctx, EmailMock().Object, NullLogger<SocieteService>.Instance);
+            var svc = new SocieteService(ctx, EmailMock().Object, Mock.Of<ICurrentUserService>(u => u.PrimaryRole == "Super-Admin" && u.IsSuperAdmin == true), NullLogger<SocieteService>.Instance);
 
             var dto = SampleDto("b");
             dto.Site.Email = dto.Societe.EmailContact!;
@@ -144,7 +144,7 @@ namespace CongoTravel.Tests
         {
             var db = nameof(CreateWithBootstrapAsync_throws_when_site_contact_already_used_by_utilisateur);
             await using var ctx = new CongoTravelDbContext(Options(db));
-            var svc = new SocieteService(ctx, EmailMock().Object, NullLogger<SocieteService>.Instance);
+            var svc = new SocieteService(ctx, EmailMock().Object, Mock.Of<ICurrentUserService>(u => u.PrimaryRole == "Super-Admin" && u.IsSuperAdmin == true), NullLogger<SocieteService>.Instance);
 
             var taken = "taken@test.local";
             ctx.Utilisateurs.Add(new Utilisateur
@@ -168,7 +168,7 @@ namespace CongoTravel.Tests
         {
             var db = nameof(CreateWithBootstrapAsync_throws_when_site_contact_already_used_by_agent);
             await using var ctx = new CongoTravelDbContext(Options(db));
-            var svc = new SocieteService(ctx, EmailMock().Object, NullLogger<SocieteService>.Instance);
+            var svc = new SocieteService(ctx, EmailMock().Object, Mock.Of<ICurrentUserService>(u => u.PrimaryRole == "Super-Admin" && u.IsSuperAdmin == true), NullLogger<SocieteService>.Instance);
 
             var other = new Societe
             {
@@ -202,7 +202,7 @@ namespace CongoTravel.Tests
         {
             var db = nameof(CreateWithBootstrapAsync_uses_phone_when_site_email_missing);
             await using var ctx = new CongoTravelDbContext(Options(db));
-            var svc = new SocieteService(ctx, EmailMock().Object, NullLogger<SocieteService>.Instance);
+            var svc = new SocieteService(ctx, EmailMock().Object, Mock.Of<ICurrentUserService>(u => u.PrimaryRole == "Super-Admin" && u.IsSuperAdmin == true), NullLogger<SocieteService>.Instance);
 
             var dto = SampleDto("e");
             dto.Site.Email = null;
@@ -220,7 +220,7 @@ namespace CongoTravel.Tests
         {
             var db = nameof(CreateWithBootstrapAsync_allows_multiple_societes_without_email_contact);
             await using var ctx = new CongoTravelDbContext(Options(db));
-            var svc = new SocieteService(ctx, EmailMock().Object, NullLogger<SocieteService>.Instance);
+            var svc = new SocieteService(ctx, EmailMock().Object, Mock.Of<ICurrentUserService>(u => u.PrimaryRole == "Super-Admin" && u.IsSuperAdmin == true), NullLogger<SocieteService>.Instance);
 
             var dto1 = SampleDto("no_email_1");
             dto1.Societe.EmailContact = "";
@@ -248,7 +248,7 @@ namespace CongoTravel.Tests
         {
             var db = nameof(CreateWithBootstrapAsync_throws_when_site_email_and_phone_missing);
             await using var ctx = new CongoTravelDbContext(Options(db));
-            var svc = new SocieteService(ctx, EmailMock().Object, NullLogger<SocieteService>.Instance);
+            var svc = new SocieteService(ctx, EmailMock().Object, Mock.Of<ICurrentUserService>(u => u.PrimaryRole == "Super-Admin" && u.IsSuperAdmin == true), NullLogger<SocieteService>.Instance);
 
             var dto = SampleDto("f");
             dto.Site.Email = null;

@@ -58,7 +58,6 @@ namespace CongoTravel.Tests
         {
             Assert.Equal("/api/events/flexpay/callback", EvenementFlexPayConstants.CallbackRoute);
             Assert.Equal("/api/events/flexpay/verifier", EvenementFlexPayConstants.VerifierRoutePrefix);
-            Assert.Equal("/initiate-flexpay", EvenementFlexPayConstants.InitiateRouteSuffix);
             Assert.Equal("FLEXPAY", EvenementFlexPayConstants.Provider);
         }
     }

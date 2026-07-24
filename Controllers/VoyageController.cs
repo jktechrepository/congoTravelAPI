@@ -264,7 +264,7 @@ namespace CongoTravel.Controllers
 
         /// <summary>Tarifs par catégorie de siège pour ce voyage (prix par place).</summary>
         [HttpGet("{id:int}/tarifs-categorie-siege")]
-        [Permission("Voyage.Read")]
+        [AllowAnonymous]
         public async Task<ActionResult<IEnumerable<VoyageTarifCategorieSiegeReadDto>>> GetTarifsCategorieSiege(int id)
         {
             try
@@ -606,6 +606,7 @@ namespace CongoTravel.Controllers
 
         // GET: api/voyage/vehicule/{idVehicule}/destination/{idDestination}
         [HttpGet("vehicule/{idVehicule}/destination/{idDestination}")]
+        [AllowAnonymous]
         public async Task<ActionResult<IEnumerable<VoyageResponseDto>>> GetByVehiculeAndDestination(int idVehicule, int idDestination)
         {
             try
@@ -655,6 +656,7 @@ namespace CongoTravel.Controllers
 
         // GET: api/voyage/pricerange
         [HttpGet("pricerange")]
+        [AllowAnonymous]
         public async Task<ActionResult<IEnumerable<VoyageResponseDto>>> GetByPriceRange([FromQuery] int prixMin, [FromQuery] int prixMax)
         {
             try
@@ -671,6 +673,7 @@ namespace CongoTravel.Controllers
 
         // POST: api/voyage
         [HttpPost]
+        [Permission("Voyage.Create")]
         public async Task<ActionResult<VoyageResponseDto>> Create([FromBody] CreateVoyageDto createDto)
         {
             try
@@ -723,6 +726,7 @@ namespace CongoTravel.Controllers
 
         // PUT: api/voyage/{id}
         [HttpPut("{id}")]
+        [Permission("Voyage.Update")]
         public async Task<ActionResult<VoyageResponseDto>> Update(int id, [FromBody] UpdateVoyageDto updateDto)
         {
             try
@@ -828,6 +832,7 @@ namespace CongoTravel.Controllers
 
         // DELETE: api/voyage/{id}
         [HttpDelete("{id}")]
+        [Permission("Voyage.Delete")]
         public async Task<ActionResult> Delete(int id)
         {
             try

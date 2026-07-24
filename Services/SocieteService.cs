@@ -17,12 +17,18 @@ namespace CongoTravel.Services
     {
         private readonly CongoTravelDbContext _context;
         private readonly IEmailService _emailService;
+        private readonly ICurrentUserService _currentUser;
         private readonly ILogger<SocieteService> _logger;
 
-        public SocieteService(CongoTravelDbContext context, IEmailService emailService, ILogger<SocieteService> logger)
+        public SocieteService(
+            CongoTravelDbContext context,
+            IEmailService emailService,
+            ICurrentUserService currentUser,
+            ILogger<SocieteService> logger)
         {
             _context = context;
             _emailService = emailService;
+            _currentUser = currentUser;
             _logger = logger;
         }
 
@@ -455,9 +461,21 @@ namespace CongoTravel.Services
 
         public async Task<IEnumerable<Agent>> GetAgentsAsync(int idSociete)
         {
-            return await _context.Agents
-                .Where(e => e.IdSociete == idSociete)
-                .ToListAsync();
+            var query = _context.Agents.AsNoTracking().Where(e => e.IdSociete == idSociete);
+
+            var hidden = RoleVisibilityHelper.GetHiddenRoleNamesForCaller(_currentUser.PrimaryRole);
+            if (hidden.Count > 0)
+            {
+                var hiddenList = hidden.Select(r => r.ToLowerInvariant()).ToList();
+                query = query.Where(a =>
+                    string.IsNullOrEmpty(a.RoleAgent) ||
+                    !hiddenList.Contains(a.RoleAgent.ToLower()));
+            }
+
+            if (!_currentUser.IsSuperAdmin)
+                query = query.Where(a => a.IdSociete == _currentUser.SocieteId);
+
+            return await query.ToListAsync();
         }
 
         public async Task<PagedResult<Agent>> GetAgentsByRoleAsync(int idSociete, string roleNom, PagedRequest request)

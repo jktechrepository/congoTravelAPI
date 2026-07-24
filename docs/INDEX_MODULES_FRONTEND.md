@@ -14,7 +14,7 @@
 | 02 | [MODULE_02_TRANSPORT_VOYAGE.md](../Documentation/Themes/09_frontend_integration/MODULE_02_TRANSPORT_VOYAGE.md) | Voyages, destinations, véhicules |
 | 03 | [MODULE_03_RESERVATION_BILLET.md](../Documentation/Themes/09_frontend_integration/MODULE_03_RESERVATION_BILLET.md) | Réservation, scan QR, embarquement |
 | 04 | [MODULE_04_PAIEMENT_FLEXPAY.md](../Documentation/Themes/09_frontend_integration/MODULE_04_PAIEMENT_FLEXPAY.md) | Cash, FlexPay, multi-devise |
-| 05 | [MODULE_05_EVENEMENT_BILLETTERIE.md](../Documentation/Themes/09_frontend_integration/MODULE_05_EVENEMENT_BILLETTERIE.md) | Billetterie événement `api/events/*` |
+| 05 | [MODULE_05_EVENEMENT_BILLETTERIE.md](../Documentation/Themes/09_frontend_integration/MODULE_05_EVENEMENT_BILLETTERIE.md) | Billetterie événement — Vue + Flutter (`with-paiement` / électronique, catalogue, gate) |
 | 06 | [MODULE_06_CLIENT_APP_VOYAGEUR.md](../Documentation/Themes/09_frontend_integration/MODULE_06_CLIENT_APP_VOYAGEUR.md) | Inscription client, app voyageur |
 | 07 | [MODULE_07_DASHBOARDS_ADMIN.md](../Documentation/Themes/09_frontend_integration/MODULE_07_DASHBOARDS_ADMIN.md) | Dashboards Vue.js |
 | 08 | [MODULE_08_SYNC_OFFLINE_AGENT.md](../Documentation/Themes/09_frontend_integration/MODULE_08_SYNC_OFFLINE_AGENT.md) | Sync offline Flutter agent |

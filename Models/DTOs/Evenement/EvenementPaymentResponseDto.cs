@@ -4,6 +4,8 @@ namespace CongoTravel.Models.DTOs.Evenement
     {
         public int IdEvenementPayment { get; set; }
 
+        public int? IdSite { get; set; }
+
         public string ReferencePaiement { get; set; } = string.Empty;
 
         public string Provider { get; set; } = string.Empty;

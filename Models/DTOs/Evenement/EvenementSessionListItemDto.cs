@@ -1,11 +1,20 @@
 namespace CongoTravel.Models.DTOs.Evenement
 {
-    /// <summary>En-tête session événement pour les listes (sans inventaire imbriqué).</summary>
+    /// <summary>
+    /// En-tête session événement pour les listes (sans inventaire imbriqué).
+    /// Enrichi : couverture, résumé prix, nom société.
+    /// </summary>
     public class EvenementSessionListItemDto
     {
         public int IdEvenementSession { get; set; }
 
         public int IdSociete { get; set; }
+
+        public string? NomSociete { get; set; }
+
+        public int? IdSite { get; set; }
+
+        public string? NomSite { get; set; }
 
         public string CodeSession { get; set; } = string.Empty;
 
@@ -22,5 +31,14 @@ namespace CongoTravel.Models.DTOs.Evenement
         public DateTime DateCreation { get; set; }
 
         public DateTime? DateModification { get; set; }
+
+        /// <summary>Première photo active (ordre min), base64 data-URL comme le détail.</summary>
+        public EvenementSessionPhotoDto? PhotoCouverture { get; set; }
+
+        public decimal? PrixMin { get; set; }
+
+        public decimal? PrixMax { get; set; }
+
+        public string? CodeDevise { get; set; }
     }
 }

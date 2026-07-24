@@ -18,6 +18,9 @@ namespace CongoTravel.Models.Evenement
         [Required]
         public int IdEvenementSession { get; set; }
 
+        /// <summary>Site opérationnel (défaut session, override possible à l'achat).</summary>
+        public int? IdSite { get; set; }
+
         [Required]
         [MaxLength(64)]
         public string ReferenceReservation { get; set; } = string.Empty;
@@ -50,6 +53,10 @@ namespace CongoTravel.Models.Evenement
         [JsonIgnore]
         [ValidateNever]
         public Societe? Societe { get; set; }
+
+        [JsonIgnore]
+        [ValidateNever]
+        public Site? Site { get; set; }
 
         [JsonIgnore]
         [ValidateNever]

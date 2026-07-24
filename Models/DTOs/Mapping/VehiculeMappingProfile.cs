@@ -78,6 +78,7 @@ namespace CongoTravel.Models.DTOs.Mapping
                 .ForMember(dest => dest.AliasVehicule, opt => opt.MapFrom(src => src.Vehicule != null ? src.Vehicule.AliasVehicule : null))
                 .ForMember(dest => dest.LibelleTypeVehicule, opt => opt.MapFrom(src => src.Vehicule != null && src.Vehicule.TypeVehicule != null ? src.Vehicule.TypeVehicule.Libelle : null))
                 .ForMember(dest => dest.NomSociete, opt => opt.MapFrom(src => src.Vehicule != null && src.Vehicule.Societe != null ? src.Vehicule.Societe.Nom : null))
+                .ForMember(dest => dest.LogoSociete, opt => opt.MapFrom(src => src.Vehicule != null && src.Vehicule.Societe != null ? src.Vehicule.Societe.Logo : null))
                 .ForMember(dest => dest.NomSite, opt => opt.MapFrom(src => src.Site != null ? src.Site.NomSite : null))
                 .ForMember(dest => dest.VilleDepart, opt => opt.MapFrom(src => src.Destination != null ? src.Destination.VilleDepart : null))
                 .ForMember(dest => dest.VilleArrivee, opt => opt.MapFrom(src => src.Destination != null ? src.Destination.VilleArrivee : null));

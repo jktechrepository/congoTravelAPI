@@ -15,22 +15,19 @@ namespace CongoTravel.Controllers
     [Authorize]
     public class EvenementReservationController : ControllerBase
     {
-        private readonly IEvenementPaymentService _paymentService;
-        private readonly IEvenementFlexPayInitiationService _flexPayInitiationService;
         private readonly IEvenementReservationService _reservationService;
+        private readonly IEvenementReservationWithPaiementService _reservationWithPaiementService;
         private readonly ICurrentUserService _currentUserService;
         private readonly ILogger<EvenementReservationController> _logger;
 
         public EvenementReservationController(
-            IEvenementPaymentService paymentService,
-            IEvenementFlexPayInitiationService flexPayInitiationService,
             IEvenementReservationService reservationService,
+            IEvenementReservationWithPaiementService reservationWithPaiementService,
             ICurrentUserService currentUserService,
             ILogger<EvenementReservationController> logger)
         {
-            _paymentService = paymentService;
-            _flexPayInitiationService = flexPayInitiationService;
             _reservationService = reservationService;
+            _reservationWithPaiementService = reservationWithPaiementService;
             _currentUserService = currentUserService;
             _logger = logger;
         }
@@ -75,6 +72,103 @@ namespace CongoTravel.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Erreur GET liste réservations événement");
+                return StatusCode(500, new { message = "Une erreur interne est survenue." });
+            }
+        }
+
+        /// <summary>
+        /// Parcours CASH (miroir Transport) : hold + confirm en un appel.
+        /// </summary>
+        [HttpPost("with-paiement")]
+        [Permission("Evenement.Hold.Create")]
+        [Permission("Evenement.Reservation.Confirm")]
+        [ProducesResponseType(typeof(EvenementReservationWithPaiementResponseDto), 200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
+        [ProducesResponseType(409)]
+        public async Task<ActionResult<EvenementReservationWithPaiementResponseDto>> CreateWithPaiement(
+            [FromBody] EvenementReservationWithPaiementRequestDto request,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var idSociete = EvenementTenancyGuard.ResolveEffectiveSocieteId(_currentUserService);
+                var result = await _reservationWithPaiementService.CreateCashAsync(
+                    idSociete,
+                    request,
+                    cancellationToken);
+                return Ok(result);
+            }
+            catch (EvenementHoldConflictException ex)
+            {
+                return Conflict(new { message = ex.Message });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (NotSupportedException ex)
+            {
+                return StatusCode(StatusCodes.Status501NotImplemented, new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur with-paiement réservation événement");
+                return StatusCode(500, new { message = "Une erreur interne est survenue." });
+            }
+        }
+
+        /// <summary>
+        /// Parcours FlexPay (miroir Transport électronique) : hold + initiate en un appel.
+        /// Finalisation via callback / verify.
+        /// </summary>
+        [HttpPost("with-paiement-electronique")]
+        [Permission("Evenement.Hold.Create")]
+        [Permission("Evenement.Reservation.Confirm")]
+        [ProducesResponseType(typeof(EvenementReservationWithPaiementResponseDto), 200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
+        [ProducesResponseType(409)]
+        public async Task<ActionResult<EvenementReservationWithPaiementResponseDto>> CreateWithPaiementElectronique(
+            [FromBody] EvenementReservationWithPaiementRequestDto request,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var idSociete = EvenementTenancyGuard.ResolveEffectiveSocieteId(_currentUserService);
+                var result = await _reservationWithPaiementService.InitiateElectronicAsync(
+                    idSociete,
+                    request,
+                    cancellationToken);
+                return Ok(result);
+            }
+            catch (EvenementHoldConflictException ex)
+            {
+                return Conflict(new { message = ex.Message });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur with-paiement-electronique réservation événement");
                 return StatusCode(500, new { message = "Une erreur interne est survenue." });
             }
         }
@@ -379,76 +473,6 @@ namespace CongoTravel.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Erreur GET réservation événement {Id}", id);
-                return StatusCode(500, new { message = "Une erreur interne est survenue." });
-            }
-        }
-
-        [HttpPost("{id:int}/confirm-payment")]
-        [Permission("Evenement.Reservation.Confirm")]
-        public async Task<ActionResult<EvenementConfirmPaymentResponseDto>> ConfirmPayment(
-            int id,
-            [FromBody] EvenementConfirmPaymentRequestDto request)
-        {
-            try
-            {
-                var idSociete = EvenementTenancyGuard.ResolveEffectiveSocieteId(_currentUserService);
-                var result = await _paymentService.ConfirmPaymentAsync(id, idSociete, request);
-                return Ok(result);
-            }
-            catch (EvenementHoldConflictException ex)
-            {
-                return Conflict(new { message = ex.Message });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { message = ex.Message });
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
-            catch (NotSupportedException ex)
-            {
-                return StatusCode(StatusCodes.Status501NotImplemented, new { message = ex.Message });
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return Forbid();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Erreur confirm-payment réservation événement {Id}", id);
-                return StatusCode(500, new { message = "Une erreur interne est survenue." });
-            }
-        }
-
-        [HttpPost("{id:int}/initiate-flexpay")]
-        [Permission("Evenement.Reservation.Confirm")]
-        public async Task<ActionResult<EvenementInitiateFlexPayResponseDto>> InitiateFlexPay(
-            int id,
-            [FromBody] EvenementInitiateFlexPayRequestDto request)
-        {
-            try
-            {
-                var idSociete = EvenementTenancyGuard.ResolveEffectiveSocieteId(_currentUserService);
-                var result = await _flexPayInitiationService.InitiateAsync(id, idSociete, request);
-                return Ok(result);
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { message = ex.Message });
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return Forbid();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Erreur initiate-flexpay réservation événement {Id}", id);
                 return StatusCode(500, new { message = "Une erreur interne est survenue." });
             }
         }

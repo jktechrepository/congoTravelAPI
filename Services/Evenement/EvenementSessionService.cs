@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using CongoTravel.Data;
+using CongoTravel.Helpers;
 using CongoTravel.Helpers.Evenement;
 using CongoTravel.Models.DTOs.Evenement;
 using CongoTravel.Models.Evenement;
@@ -10,11 +11,16 @@ namespace CongoTravel.Services.Evenement
     public class EvenementSessionService : IEvenementSessionService
     {
         private readonly CongoTravelDbContext _context;
+        private readonly IEvenementSessionPhotoService _photoService;
         private readonly ILogger<EvenementSessionService> _logger;
 
-        public EvenementSessionService(CongoTravelDbContext context, ILogger<EvenementSessionService> logger)
+        public EvenementSessionService(
+            CongoTravelDbContext context,
+            IEvenementSessionPhotoService photoService,
+            ILogger<EvenementSessionService> logger)
         {
             _context = context;
+            _photoService = photoService;
             _logger = logger;
         }
 
@@ -25,6 +31,14 @@ namespace CongoTravel.Services.Evenement
         {
             var inventoryMode = ParseInventoryMode(request.InventoryMode);
             ValidateCreateRequest(request, inventoryMode);
+
+            if (request.IdSite <= 0)
+            {
+                throw new InvalidOperationException("IdSite est obligatoire pour créer une session événement.");
+            }
+
+            await SiteSocieteValidation.EnsureSiteBelongsToSocieteAsync(
+                _context, request.IdSite, idSociete, cancellationToken);
 
             var codeSession = request.CodeSession.Trim();
             var exists = await _context.EvenementSessions
@@ -43,6 +57,7 @@ namespace CongoTravel.Services.Evenement
             var session = new EvenementSession
             {
                 IdSociete = idSociete,
+                IdSite = request.IdSite,
                 CodeSession = codeSession,
                 Libelle = request.Libelle.Trim(),
                 StartAtUtc = request.StartAtUtc,
@@ -61,37 +76,22 @@ namespace CongoTravel.Services.Evenement
                 case EvenementInventoryMode.ClassQuota:
                     await AttachClassQuotasAsync(
                         session, request.ClassQuotas!, idSociete, cancellationToken);
-                    _context.EvenementSessions.Add(session);
-                    await _context.SaveChangesAsync(cancellationToken);
-
-                    _logger.LogInformation(
-                        "Session événement Draft créée — Id={Id}, Societe={IdSociete}, Code={Code}, Mode={Mode}",
-                        session.IdEvenementSession,
-                        idSociete,
-                        codeSession,
-                        inventoryMode);
-
-                    return await LoadSessionResponseAsync(session.IdEvenementSession, idSociete, cancellationToken);
+                    break;
 
                 case EvenementInventoryMode.SeatNumbered:
                     await AttachSeatPlanAsync(
                         session, request.Sections, request.Seats, idSociete, cancellationToken);
-                    _context.EvenementSessions.Add(session);
-                    await _context.SaveChangesAsync(cancellationToken);
-
-                    _logger.LogInformation(
-                        "Session événement Draft créée — Id={Id}, Societe={IdSociete}, Code={Code}, Mode={Mode}, Seats={SeatCount}",
-                        session.IdEvenementSession,
-                        idSociete,
-                        codeSession,
-                        inventoryMode,
-                        session.Seats.Count);
-
-                    return await LoadSessionResponseAsync(session.IdEvenementSession, idSociete, cancellationToken);
+                    break;
             }
 
             _context.EvenementSessions.Add(session);
             await _context.SaveChangesAsync(cancellationToken);
+
+            await _photoService.AddPhotosOnCreateAsync(
+                session.IdEvenementSession,
+                idSociete,
+                request.Photos,
+                cancellationToken);
 
             _logger.LogInformation(
                 "Session événement Draft créée — Id={Id}, Societe={IdSociete}, Code={Code}, Mode={Mode}",
@@ -100,25 +100,32 @@ namespace CongoTravel.Services.Evenement
                 codeSession,
                 inventoryMode);
 
-            return EvenementSessionMapper.ToResponseDto(session);
+            return await LoadSessionResponseAsync(session.IdEvenementSession, idSociete, cancellationToken);
         }
 
         public async Task<EvenementSessionResponseDto?> GetByIdAsync(
             int idEvenementSession,
-            int idSociete,
+            int? idSociete = null,
             CancellationToken cancellationToken = default)
         {
-            var session = await _context.EvenementSessions
-                .AsNoTracking()
-                .Include(s => s.GlobalQuota)
-                .Include(s => s.ClassQuotas)
-                    .ThenInclude(q => q.Classe)
-                .Include(s => s.Seats)
-                    .ThenInclude(seat => seat.Section)
-                .Include(s => s.Seats)
-                    .ThenInclude(seat => seat.Classe)
+            var query = SessionDetailQuery()
+                .Where(s => s.IdEvenementSession == idEvenementSession);
+
+            if (idSociete.HasValue && idSociete.Value > 0)
+                query = query.Where(s => s.IdSociete == idSociete.Value);
+
+            var session = await query.FirstOrDefaultAsync(cancellationToken);
+            return session == null ? null : EvenementSessionMapper.ToResponseDto(session);
+        }
+
+        public async Task<EvenementSessionResponseDto?> GetPublishedByIdAsync(
+            int idEvenementSession,
+            CancellationToken cancellationToken = default)
+        {
+            var session = await SessionDetailQuery()
                 .FirstOrDefaultAsync(
-                    s => s.IdEvenementSession == idEvenementSession && s.IdSociete == idSociete,
+                    s => s.IdEvenementSession == idEvenementSession
+                         && s.Status == EvenementSessionStatus.Published,
                     cancellationToken);
 
             return session == null ? null : EvenementSessionMapper.ToResponseDto(session);
@@ -133,20 +140,46 @@ namespace CongoTravel.Services.Evenement
                 return null;
 
             var normalized = codeSession.Trim();
-            var session = await _context.EvenementSessions
-                .AsNoTracking()
-                .Include(s => s.GlobalQuota)
-                .Include(s => s.ClassQuotas)
-                    .ThenInclude(q => q.Classe)
-                .Include(s => s.Seats)
-                    .ThenInclude(seat => seat.Section)
-                .Include(s => s.Seats)
-                    .ThenInclude(seat => seat.Classe)
+            var session = await SessionDetailQuery()
                 .FirstOrDefaultAsync(
                     s => s.IdSociete == idSociete && s.CodeSession == normalized,
                     cancellationToken);
 
             return session == null ? null : EvenementSessionMapper.ToResponseDto(session);
+        }
+
+        public async Task<EvenementSessionResponseDto?> GetPublishedByCodeAsync(
+            string codeSession,
+            int? idSociete = null,
+            CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(codeSession))
+                return null;
+
+            var normalized = codeSession.Trim();
+            var query = SessionDetailQuery()
+                .Where(s =>
+                    s.CodeSession == normalized
+                    && s.Status == EvenementSessionStatus.Published);
+
+            if (idSociete.HasValue && idSociete.Value > 0)
+            {
+                var session = await query
+                    .FirstOrDefaultAsync(s => s.IdSociete == idSociete.Value, cancellationToken);
+                return session == null ? null : EvenementSessionMapper.ToResponseDto(session);
+            }
+
+            var matches = await query.Take(2).ToListAsync(cancellationToken);
+            if (matches.Count == 0)
+                return null;
+
+            if (matches.Count > 1)
+            {
+                throw new ArgumentException(
+                    $"Plusieurs sessions Published portent le code '{normalized}'. Précisez ?idSociete=.");
+            }
+
+            return EvenementSessionMapper.ToResponseDto(matches[0]);
         }
 
         public async Task<IReadOnlyList<EvenementSessionListItemDto>> ListAsync(
@@ -155,6 +188,28 @@ namespace CongoTravel.Services.Evenement
             CancellationToken cancellationToken = default)
         {
             var sessions = await BuildListQuery(idSociete, filter)
+                .ToListAsync(cancellationToken);
+
+            return sessions
+                .Select(EvenementSessionMapper.ToListItemDto)
+                .ToList();
+        }
+
+        public async Task<IReadOnlyList<EvenementSessionListItemDto>> ListPublishedGlobalAsync(
+            EvenementSessionListFilter? filter = null,
+            CancellationToken cancellationToken = default)
+        {
+            var query = SessionListQuery()
+                .Where(s => s.Status == EvenementSessionStatus.Published);
+
+            if (filter?.IdSociete.HasValue == true && filter.IdSociete.Value > 0)
+                query = query.Where(s => s.IdSociete == filter.IdSociete.Value);
+
+            if (filter?.InventoryMode.HasValue == true)
+                query = query.Where(s => s.InventoryMode == filter.InventoryMode.Value);
+
+            var sessions = await query
+                .OrderByDescending(s => s.StartAtUtc)
                 .ToListAsync(cancellationToken);
 
             return sessions
@@ -186,8 +241,7 @@ namespace CongoTravel.Services.Evenement
             CancellationToken cancellationToken = default)
         {
             var day = date.Date;
-            var sessions = await _context.EvenementSessions
-                .AsNoTracking()
+            var sessions = await SessionListQuery()
                 .Where(s => s.IdSociete == idSociete && s.StartAtUtc.Date == day)
                 .OrderByDescending(s => s.StartAtUtc)
                 .ToListAsync(cancellationToken);
@@ -206,8 +260,7 @@ namespace CongoTravel.Services.Evenement
             var start = dateDebut.Date;
             var end = dateFin.Date.AddDays(1).AddTicks(-1);
 
-            var sessions = await _context.EvenementSessions
-                .AsNoTracking()
+            var sessions = await SessionListQuery()
                 .Where(s => s.IdSociete == idSociete && s.StartAtUtc >= start && s.StartAtUtc <= end)
                 .OrderByDescending(s => s.StartAtUtc)
                 .ToListAsync(cancellationToken);
@@ -259,8 +312,7 @@ namespace CongoTravel.Services.Evenement
             int idSociete,
             EvenementSessionListFilter? filter)
         {
-            var query = _context.EvenementSessions
-                .AsNoTracking()
+            var query = SessionListQuery()
                 .Where(s => s.IdSociete == idSociete);
 
             if (filter?.Status.HasValue == true)
@@ -272,13 +324,22 @@ namespace CongoTravel.Services.Evenement
             return query.OrderByDescending(s => s.StartAtUtc);
         }
 
-        private async Task<EvenementSessionResponseDto> LoadSessionResponseAsync(
-            int idEvenementSession,
-            int idSociete,
-            CancellationToken cancellationToken)
-        {
-            var session = await _context.EvenementSessions
+        /// <summary>Includes pour listes enrichies (société, couverture, résumé prix).</summary>
+        private IQueryable<EvenementSession> SessionListQuery() =>
+            _context.EvenementSessions
                 .AsNoTracking()
+                .Include(s => s.Societe)
+                .Include(s => s.Site)
+                .Include(s => s.Photos)
+                .Include(s => s.GlobalQuota)
+                .Include(s => s.ClassQuotas)
+                .Include(s => s.Seats);
+
+        private IQueryable<EvenementSession> SessionDetailQuery() =>
+            _context.EvenementSessions
+                .AsNoTracking()
+                .Include(s => s.Societe)
+                .Include(s => s.Site)
                 .Include(s => s.GlobalQuota)
                 .Include(s => s.ClassQuotas)
                     .ThenInclude(q => q.Classe)
@@ -286,6 +347,14 @@ namespace CongoTravel.Services.Evenement
                     .ThenInclude(seat => seat.Section)
                 .Include(s => s.Seats)
                     .ThenInclude(seat => seat.Classe)
+                .Include(s => s.Photos);
+
+        private async Task<EvenementSessionResponseDto> LoadSessionResponseAsync(
+            int idEvenementSession,
+            int idSociete,
+            CancellationToken cancellationToken)
+        {
+            var session = await SessionDetailQuery()
                 .FirstAsync(
                     s => s.IdEvenementSession == idEvenementSession && s.IdSociete == idSociete,
                     cancellationToken);

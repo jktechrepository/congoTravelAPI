@@ -21,12 +21,13 @@ namespace CongoTravel.Tests
         public async Task CreateDraftAsync_creates_seat_numbered_session_with_sections()
         {
             await using var ctx = BuildDb(nameof(CreateDraftAsync_creates_seat_numbered_session_with_sections));
-            var (idSociete, idClasseVip) = await SeedClasseAsync(ctx);
+            var (idSociete, idSite, idClasseVip) = await SeedClasseAsync(ctx);
             var service = CreateService(ctx);
 
             var created = await service.CreateDraftAsync(new EvenementCreateSessionRequestDto
             {
                 CodeSession = "CONCERT-A",
+                IdSite = idSite,
                 Libelle = "Concert mode A",
                 StartAtUtc = DateTime.UtcNow.AddDays(7),
                 InventoryMode = "SeatNumbered",
@@ -62,12 +63,13 @@ namespace CongoTravel.Tests
         public async Task PublishAsync_publishes_seat_numbered_session()
         {
             await using var ctx = BuildDb(nameof(PublishAsync_publishes_seat_numbered_session));
-            var (idSociete, _) = await SeedClasseAsync(ctx);
+            var (idSociete, idSite, _) = await SeedClasseAsync(ctx);
             var service = CreateService(ctx);
 
             var draft = await service.CreateDraftAsync(new EvenementCreateSessionRequestDto
             {
                 CodeSession = "PUB-A",
+                IdSite = idSite,
                 Libelle = "Publish A",
                 StartAtUtc = DateTime.UtcNow.AddDays(3),
                 InventoryMode = "SeatNumbered",
@@ -87,13 +89,14 @@ namespace CongoTravel.Tests
         public async Task CreateDraftAsync_rejects_duplicate_seat_codes()
         {
             await using var ctx = BuildDb(nameof(CreateDraftAsync_rejects_duplicate_seat_codes));
-            var (idSociete, _) = await SeedClasseAsync(ctx);
+            var (idSociete, idSite, _) = await SeedClasseAsync(ctx);
             var service = CreateService(ctx);
 
             await Assert.ThrowsAsync<InvalidOperationException>(() =>
                 service.CreateDraftAsync(new EvenementCreateSessionRequestDto
                 {
                     CodeSession = "DUPE-A",
+                IdSite = idSite,
                     Libelle = "Dupe seats",
                     StartAtUtc = DateTime.UtcNow.AddDays(1),
                     InventoryMode = "SeatNumbered",
@@ -117,17 +120,15 @@ namespace CongoTravel.Tests
         }
 
         private static EvenementSessionService CreateService(CongoTravelDbContext ctx) =>
-            new(ctx, Microsoft.Extensions.Logging.Abstractions.NullLogger<EvenementSessionService>.Instance);
+            new(ctx, new EvenementSessionPhotoService(ctx, Microsoft.Extensions.Logging.Abstractions.NullLogger<EvenementSessionPhotoService>.Instance), Microsoft.Extensions.Logging.Abstractions.NullLogger<EvenementSessionService>.Instance);
 
-        private static async Task<(int IdSociete, int IdClasseVip)> SeedClasseAsync(CongoTravelDbContext ctx)
+        private static async Task<(int IdSociete, int IdSite, int IdClasseVip)> SeedClasseAsync(CongoTravelDbContext ctx)
         {
-            var societe = new Societe { Nom = "Session A", DateCreation = DateTime.UtcNow };
-            ctx.Societes.Add(societe);
-            await ctx.SaveChangesAsync();
+            var (idSociete, idSite) = await EvenementTestFactories.SeedSocieteWithSiteAsync(ctx, "Session A");
 
             var vip = new EvenementClasse
             {
-                IdSociete = societe.IdSociete,
+                IdSociete = idSociete,
                 CodeClasse = "VIP",
                 Libelle = "VIP",
                 Statut = true,
@@ -135,7 +136,7 @@ namespace CongoTravel.Tests
             };
             ctx.EvenementClasses.Add(vip);
             await ctx.SaveChangesAsync();
-            return (societe.IdSociete, vip.IdEvenementClasse);
+            return (idSociete, idSite, vip.IdEvenementClasse);
         }
     }
 }

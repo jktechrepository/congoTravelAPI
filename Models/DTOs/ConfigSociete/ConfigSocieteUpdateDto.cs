@@ -43,5 +43,9 @@ namespace CongoTravel.Models.DTOs.ConfigSociete
 
         [MaxLength(3)]
         public string? CodeDeviseMontAddPaieElectronique { get; set; }
+
+        /// <summary>Poids de bagage offert (kg) ; 0 = aucun.</summary>
+        [Range(0, double.MaxValue)]
+        public decimal PoidsBagageParKiloOffert { get; set; }
     }
 }

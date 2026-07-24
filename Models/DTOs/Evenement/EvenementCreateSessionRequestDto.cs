@@ -13,6 +13,11 @@ namespace CongoTravel.Models.DTOs.Evenement
         [MaxLength(255)]
         public string Libelle { get; set; } = string.Empty;
 
+        /// <summary>Site opérationnel de la session (requis, doit appartenir à la société).</summary>
+        [Required]
+        [Range(1, int.MaxValue)]
+        public int IdSite { get; set; }
+
         [Required]
         public DateTime StartAtUtc { get; set; }
 
@@ -33,5 +38,8 @@ namespace CongoTravel.Models.DTOs.Evenement
 
         /// <summary>Sièges hors section (mode <c>SeatNumbered</c>).</summary>
         public List<EvenementCreateSessionSeatDto>? Seats { get; set; }
+
+        /// <summary>Photos optionnelles à la création (max 3).</summary>
+        public List<AddEvenementSessionPhotoDto>? Photos { get; set; }
     }
 }

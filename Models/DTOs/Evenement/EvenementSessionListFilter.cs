@@ -8,5 +8,8 @@ namespace CongoTravel.Models.DTOs.Evenement
         public EvenementSessionStatus? Status { get; set; }
 
         public EvenementInventoryMode? InventoryMode { get; set; }
+
+        /// <summary>Filtre optionnel catalogue public (Clients / anonymes).</summary>
+        public int? IdSociete { get; set; }
     }
 }

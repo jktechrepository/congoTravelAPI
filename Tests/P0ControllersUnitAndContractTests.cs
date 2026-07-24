@@ -883,7 +883,7 @@ namespace CongoTravel.Tests
         [InlineData(typeof(BilletController), 16)]
         [InlineData(typeof(FeuilleDeRouteController), 4)]
         [InlineData(typeof(EvenementClasseController), 7)]
-        [InlineData(typeof(EvenementSessionController), 12)]
+        [InlineData(typeof(EvenementSessionController), 15)]
         [InlineData(typeof(EvenementReservationController), 13)]
         [InlineData(typeof(EvenementTicketController), 12)]
         [InlineData(typeof(AuthTestController), 3)]

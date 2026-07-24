@@ -18,6 +18,8 @@ namespace CongoTravel.Models.DTOs.ConfigSociete
         public string? CodeDeviseFraisPlateforme { get; set; }
         public decimal MontAddPaieElectronique { get; set; }
         public string? CodeDeviseMontAddPaieElectronique { get; set; }
+        /// <summary>Poids de bagage offert (kg) ; 0 = aucun.</summary>
+        public decimal PoidsBagageParKiloOffert { get; set; }
         public string? CodeDevisePrincipale { get; set; }
         public DateTime DateCreation { get; set; }
         public DateTime? DateModification { get; set; }

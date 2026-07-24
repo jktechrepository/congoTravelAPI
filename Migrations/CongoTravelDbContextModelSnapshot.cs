@@ -781,6 +781,11 @@ namespace CongoTravel.Migrations
                         .HasColumnType("decimal(18,2)")
                         .HasDefaultValue(0m);
 
+                    b.Property<decimal>("PoidsBagageParKiloOffert")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("decimal(18,2)")
+                        .HasDefaultValue(0m);
+
                     b.Property<decimal>("PourcentageReversementSite")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("decimal(18,2)")
@@ -994,6 +999,9 @@ namespace CongoTravel.Migrations
                     b.Property<int>("IdEvenementReservation")
                         .HasColumnType("int");
 
+                    b.Property<int?>("IdSite")
+                        .HasColumnType("int");
+
                     b.Property<string>("IdempotencyKey")
                         .HasMaxLength(120)
                         .HasColumnType("varchar(120)");
@@ -1028,6 +1036,9 @@ namespace CongoTravel.Migrations
                         .HasDefaultValue(1m);
 
                     b.HasKey("IdEvenementPayment");
+
+                    b.HasIndex("IdSite")
+                        .HasDatabaseName("IX_EvenementPayments_IdSite");
 
                     b.HasIndex("IdempotencyKey")
                         .IsUnique()
@@ -1073,6 +1084,9 @@ namespace CongoTravel.Migrations
                     b.Property<int>("IdEvenementSession")
                         .HasColumnType("int");
 
+                    b.Property<int?>("IdSite")
+                        .HasColumnType("int");
+
                     b.Property<int>("IdSociete")
                         .HasColumnType("int");
 
@@ -1095,6 +1109,9 @@ namespace CongoTravel.Migrations
                         .HasColumnType("enum('HOLD','CONFIRMED','CANCELLED','EXPIRED')");
 
                     b.HasKey("IdEvenementReservation");
+
+                    b.HasIndex("IdSite")
+                        .HasDatabaseName("IX_EvenementReservations_IdSite");
 
                     b.HasIndex("IdEvenementSession", "Status")
                         .HasDatabaseName("IX_EvenementReservations_Session_Status");
@@ -1184,6 +1201,9 @@ namespace CongoTravel.Migrations
                     b.Property<DateTime?>("EndAtUtc")
                         .HasColumnType("datetime(6)");
 
+                    b.Property<int?>("IdSite")
+                        .HasColumnType("int");
+
                     b.Property<int>("IdSociete")
                         .HasColumnType("int");
 
@@ -1206,6 +1226,9 @@ namespace CongoTravel.Migrations
                         .HasDefaultValue("Draft");
 
                     b.HasKey("IdEvenementSession");
+
+                    b.HasIndex("IdSite")
+                        .HasDatabaseName("IX_EvenementSessions_IdSite");
 
                     b.HasIndex("IdSociete", "CodeSession")
                         .IsUnique()
@@ -1313,6 +1336,56 @@ namespace CongoTravel.Migrations
                     b.HasCheckConstraint("CK_EvenementSessionGlobalQuotas_StockMax", "`QuantiteHold` + `QuantiteVendue` <= `CapaciteTotale`");
 
                     b.HasCheckConstraint("CK_EvenementSessionGlobalQuotas_StockPositive", "`QuantiteHold` >= 0 AND `QuantiteVendue` >= 0");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.Evenement.EvenementSessionPhoto", b =>
+                {
+                    b.Property<int>("IdEvenementSessionPhoto")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("DateCreation")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("DateModification")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<long?>("FileSize")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("IdEvenementSession")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Ordre")
+                        .HasColumnType("int");
+
+                    b.Property<string>("OriginalFileName")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<byte[]>("PhotoData")
+                        .IsRequired()
+                        .HasColumnType("mediumblob");
+
+                    b.Property<bool>("Statut")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint(1)")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("TypeMIME")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.HasKey("IdEvenementSessionPhoto");
+
+                    b.HasIndex("IdEvenementSession")
+                        .HasDatabaseName("IX_EvenementSessionPhotos_IdEvenementSession");
+
+                    b.HasIndex("IdEvenementSession", "Ordre")
+                        .IsUnique()
+                        .HasDatabaseName("IX_EvenementSessionPhotos_Session_Ordre_UQ");
+
+                    b.ToTable("EvenementSessionPhotos");
                 });
 
             modelBuilder.Entity("CongoTravel.Models.Evenement.EvenementSessionSeat", b =>
@@ -3839,7 +3912,14 @@ namespace CongoTravel.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("CongoTravel.Models.Site", "Site")
+                        .WithMany()
+                        .HasForeignKey("IdSite")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("Reservation");
+
+                    b.Navigation("Site");
                 });
 
             modelBuilder.Entity("CongoTravel.Models.Evenement.EvenementReservation", b =>
@@ -3850,6 +3930,11 @@ namespace CongoTravel.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("CongoTravel.Models.Site", "Site")
+                        .WithMany()
+                        .HasForeignKey("IdSite")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("CongoTravel.Models.Societe", "Societe")
                         .WithMany()
                         .HasForeignKey("IdSociete")
@@ -3857,6 +3942,8 @@ namespace CongoTravel.Migrations
                         .IsRequired();
 
                     b.Navigation("Session");
+
+                    b.Navigation("Site");
 
                     b.Navigation("Societe");
                 });
@@ -3888,11 +3975,18 @@ namespace CongoTravel.Migrations
 
             modelBuilder.Entity("CongoTravel.Models.Evenement.EvenementSession", b =>
                 {
+                    b.HasOne("CongoTravel.Models.Site", "Site")
+                        .WithMany()
+                        .HasForeignKey("IdSite")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("CongoTravel.Models.Societe", "Societe")
                         .WithMany()
                         .HasForeignKey("IdSociete")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("Site");
 
                     b.Navigation("Societe");
                 });
@@ -3921,6 +4015,17 @@ namespace CongoTravel.Migrations
                     b.HasOne("CongoTravel.Models.Evenement.EvenementSession", "Session")
                         .WithOne("GlobalQuota")
                         .HasForeignKey("CongoTravel.Models.Evenement.EvenementSessionGlobalQuota", "IdEvenementSession")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Session");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.Evenement.EvenementSessionPhoto", b =>
+                {
+                    b.HasOne("CongoTravel.Models.Evenement.EvenementSession", "Session")
+                        .WithMany("Photos")
+                        .HasForeignKey("IdEvenementSession")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -4711,6 +4816,8 @@ namespace CongoTravel.Migrations
                     b.Navigation("ClassQuotas");
 
                     b.Navigation("GlobalQuota");
+
+                    b.Navigation("Photos");
 
                     b.Navigation("Reservations");
 
