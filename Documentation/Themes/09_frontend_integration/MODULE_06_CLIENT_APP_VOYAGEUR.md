@@ -1,6 +1,7 @@
 # MODULE 06 — App client voyageur
 
-> Retour : [Document maître](DOCUMENTATION_COMPLETE_INTEGRATION_FRONTEND.md)
+> Retour : [Document maître](DOCUMENTATION_COMPLETE_INTEGRATION_FRONTEND.md)  
+> Guide Vue / Flutter (vérification email) : [INTEGRATION_VERIFICATION_EMAIL_VUE_FLUTTER.md](INTEGRATION_VERIFICATION_EMAIL_VUE_FLUTTER.md)
 
 ---
 
@@ -31,16 +32,50 @@ X-Device-Id: <uuid-stable-par-installation>
 }
 ```
 
-### Response 200
+`emailClient` est **optionnel**. S’il est renseigné : format validé + unicité, puis un **email de vérification avec lien** est envoyé (SMTP). Sans email, pas de vérification.
+
+### Response 201 (extrait)
 
 ```json
 {
   "success": true,
-  "message": "Inscription reussie",
-  "idClient": 42,
-  "emailVerificationRequired": true
+  "data": {
+    "idClient": 42,
+    "emailClient": "jean@example.com",
+    "message": "Inscription réussie !",
+    "emailVerificationRequired": true,
+    "emailVerificationSent": true,
+    "welcomeMessage": "Bienvenue sur CongoTravel ! Vérifiez votre boîte mail..."
+  }
 }
 ```
+
+### Vérification email (lien)
+
+> Guide d’intégration Vue.js / Flutter : [INTEGRATION_VERIFICATION_EMAIL_VUE_FLUTTER.md](INTEGRATION_VERIFICATION_EMAIL_VUE_FLUTTER.md)
+
+1. L’utilisateur reçoit un mail CongoTravel avec un bouton / lien :
+   `{FrontendSettings:BaseUrl}{VerifyEmailPath}?token=...`
+   (défaut : `https://…/verify-email?token=…`, validité **24 h**).
+2. Le front (Vue / Flutter deep link) lit `token` et appelle :
+
+```
+POST /api/Client/verify-email
+{ "token": "<token-du-lien>" }
+```
+
+Réponse OK : `{ "success": true, "message": "Adresse email vérifiée avec succès." }`
+
+3. Renvoi (anti-énumération, rate limit comme check-email) :
+
+```
+POST /api/Client/resend-verification-email
+{ "email": "jean@example.com" }
+```
+
+Config API : `FrontendSettings:BaseUrl`, `FrontendSettings:VerifyEmailPath` (`/verify-email`).
+
+Google / Apple : pas de mail CongoTravel — `email_verified` vient du provider.
 
 ### Gestion 429 (rate limit)
 

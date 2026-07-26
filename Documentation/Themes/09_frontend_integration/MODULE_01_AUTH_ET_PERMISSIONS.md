@@ -1,6 +1,7 @@
 # MODULE 01 — Authentification et permissions
 
-> Retour : [Document maître](DOCUMENTATION_COMPLETE_INTEGRATION_FRONTEND.md)
+> Retour : [Document maître](DOCUMENTATION_COMPLETE_INTEGRATION_FRONTEND.md)  
+> Login social (Vue + Flutter) : [INTEGRATION_LOGIN_GOOGLE_APPLE_VUE_FLUTTER.md](INTEGRATION_LOGIN_GOOGLE_APPLE_VUE_FLUTTER.md)
 
 ---
 
@@ -94,6 +95,8 @@
 
 ## POST `/api/Utilisateur/auth/google`
 
+> Guide d’intégration Vue.js / Flutter : [INTEGRATION_LOGIN_GOOGLE_APPLE_VUE_FLUTTER.md](INTEGRATION_LOGIN_GOOGLE_APPLE_VUE_FLUTTER.md)
+
 Connexion / première inscription via **ID token Google** (vérifié côté serveur).
 
 ### Request
@@ -124,6 +127,8 @@ Config API : `GoogleAuth:ClientIds` (audiences Android / iOS / Web).
 ---
 
 ## POST `/api/Utilisateur/auth/apple`
+
+> Guide d’intégration Vue.js / Flutter : [INTEGRATION_LOGIN_GOOGLE_APPLE_VUE_FLUTTER.md](INTEGRATION_LOGIN_GOOGLE_APPLE_VUE_FLUTTER.md)
 
 Connexion / première inscription via **identity token Apple** (JWT vérifié côté serveur via JWKS Apple).
 

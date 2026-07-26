@@ -100,7 +100,8 @@ namespace CongoTravel.Tests
                 null!,
                 repo.Object,
                 db,
-                NullLogger<ClientController>.Instance);
+                NullLogger<ClientController>.Instance,
+                new Mock<IEmailVerificationService>().Object);
 
             var action = await controller.GetClients(new ClientPagedSearchRequestDto { PageNumber = 1, PageSize = 20 });
             var ok = Assert.IsType<OkObjectResult>(action.Result);

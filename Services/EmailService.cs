@@ -202,6 +202,49 @@ namespace CongoTravelAPI.Services
         }
 
         /// <summary>
+        /// Envoie un email avec le lien de vérification d'adresse
+        /// </summary>
+        public async Task<bool> SendEmailVerificationLinkAsync(string email, string nomComplet, string verificationUrl)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(email))
+                {
+                    _logger.LogWarning("Email non fourni. Envoi de vérification ignoré.");
+                    return false;
+                }
+
+                if (string.IsNullOrWhiteSpace(verificationUrl))
+                {
+                    _logger.LogWarning("URL de vérification manquante. Envoi ignoré.");
+                    return false;
+                }
+
+                _logger.LogInformation("Préparation de l'email de vérification pour {Email}...", email);
+
+                string subject = "CongoTravel - Vérifiez votre adresse email";
+                string htmlBody = CreateEmailVerificationLinkTemplate(nomComplet, verificationUrl);
+                string plainTextBody =
+                    $"Bonjour {nomComplet},\n\n" +
+                    "Merci de vous être inscrit sur CongoTravel. Pour confirmer que cette adresse vous appartient, ouvrez le lien suivant :\n\n" +
+                    $"{verificationUrl}\n\n" +
+                    "Ce lien expire dans 24 heures.\n\n" +
+                    "Si vous n'avez pas créé de compte, ignorez cet email.\n\n" +
+                    "Cordialement,\nL'équipe CongoTravel";
+
+                bool success = await SendEmailAsync(email, nomComplet, subject, plainTextBody, htmlBody);
+                if (success)
+                    _logger.LogInformation("Email de vérification envoyé à {Email}", email);
+                return success;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur lors de l'envoi de l'email de vérification à {Email}", email);
+                return false;
+            }
+        }
+
+        /// <summary>
         /// Méthode générique d'envoi d'email via SMTP
         /// </summary>
         private async Task<bool> SendEmailAsync(
@@ -756,6 +799,61 @@ CongoTravel Platform - Votre partenaire éducatif
         <div class='footer'>
             <p class='footer-text'>Cet email a été envoyé automatiquement par CongoTravel Platform.</p>
             <p class='footer-text'>© 2025 CongoTravel. Tous droits réservés.</p>
+        </div>
+    </div>
+</body>
+</html>";
+        }
+
+        /// <summary>
+        /// Template HTML — lien de vérification d'email
+        /// </summary>
+        private string CreateEmailVerificationLinkTemplate(string nomComplet, string verificationUrl)
+        {
+            return $@"
+<!DOCTYPE html>
+<html lang='fr'>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <title>Vérifiez votre email - CongoTravel</title>
+    <style>
+        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; background-color: #f5f5f5; margin: 0; padding: 0; line-height: 1.6; }}
+        .email-wrapper {{ max-width: 600px; margin: 0 auto; background-color: #ffffff; }}
+        .header {{ background-color: #232f3e; padding: 30px 40px; text-align: center; }}
+        .header-logo {{ color: #ffffff; font-size: 28px; font-weight: 600; margin: 0; }}
+        .content {{ padding: 40px; color: #232f3e; }}
+        .title {{ font-size: 24px; font-weight: 600; margin: 0 0 20px 0; }}
+        .message {{ font-size: 16px; margin: 0 0 24px 0; }}
+        .btn {{ display: inline-block; background-color: #ff9900; color: #232f3e !important; text-decoration: none; font-weight: 600; padding: 14px 28px; border-radius: 4px; }}
+        .link-fallback {{ font-size: 13px; color: #666666; word-break: break-all; margin-top: 24px; }}
+        .footer {{ background-color: #f5f5f5; padding: 24px 40px; text-align: center; font-size: 12px; color: #666666; }}
+    </style>
+</head>
+<body>
+    <div class='email-wrapper'>
+        <div class='header'><h1 class='header-logo'>CongoTravel</h1></div>
+        <div class='content'>
+            <h2 class='title'>Confirmez votre adresse email</h2>
+            <p class='message'>Bonjour <strong>{System.Net.WebUtility.HtmlEncode(nomComplet)}</strong>,</p>
+            <p class='message'>
+                Merci de votre inscription. Cliquez sur le bouton ci-dessous pour confirmer que cette adresse vous appartient.
+                Le lien est valable 24 heures.
+            </p>
+            <p style='text-align:center;margin:32px 0;'>
+                <a class='btn' href='{verificationUrl}'>Vérifier mon email</a>
+            </p>
+            <p class='link-fallback'>
+                Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :<br/>
+                {verificationUrl}
+            </p>
+            <p class='message' style='font-size:14px;color:#666666;margin-top:28px;'>
+                Si vous n'avez pas créé de compte CongoTravel, ignorez simplement cet email.
+            </p>
+        </div>
+        <div class='footer'>
+            <p>Cet email a été envoyé automatiquement par CongoTravel.</p>
+            <p>© {DateTime.UtcNow.Year} CongoTravel. Tous droits réservés.</p>
         </div>
     </div>
 </body>

@@ -13,6 +13,7 @@ namespace CongoTravel.Services
     {
         private readonly CongoTravelDbContext _context;
         private readonly IEmailService _emailService;
+        private readonly IEmailVerificationService _emailVerificationService;
         private readonly ISmsNotificationService _smsService;
         private readonly IUtilisateurRepository _utilisateurRepository;
         private readonly ILogger<ClientService> _logger;
@@ -22,6 +23,7 @@ namespace CongoTravel.Services
         public ClientService(
             CongoTravelDbContext context,
             IEmailService emailService,
+            IEmailVerificationService emailVerificationService,
             ISmsNotificationService smsService,
             IUtilisateurRepository utilisateurRepository,
             ILogger<ClientService> logger,
@@ -29,6 +31,7 @@ namespace CongoTravel.Services
         {
             _context = context;
             _emailService = emailService;
+            _emailVerificationService = emailVerificationService;
             _smsService = smsService;
             _utilisateurRepository = utilisateurRepository;
             _logger = logger;
@@ -855,7 +858,8 @@ namespace CongoTravel.Services
                     DateCreation = DateTime.Now,
                     IsConnecte = false,
                     DoitChangerMotDePasse = true,
-                    IdSociete = societe.IdSociete
+                    IdSociete = societe.IdSociete,
+                    EmailVerified = EmailVerificationService.IsSyntheticEmail(email) ? null : false
                 };
 
                 _logger.LogInformation("🔍 Création de l'utilisateur avec les valeurs: NomComplet={NomComplet}, Email={Email}, IdSociete={SocieteId}, IdClient={ClientId}", 
@@ -943,6 +947,20 @@ namespace CongoTravel.Services
                 
                 _logger.LogInformation("✅ Utilisateur Client créé avec UserRole (ID: {UserId}, Role: {RoleName})", 
                     clientUser.IdUtilisateur, clientRole.Nom);
+
+                // Lien de vérification si email réel (preuve de possession de la boîte)
+                if (!string.IsNullOrWhiteSpace(email) && !EmailVerificationService.IsSyntheticEmail(email))
+                {
+                    try
+                    {
+                        await _emailVerificationService.IssueAndSendAsync(clientUser);
+                    }
+                    catch (Exception verifyEx)
+                    {
+                        _logger.LogWarning(verifyEx,
+                            "Échec émission lien vérification email pour client {ClientId}", client.IdClient);
+                    }
+                }
                 
                 // Envoyer l'email de bienvenue (si email fourni)
                 if (!string.IsNullOrWhiteSpace(email))

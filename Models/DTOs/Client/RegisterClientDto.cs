@@ -118,6 +118,27 @@ namespace CongoTravel.Models.DTOs.Client
         public bool Statut { get; set; }
         public string Message { get; set; } = string.Empty;
         public string? WelcomeMessage { get; set; }
+
+        /// <summary>True si un email a été fourni et doit être confirmé via le lien reçu.</summary>
+        public bool EmailVerificationRequired { get; set; }
+
+        /// <summary>True si un email de vérification a bien été émis (SMTP OK).</summary>
+        public bool EmailVerificationSent { get; set; }
+    }
+
+    /// <summary>Body pour confirmer un email via le token du lien.</summary>
+    public class VerifyEmailRequestDto
+    {
+        [Required(ErrorMessage = "Le token est obligatoire")]
+        public string Token { get; set; } = string.Empty;
+    }
+
+    /// <summary>Body pour renvoyer un email de vérification.</summary>
+    public class ResendEmailVerificationRequestDto
+    {
+        [Required(ErrorMessage = "L'email est obligatoire")]
+        [EmailAddress(ErrorMessage = "L'email doit être valide")]
+        public string Email { get; set; } = string.Empty;
     }
 
     /// <summary>

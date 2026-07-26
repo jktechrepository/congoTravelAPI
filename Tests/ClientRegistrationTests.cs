@@ -42,7 +42,8 @@ namespace CongoTravel.Tests
                 null!,
                 repo.Object,
                 db,
-                NullLogger<ClientController>.Instance)
+                NullLogger<ClientController>.Instance,
+                new Mock<IEmailVerificationService>().Object)
             {
                 ControllerContext = new ControllerContext
                 {

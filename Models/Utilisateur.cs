@@ -68,6 +68,10 @@ namespace CongoTravel.Models
         [ValidateNever]
         public ICollection<PasswordResetToken>? PasswordResetTokens { get; set; }
 
+        [JsonIgnore]
+        [ValidateNever]
+        public ICollection<EmailVerificationToken>? EmailVerificationTokens { get; set; }
+
         // Relations avec Agent (nullable)
         public int? IdAgent { get; set; }
 

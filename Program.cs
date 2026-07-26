@@ -380,6 +380,7 @@ builder.Services.AddScoped<INotificationSender, NotificationSender>();
 builder.Services.AddHostedService<NotificationJobWorker>();
 builder.Services.AddEvenementTicketing();
 builder.Services.AddScoped<CongoTravel.Services.Repositories.IEmailService, CongoTravelAPI.Services.EmailService>();
+builder.Services.AddScoped<IEmailVerificationService, EmailVerificationService>();
 
 try
 {

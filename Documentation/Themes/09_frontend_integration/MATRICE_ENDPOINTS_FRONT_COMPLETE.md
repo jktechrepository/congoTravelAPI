@@ -111,7 +111,9 @@
 | `/api/Client` | GET | **Actif** | Non | Admin, Caissier | |
 | `/api/Client` | POST | **Actif** | Non | Admin, Caissier | |
 | `/api/Client/create` | POST | **Absent** | Oui | — | Utiliser `POST /api/Client` |
-| `/api/Client/register` | POST | **Actif** | Non | Public | Inscription |
+| `/api/Client/register` | POST | **Actif** | Non | Public | Inscription ; si email → lien de vérification |
+| `/api/Client/verify-email` | POST | **Actif** | Non | Public | Body `{ token }` — confirme l’email du lien |
+| `/api/Client/resend-verification-email` | POST | **Actif** | Non | Public | Body `{ email }` — renvoi lien (anti-énumération) |
 | `/api/Client/{id}` | GET | **Actif** | Non | Admin, Caissier, Client | |
 | `/api/Client/{id}` | PUT | **Actif** | Non | Admin, Caissier, Client | |
 | `/api/Client/paged` | GET | **Actif** | Non | Admin | |

@@ -36,6 +36,7 @@ namespace CongoTravel.Tests
             return new ClientService(
                 ctx,
                 new Mock<IEmailService>().Object,
+                new Mock<IEmailVerificationService>().Object,
                 new Mock<ISmsNotificationService>().Object,
                 new Mock<IUtilisateurRepository>().Object,
                 NullLogger<ClientService>.Instance,
@@ -61,7 +62,8 @@ namespace CongoTravel.Tests
                 null!,
                 repo,
                 ctx,
-                NullLogger<ClientController>.Instance)
+                NullLogger<ClientController>.Instance,
+                new Mock<IEmailVerificationService>().Object)
             {
                 ControllerContext = new ControllerContext
                 {

@@ -135,88 +135,93 @@ namespace CongoTravel.Services
             string email,
             CancellationToken ct)
         {
-            var clientRole = await _context.Roles.FirstOrDefaultAsync(r => r.Nom == "Client", ct);
-            if (clientRole == null)
-                throw new ExternalAuthException(500, "Le rôle 'Client' n'existe pas.");
-
-            var societe = await _context.Societes.FirstOrDefaultAsync(ct);
-            if (societe == null)
-                throw new ExternalAuthException(500, "Aucune société trouvée. Impossible de créer un compte client.");
-
-            var emailTaken = await _context.Clients
-                .AnyAsync(c => c.EmailClient != null && c.EmailClient.ToLower() == email, ct);
-            if (emailTaken)
-                throw new ExternalAuthException(409, "Cet email est déjà utilisé par un autre client.");
-
-            var nom = string.IsNullOrWhiteSpace(identity.Name) ? email.Split('@')[0] : identity.Name.Trim();
-
-            await using var tx = await _context.Database.BeginTransactionAsync(ct);
-            try
+            // MySqlRetryingExecutionStrategy : transactions utilisateur dans ExecuteAsync.
+            var strategy = _context.Database.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync(async () =>
             {
-                var client = new Client
+                var clientRole = await _context.Roles.FirstOrDefaultAsync(r => r.Nom == "Client", ct);
+                if (clientRole == null)
+                    throw new ExternalAuthException(500, "Le rôle 'Client' n'existe pas.");
+
+                var societe = await _context.Societes.FirstOrDefaultAsync(ct);
+                if (societe == null)
+                    throw new ExternalAuthException(500, "Aucune société trouvée. Impossible de créer un compte client.");
+
+                var emailTaken = await _context.Clients
+                    .AnyAsync(c => c.EmailClient != null && c.EmailClient.ToLower() == email, ct);
+                if (emailTaken)
+                    throw new ExternalAuthException(409, "Cet email est déjà utilisé par un autre client.");
+
+                var nom = string.IsNullOrWhiteSpace(identity.Name) ? email.Split('@')[0] : identity.Name.Trim();
+
+                await using var tx = await _context.Database.BeginTransactionAsync(ct);
+                try
                 {
-                    NomClient = nom,
-                    EmailClient = email,
-                    Telephone = null,
-                    Statut = true,
-                    IsActif = true,
-                    DateCreation = DateTime.UtcNow
-                };
-                _context.Clients.Add(client);
-                await _context.SaveChangesAsync(ct);
+                    var client = new Client
+                    {
+                        NomClient = nom,
+                        EmailClient = email,
+                        Telephone = null,
+                        Statut = true,
+                        IsActif = true,
+                        DateCreation = DateTime.UtcNow
+                    };
+                    _context.Clients.Add(client);
+                    await _context.SaveChangesAsync(ct);
 
-                var randomPassword = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
-                var utilisateur = new Utilisateur
+                    var randomPassword = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+                    var utilisateur = new Utilisateur
+                    {
+                        IdClient = client.IdClient,
+                        ReferenceUtilisateur = Guid.NewGuid(),
+                        NomComplet = nom,
+                        Email = email,
+                        DefaultUsername = $"client_{client.IdClient}_{Guid.NewGuid():N}",
+                        Telephone = null,
+                        PhotoUrl = identity.Picture,
+                        MotDePasseHash = BCrypt.Net.BCrypt.HashPassword(randomPassword),
+                        Statut = true,
+                        DateCreation = DateTime.UtcNow,
+                        IsConnecte = false,
+                        DoitChangerMotDePasse = false,
+                        IdSociete = societe.IdSociete,
+                        AuthProvider = authProvider,
+                        ExternalSubjectId = identity.Sub,
+                        EmailVerified = identity.EmailVerified
+                    };
+
+                    _context.Utilisateurs.Add(utilisateur);
+                    await _context.SaveChangesAsync(ct);
+
+                    _context.UserRoles.Add(new UserRole
+                    {
+                        IdUtilisateur = utilisateur.IdUtilisateur,
+                        IdRole = clientRole.IdRole,
+                        IsPrimary = true,
+                        Statut = true,
+                        DateAttribution = DateTime.UtcNow
+                    });
+                    await _context.SaveChangesAsync(ct);
+                    await tx.CommitAsync(ct);
+
+                    _logger.LogInformation(
+                        "Nouveau compte {Provider} créé: Client {ClientId}, Utilisateur {UserId}, sub {Sub}",
+                        authProvider, client.IdClient, utilisateur.IdUtilisateur, identity.Sub);
+
+                    return utilisateur;
+                }
+                catch (ExternalAuthException)
                 {
-                    IdClient = client.IdClient,
-                    ReferenceUtilisateur = Guid.NewGuid(),
-                    NomComplet = nom,
-                    Email = email,
-                    DefaultUsername = $"client_{client.IdClient}_{Guid.NewGuid():N}",
-                    Telephone = null,
-                    PhotoUrl = identity.Picture,
-                    MotDePasseHash = BCrypt.Net.BCrypt.HashPassword(randomPassword),
-                    Statut = true,
-                    DateCreation = DateTime.UtcNow,
-                    IsConnecte = false,
-                    DoitChangerMotDePasse = false,
-                    IdSociete = societe.IdSociete,
-                    AuthProvider = authProvider,
-                    ExternalSubjectId = identity.Sub,
-                    EmailVerified = identity.EmailVerified
-                };
-
-                _context.Utilisateurs.Add(utilisateur);
-                await _context.SaveChangesAsync(ct);
-
-                _context.UserRoles.Add(new UserRole
+                    await tx.RollbackAsync(ct);
+                    throw;
+                }
+                catch (Exception ex)
                 {
-                    IdUtilisateur = utilisateur.IdUtilisateur,
-                    IdRole = clientRole.IdRole,
-                    IsPrimary = true,
-                    Statut = true,
-                    DateAttribution = DateTime.UtcNow
-                });
-                await _context.SaveChangesAsync(ct);
-                await tx.CommitAsync(ct);
-
-                _logger.LogInformation(
-                    "Nouveau compte {Provider} créé: Client {ClientId}, Utilisateur {UserId}, sub {Sub}",
-                    authProvider, client.IdClient, utilisateur.IdUtilisateur, identity.Sub);
-
-                return utilisateur;
-            }
-            catch (ExternalAuthException)
-            {
-                await tx.RollbackAsync(ct);
-                throw;
-            }
-            catch (Exception ex)
-            {
-                await tx.RollbackAsync(ct);
-                _logger.LogError(ex, "Échec création compte {Provider} pour {Email}", authProvider, email);
-                throw new ExternalAuthException(500, $"Erreur lors de la création du compte {authProvider}.");
-            }
+                    await tx.RollbackAsync(ct);
+                    _logger.LogError(ex, "Échec création compte {Provider} pour {Email}", authProvider, email);
+                    throw new ExternalAuthException(500, $"Erreur lors de la création du compte {authProvider}.");
+                }
+            });
         }
 
         private static string NormalizeEmail(string email) => email.Trim().ToLowerInvariant();

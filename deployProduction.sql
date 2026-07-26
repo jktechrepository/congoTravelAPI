@@ -346,6 +346,18 @@ CREATE TABLE `PasswordResetTokens` (
     CONSTRAINT `FK_PasswordResetTokens_Utilisateurs_IdUtilisateur` FOREIGN KEY (`IdUtilisateur`) REFERENCES `Utilisateurs` (`IdUtilisateur`) ON DELETE CASCADE
 ) CHARACTER SET=utf8mb4;
 
+CREATE TABLE `EmailVerificationTokens` (
+    `IdEmailVerificationToken` int NOT NULL AUTO_INCREMENT,
+    `IdUtilisateur` int NOT NULL,
+    `CodeHash` varchar(128) CHARACTER SET utf8mb4 NOT NULL,
+    `DateCreation` datetime(6) NOT NULL,
+    `DateExpiration` datetime(6) NOT NULL,
+    `DateUtilisation` datetime(6) NULL,
+    `AttemptCount` int NOT NULL,
+    CONSTRAINT `PK_EmailVerificationTokens` PRIMARY KEY (`IdEmailVerificationToken`),
+    CONSTRAINT `FK_EmailVerificationTokens_Utilisateurs_IdUtilisateur` FOREIGN KEY (`IdUtilisateur`) REFERENCES `Utilisateurs` (`IdUtilisateur`) ON DELETE CASCADE
+) CHARACTER SET=utf8mb4;
+
 CREATE TABLE `PlainteClients` (
     `IdPlainte` int NOT NULL AUTO_INCREMENT,
     `IdClient` int NOT NULL,

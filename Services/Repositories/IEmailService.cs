@@ -21,6 +21,11 @@ namespace CongoTravel.Services.Repositories
         Task<bool> SendPasswordChangedConfirmationEmailAsync(string email, string nomComplet, DateTime dateChangement, string adresseIP = null);
 
         /// <summary>
+        /// Envoie un email contenant le lien de vérification d'adresse email
+        /// </summary>
+        Task<bool> SendEmailVerificationLinkAsync(string email, string nomComplet, string verificationUrl);
+
+        /// <summary>
         /// Envoie un email générique
         /// </summary>
         Task<bool> SendGenericEmailAsync(string toEmail, string toName, string subject, string plainTextBody, string htmlBody);

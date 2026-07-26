@@ -31,6 +31,7 @@ namespace CongoTravel.Data
         public DbSet<UserDevice> UserDevices { get; set; }
         public DbSet<SmsLog> SmsLogs { get; set; }
         public DbSet<PasswordResetToken> PasswordResetTokens { get; set; }
+        public DbSet<EmailVerificationToken> EmailVerificationTokens { get; set; }
         public DbSet<RefreshToken> RefreshTokens { get; set; }
         public DbSet<Client> Clients { get; set; }
         public DbSet<CommunicationCampaign> CommunicationCampaigns { get; set; }
@@ -289,6 +290,16 @@ namespace CongoTravel.Data
             modelBuilder.Entity<PasswordResetToken>()
                 .HasOne(t => t.Utilisateur)
                 .WithMany(u => u.PasswordResetTokens)
+                .HasForeignKey(t => t.IdUtilisateur)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Configuration EmailVerificationToken
+            modelBuilder.Entity<EmailVerificationToken>()
+                .HasIndex(t => new { t.IdUtilisateur, t.DateUtilisation });
+
+            modelBuilder.Entity<EmailVerificationToken>()
+                .HasOne(t => t.Utilisateur)
+                .WithMany(u => u.EmailVerificationTokens)
                 .HasForeignKey(t => t.IdUtilisateur)
                 .OnDelete(DeleteBehavior.Cascade);
 

@@ -60,7 +60,7 @@ X-Device-Id: <uuid-stable>             # inscription client (recommandé mobile)
 
 | Étape | Module | Endpoints clés |
 |-------|--------|----------------|
-| 1. Login | [MODULE_01](MODULE_01_AUTH_ET_PERMISSIONS.md) | `POST /Utilisateur/authentifier` |
+| 1. Login | [MODULE_01](MODULE_01_AUTH_ET_PERMISSIONS.md) | `POST /Utilisateur/authentifier` (Google/Apple : [guide Vue/Flutter](INTEGRATION_LOGIN_GOOGLE_APPLE_VUE_FLUTTER.md)) |
 | 2. Permissions | MODULE_01 | `permissions[]` → guards router |
 | 3. Référentiels | [MODULE_09](MODULE_09_REFERENTIELS_ET_COMMUNICATION.md) | Société, Site, Agent, Véhicule |
 | 4. Voyages | [MODULE_02](MODULE_02_TRANSPORT_VOYAGE.md) | CRUD Voyage, Destination, Planification |
@@ -90,8 +90,8 @@ X-Device-Id: <uuid-stable>             # inscription client (recommandé mobile)
 
 | Étape | Module | Endpoints clés |
 |-------|--------|----------------|
-| 1. Inscription | [MODULE_06](MODULE_06_CLIENT_APP_VOYAGEUR.md) | `POST /client/register` + `X-Device-Id` |
-| 2. Login | MODULE_01 | Authentification client |
+| 1. Inscription | [MODULE_06](MODULE_06_CLIENT_APP_VOYAGEUR.md) + [vérif email](INTEGRATION_VERIFICATION_EMAIL_VUE_FLUTTER.md) | `POST /client/register` + lien `verify-email` |
+| 2. Login | MODULE_01 + [guide Google/Apple](INTEGRATION_LOGIN_GOOGLE_APPLE_VUE_FLUTTER.md) | `authentifier` ou `auth/google` / `auth/apple` |
 | 3. Recherche voyage | MODULE_02 | `GET /Voyage/search` |
 | 4. Réservation | MODULE_03 | Multi-passagers |
 | 5. Paiement FlexPay | MODULE_04 | Mobile Money |
@@ -297,11 +297,13 @@ void initApi(String baseUrl) {
 | # | Fiche | Personas | Description |
 |---|-------|----------|-------------|
 | 01 | [MODULE_01_AUTH_ET_PERMISSIONS.md](MODULE_01_AUTH_ET_PERMISSIONS.md) | Tous | Login, refresh, RBAC, guards |
+| — | [INTEGRATION_LOGIN_GOOGLE_APPLE_VUE_FLUTTER.md](INTEGRATION_LOGIN_GOOGLE_APPLE_VUE_FLUTTER.md) | Client (Vue + Flutter) | Se connecter avec Google / Apple |
 | 02 | [MODULE_02_TRANSPORT_VOYAGE.md](MODULE_02_TRANSPORT_VOYAGE.md) | Admin, Agent, Client | Voyages, destinations, véhicules, tarifs |
 | 03 | [MODULE_03_RESERVATION_BILLET.md](MODULE_03_RESERVATION_BILLET.md) | Tous | Réservation, billets, scan QR, embarquement |
 | 04 | [MODULE_04_PAIEMENT_FLEXPAY.md](MODULE_04_PAIEMENT_FLEXPAY.md) | Admin, Agent, Client | Cash, FlexPay, multi-devise, remboursement |
 | 05 | [MODULE_05_EVENEMENT_BILLETTERIE.md](MODULE_05_EVENEMENT_BILLETTERIE.md) | Admin, Client, Gate | Billetterie `api/events/*` — Vue guichet + Flutter catalogue/FlexPay/contrôle entrée |
 | 06 | [MODULE_06_CLIENT_APP_VOYAGEUR.md](MODULE_06_CLIENT_APP_VOYAGEUR.md) | Client | Inscription, dashboard, plaintes |
+| — | [INTEGRATION_VERIFICATION_EMAIL_VUE_FLUTTER.md](INTEGRATION_VERIFICATION_EMAIL_VUE_FLUTTER.md) | Client (Vue + Flutter) | Vérification email par lien à l’inscription |
 | 07 | [MODULE_07_DASHBOARDS_ADMIN.md](MODULE_07_DASHBOARDS_ADMIN.md) | Admin (Vue) | KPIs, reporting, graphiques |
 | 08 | [MODULE_08_SYNC_OFFLINE_AGENT.md](MODULE_08_SYNC_OFFLINE_AGENT.md) | Agent (Flutter) | Sync offline, batch paiements |
 | 09 | [MODULE_09_REFERENTIELS_ET_COMMUNICATION.md](MODULE_09_REFERENTIELS_ET_COMMUNICATION.md) | Admin | Société, site, agent, campagnes |
@@ -316,6 +318,8 @@ Pour la liste exhaustive de toutes les routes : [`DOCUMENTATION_API_ENDPOINTS_CO
 - [`DOCUMENTATION_BACKEND_CONTRACT_FRONTENDS.md`](DOCUMENTATION_BACKEND_CONTRACT_FRONTENDS.md) — contrats payload détaillés
 - [`INTEGRATION_FLUTTER_FLEXPAY.md`](INTEGRATION_FLUTTER_FLEXPAY.md) — FlexPay transport approfondi
 - [`INTEGRATION_VUEJS.md`](INTEGRATION_VUEJS.md) — dashboards Vue détaillés
+- [`INTEGRATION_LOGIN_GOOGLE_APPLE_VUE_FLUTTER.md`](INTEGRATION_LOGIN_GOOGLE_APPLE_VUE_FLUTTER.md) — login social Google / Apple (Vue + Flutter)
+- [`INTEGRATION_VERIFICATION_EMAIL_VUE_FLUTTER.md`](INTEGRATION_VERIFICATION_EMAIL_VUE_FLUTTER.md) — vérification email inscription (Vue + Flutter)
 
 ---
 

@@ -35,6 +35,7 @@ namespace CongoTravel.Tests
             return new ClientService(
                 context,
                 new Mock<IEmailService>().Object,
+                new Mock<IEmailVerificationService>().Object,
                 new Mock<ISmsNotificationService>().Object,
                 new Mock<IUtilisateurRepository>().Object,
                 NullLogger<ClientService>.Instance,

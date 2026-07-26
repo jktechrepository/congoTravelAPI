@@ -26,6 +26,7 @@ namespace CongoTravel.Controllers
         private readonly CongoTravelDbContext _context;
         private readonly ILogger<ClientController> _logger;
         private readonly IClientRepository _clientRepository;
+        private readonly IEmailVerificationService _emailVerificationService;
 
         public ClientController(
             IAuditService auditService,
@@ -33,7 +34,8 @@ namespace CongoTravel.Controllers
             ClientExportService clientExportService,
             IClientRepository clientRepository,
             CongoTravelDbContext context,
-            ILogger<ClientController> logger)
+            ILogger<ClientController> logger,
+            IEmailVerificationService emailVerificationService)
         {
             _clientRepository = clientRepository;
             _auditService = auditService;
@@ -41,6 +43,7 @@ namespace CongoTravel.Controllers
             _clientExportService = clientExportService;
             _context = context;
             _logger = logger;
+            _emailVerificationService = emailVerificationService;
         }
 
         // POST: api/client/register - Endpoint public d'auto-inscription
@@ -139,6 +142,24 @@ namespace CongoTravel.Controllers
                     "Auto-inscription client"
                 );
 
+                var emailVerificationRequired = !string.IsNullOrWhiteSpace(normalizedEmail);
+                var emailVerificationSent = false;
+                if (emailVerificationRequired)
+                {
+                    var userId = await _context.Utilisateurs
+                        .Where(u => u.IdClient == created.IdClient)
+                        .Select(u => (int?)u.IdUtilisateur)
+                        .FirstOrDefaultAsync();
+                    if (userId.HasValue)
+                    {
+                        emailVerificationSent = await _context.EmailVerificationTokens
+                            .AnyAsync(t =>
+                                t.IdUtilisateur == userId.Value
+                                && t.DateUtilisation == null
+                                && t.DateExpiration > DateTime.UtcNow);
+                    }
+                }
+
                 // Préparer la réponse
                 var response = new ClientRegistrationResponseDto
                 {
@@ -150,7 +171,11 @@ namespace CongoTravel.Controllers
                     IsActif = created.IsActif,
                     Statut = created.Statut,
                     Message = "Inscription réussie !",
-                    WelcomeMessage = "Bienvenue sur CongoTravel ! Votre compte a été créé avec succès. Vous pouvez maintenant faire des réservations."
+                    WelcomeMessage = emailVerificationRequired
+                        ? "Bienvenue sur CongoTravel ! Vérifiez votre boîte mail et cliquez sur le lien pour confirmer votre adresse."
+                        : "Bienvenue sur CongoTravel ! Votre compte a été créé avec succès. Vous pouvez maintenant faire des réservations.",
+                    EmailVerificationRequired = emailVerificationRequired,
+                    EmailVerificationSent = emailVerificationSent
                 };
 
                 _logger.LogInformation("Inscription réussie pour le client: {ClientId} - {Email}", created.IdClient, created.EmailClient);
@@ -169,6 +194,42 @@ namespace CongoTravel.Controllers
                     message = "Une erreur est survenue lors de l'inscription" 
                 });
             }
+        }
+
+        /// <summary>
+        /// Confirme l'adresse email via le token reçu dans le lien (email).
+        /// </summary>
+        [HttpPost("verify-email")]
+        [AllowAnonymous]
+        [ProducesResponseType(200)]
+        [ProducesResponseType(400)]
+        public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailRequestDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(new { success = false, message = "Token invalide" });
+
+            var (success, statusCode, message) = await _emailVerificationService.VerifyAsync(dto.Token);
+            if (!success)
+                return StatusCode(statusCode, new { success = false, message });
+
+            return Ok(new { success = true, message });
+        }
+
+        /// <summary>
+        /// Renvoie un email de vérification (réponse générique anti-énumération).
+        /// </summary>
+        [HttpPost("resend-verification-email")]
+        [AllowAnonymous]
+        [EmailCheckRateLimit]
+        [ProducesResponseType(200)]
+        [ProducesResponseType(400)]
+        public async Task<IActionResult> ResendVerificationEmail([FromBody] ResendEmailVerificationRequestDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(new { success = false, message = "Email invalide" });
+
+            var (success, statusCode, message) = await _emailVerificationService.ResendAsync(dto.Email);
+            return StatusCode(statusCode, new { success, message });
         }
 
         // GET: api/client/check-email - Endpoint public pour vérifier la disponibilité d'un email
