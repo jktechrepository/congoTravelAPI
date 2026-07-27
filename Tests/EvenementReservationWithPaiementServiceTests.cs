@@ -10,6 +10,7 @@ using CongoTravel.Models.Evenement.Enums;
 using CongoTravel.Services;
 using CongoTravel.Services.Evenement;
 using CongoTravel.Services.Evenement.Strategies;
+using CongoTravel.Services.Repositories;
 using Xunit;
 
 namespace CongoTravel.Tests
@@ -22,10 +23,29 @@ namespace CongoTravel.Tests
                 .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
                 .Options);
 
+        private static Mock<ICurrentUserService> MockClientUser(int jwtSocieteId = 1)
+        {
+            var mock = new Mock<ICurrentUserService>();
+            mock.SetupGet(u => u.IsStaff).Returns(false);
+            mock.SetupGet(u => u.IsSuperAdmin).Returns(false);
+            mock.SetupGet(u => u.SocieteId).Returns(jwtSocieteId);
+            return mock;
+        }
+
+        private static Mock<ICurrentUserService> MockStaffUser(int jwtSocieteId)
+        {
+            var mock = new Mock<ICurrentUserService>();
+            mock.SetupGet(u => u.IsStaff).Returns(true);
+            mock.SetupGet(u => u.IsSuperAdmin).Returns(false);
+            mock.SetupGet(u => u.SocieteId).Returns(jwtSocieteId);
+            return mock;
+        }
+
         private static EvenementReservationWithPaiementService CreateService(
             CongoTravelDbContext ctx,
             IFlexPayService? flexPay = null,
-            bool flexEnabled = true)
+            bool flexEnabled = true,
+            ICurrentUserService? currentUser = null)
         {
             var hold = new EvenementHoldService(
                 ctx,
@@ -56,6 +76,7 @@ namespace CongoTravel.Tests
                 payment,
                 flexInit,
                 reservation,
+                currentUser ?? MockClientUser().Object,
                 NullLogger<EvenementReservationWithPaiementService>.Instance);
         }
 
@@ -64,9 +85,9 @@ namespace CongoTravel.Tests
         {
             await using var ctx = BuildDb(nameof(CreateCashAsync_hold_and_confirm_in_one_call));
             var (idSociete, idSite, idSession) = await SeedPublishedGlobalSessionAsync(ctx, capacite: 20, prix: 15m);
-            var service = CreateService(ctx);
+            var service = CreateService(ctx, currentUser: MockClientUser(jwtSocieteId: 999).Object);
 
-            var result = await service.CreateCashAsync(idSociete, new EvenementReservationWithPaiementRequestDto
+            var result = await service.CreateCashAsync(new EvenementReservationWithPaiementRequestDto
             {
                 IdEvenementSession = idSession,
                 CustomerRef = "GUICHET-1",
@@ -80,6 +101,7 @@ namespace CongoTravel.Tests
 
             Assert.Equal("Succes", result.TransactionStatut);
             Assert.Equal("CONFIRMED", result.Reservation.Status);
+            Assert.Equal(idSociete, result.Reservation.IdSociete);
             Assert.Equal(idSite, result.Reservation.IdSite);
             Assert.Equal(idSite, result.Payment!.IdSite);
             Assert.Equal("SUCCEEDED", result.Payment!.Status);
@@ -96,11 +118,11 @@ namespace CongoTravel.Tests
         public async Task CreateCashAsync_rejects_electronic_method()
         {
             await using var ctx = BuildDb(nameof(CreateCashAsync_rejects_electronic_method));
-            var (idSociete, _, idSession) = await SeedPublishedGlobalSessionAsync(ctx);
+            var (_, _, idSession) = await SeedPublishedGlobalSessionAsync(ctx);
             var service = CreateService(ctx);
 
             await Assert.ThrowsAsync<InvalidOperationException>(() =>
-                service.CreateCashAsync(idSociete, new EvenementReservationWithPaiementRequestDto
+                service.CreateCashAsync(new EvenementReservationWithPaiementRequestDto
                 {
                     IdEvenementSession = idSession,
                     Items = new List<EvenementHoldItemRequestDto> { new() { Quantity = 1 } },
@@ -123,7 +145,7 @@ namespace CongoTravel.Tests
             var flexApi = EvenementTestFactories.CreateFlexPayApiMock("FP-FACADE-001");
             var service = CreateService(ctx, flexApi.Object);
 
-            var result = await service.InitiateElectronicAsync(idSociete, new EvenementReservationWithPaiementRequestDto
+            var result = await service.InitiateElectronicAsync(new EvenementReservationWithPaiementRequestDto
             {
                 IdEvenementSession = idSession,
                 Items = new List<EvenementHoldItemRequestDto> { new() { Quantity = 2 } },
@@ -137,6 +159,7 @@ namespace CongoTravel.Tests
 
             Assert.Equal("EnAttente", result.TransactionStatut);
             Assert.Equal("HOLD", result.Reservation.Status);
+            Assert.Equal(idSociete, result.Reservation.IdSociete);
             Assert.Equal("PENDING", result.Payment!.Status);
             Assert.Equal("FP-FACADE-001", result.OrderNumber);
             Assert.True(result.FlexPayAccepted);
@@ -153,11 +176,11 @@ namespace CongoTravel.Tests
         public async Task InitiateElectronicAsync_defaults_idSite_from_session_when_omitted()
         {
             await using var ctx = BuildDb(nameof(InitiateElectronicAsync_defaults_idSite_from_session_when_omitted));
-            var (idSociete, idSite, idSession) = await SeedPublishedSessionWithFlexPayAsync(ctx);
+            var (_, idSite, idSession) = await SeedPublishedSessionWithFlexPayAsync(ctx);
             var flexApi = EvenementTestFactories.CreateFlexPayApiMock("FP-FACADE-DEFAULT");
             var service = CreateService(ctx, flexApi.Object);
 
-            var result = await service.InitiateElectronicAsync(idSociete, new EvenementReservationWithPaiementRequestDto
+            var result = await service.InitiateElectronicAsync(new EvenementReservationWithPaiementRequestDto
             {
                 IdEvenementSession = idSession,
                 Items = new List<EvenementHoldItemRequestDto> { new() { Quantity = 1 } },
@@ -178,12 +201,12 @@ namespace CongoTravel.Tests
         public async Task InitiateElectronicAsync_rolls_back_hold_when_flexpay_fails()
         {
             await using var ctx = BuildDb(nameof(InitiateElectronicAsync_rolls_back_hold_when_flexpay_fails));
-            var (idSociete, idSite, idSession) = await SeedPublishedSessionWithFlexPayAsync(ctx);
+            var (_, idSite, idSession) = await SeedPublishedSessionWithFlexPayAsync(ctx);
             // FlexPay événement désactivé → échec après création du hold
             var service = CreateService(ctx, Mock.Of<IFlexPayService>(), flexEnabled: false);
 
             await Assert.ThrowsAsync<InvalidOperationException>(() =>
-                service.InitiateElectronicAsync(idSociete, new EvenementReservationWithPaiementRequestDto
+                service.InitiateElectronicAsync(new EvenementReservationWithPaiementRequestDto
                 {
                     IdEvenementSession = idSession,
                     Items = new List<EvenementHoldItemRequestDto> { new() { Quantity = 1 } },
@@ -201,6 +224,63 @@ namespace CongoTravel.Tests
             var quota = await ctx.EvenementSessionGlobalQuotas.SingleAsync();
             Assert.Equal(0, quota.QuantiteHold);
             Assert.Equal(0, quota.QuantiteVendue);
+        }
+
+        [Fact]
+        public async Task InitiateElectronicAsync_client_uses_session_societe_not_jwt()
+        {
+            await using var ctx = BuildDb(nameof(InitiateElectronicAsync_client_uses_session_societe_not_jwt));
+            var (sessionSociete, idSite, idSession) = await SeedPublishedSessionWithFlexPayAsync(ctx);
+            var flexApi = EvenementTestFactories.CreateFlexPayApiMock("FP-CROSS-TENANT");
+            // JWT Client sur une autre société (ex. 1) vs session organisateur
+            var service = CreateService(
+                ctx,
+                flexApi.Object,
+                currentUser: MockClientUser(jwtSocieteId: sessionSociete + 100).Object);
+
+            var result = await service.InitiateElectronicAsync(new EvenementReservationWithPaiementRequestDto
+            {
+                IdEvenementSession = idSession,
+                Items = new List<EvenementHoldItemRequestDto> { new() { Quantity = 1 } },
+                Paiement = new EvenementReservationPaiementBlockDto
+                {
+                    MethodePaiement = "MOBILE_MONEY",
+                    Phone = "0825099299",
+                    IdSite = idSite
+                }
+            });
+
+            Assert.Equal("EnAttente", result.TransactionStatut);
+            Assert.Equal(sessionSociete, result.Reservation.IdSociete);
+            Assert.Equal("FP-CROSS-TENANT", result.OrderNumber);
+        }
+
+        [Fact]
+        public async Task InitiateElectronicAsync_staff_cannot_buy_other_societe_session()
+        {
+            await using var ctx = BuildDb(nameof(InitiateElectronicAsync_staff_cannot_buy_other_societe_session));
+            var (sessionSociete, idSite, idSession) = await SeedPublishedSessionWithFlexPayAsync(ctx);
+            var staffJwtSociete = sessionSociete + 50;
+            var service = CreateService(
+                ctx,
+                EvenementTestFactories.CreateFlexPayApiMock("FP-STAFF").Object,
+                currentUser: MockStaffUser(staffJwtSociete).Object);
+
+            var ex = await Assert.ThrowsAsync<KeyNotFoundException>(() =>
+                service.InitiateElectronicAsync(new EvenementReservationWithPaiementRequestDto
+                {
+                    IdEvenementSession = idSession,
+                    Items = new List<EvenementHoldItemRequestDto> { new() { Quantity = 1 } },
+                    Paiement = new EvenementReservationPaiementBlockDto
+                    {
+                        MethodePaiement = "MOBILE_MONEY",
+                        Phone = "243900000001",
+                        IdSite = idSite
+                    }
+                }));
+
+            Assert.Contains($"société {staffJwtSociete}", ex.Message);
+            Assert.Equal(0, await ctx.EvenementReservations.CountAsync());
         }
 
         private static async Task<(int IdSociete, int IdSite, int IdSession)> SeedPublishedGlobalSessionAsync(

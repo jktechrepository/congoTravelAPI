@@ -53,5 +53,28 @@ namespace CongoTravel.Tests
             foreach (var expected in ExpectedEvenementPermissionNames)
                 Assert.Contains(expected, adminPermissionNames);
         }
+
+        [Fact]
+        public async Task SeedPermissionsAsync_assigns_hold_and_confirm_to_client_for_flexpay()
+        {
+            await using var ctx = BuildDb(nameof(SeedPermissionsAsync_assigns_hold_and_confirm_to_client_for_flexpay));
+
+            ctx.Roles.Add(new Role { IdRole = 1, Nom = "Super-Admin", Statut = true });
+            ctx.Roles.Add(new Role { IdRole = 10, Nom = "Client", Statut = true });
+            await ctx.SaveChangesAsync();
+
+            await PermissionSeeder.SeedPermissionsAsync(ctx);
+
+            var clientPermissionNames = await ctx.RolePermissions
+                .Where(rp => rp.IdRole == 10)
+                .Select(rp => rp.Permission!.Nom)
+                .ToListAsync();
+
+            Assert.Contains("Evenement.Hold.Create", clientPermissionNames);
+            Assert.Contains("Evenement.Reservation.Confirm", clientPermissionNames);
+            Assert.Contains("Evenement.Session.Read", clientPermissionNames);
+            Assert.DoesNotContain("Evenement.Session.Write", clientPermissionNames);
+            Assert.DoesNotContain("Evenement.Ticket.Check", clientPermissionNames);
+        }
     }
 }

@@ -820,9 +820,10 @@ namespace CongoTravel.Data
                     (p.Categorie == "Billet" && (p.Action == "Read" || p.Action == "ReadAll")) ||
                     (p.Categorie == "Voyage" && (p.Action == "Read" || p.Action == "ReadAll")) ||
                     (p.Categorie == "Destination" && (p.Action == "Read" || p.Action == "ReadAll")) ||
-                    // Événementiel : réservation en ligne (pas contrôle entrée ni admin session)
+                    // Événementiel : achat en ligne FlexPay (hold + confirm) — pas contrôle entrée ni admin session
                     p.Nom == "Evenement.Session.Read" ||
-                    p.Nom == "Evenement.Hold.Create"
+                    p.Nom == "Evenement.Hold.Create" ||
+                    p.Nom == "Evenement.Reservation.Confirm"
                 ).ToList();
 
                 var legacyClientPermissionIds = allPermissions

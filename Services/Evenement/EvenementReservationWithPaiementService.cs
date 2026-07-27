@@ -1,7 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using CongoTravel.Data;
 using CongoTravel.Helpers;
+using CongoTravel.Helpers.Evenement;
 using CongoTravel.Models.DTOs.Evenement;
+using CongoTravel.Models.Evenement.Enums;
+using CongoTravel.Services.Repositories;
 
 namespace CongoTravel.Services.Evenement
 {
@@ -12,6 +15,7 @@ namespace CongoTravel.Services.Evenement
         private readonly IEvenementPaymentService _paymentService;
         private readonly IEvenementFlexPayInitiationService _flexPayInitiationService;
         private readonly IEvenementReservationService _reservationService;
+        private readonly ICurrentUserService _currentUserService;
         private readonly ILogger<EvenementReservationWithPaiementService> _logger;
 
         public EvenementReservationWithPaiementService(
@@ -20,6 +24,7 @@ namespace CongoTravel.Services.Evenement
             IEvenementPaymentService paymentService,
             IEvenementFlexPayInitiationService flexPayInitiationService,
             IEvenementReservationService reservationService,
+            ICurrentUserService currentUserService,
             ILogger<EvenementReservationWithPaiementService> logger)
         {
             _context = context;
@@ -27,11 +32,11 @@ namespace CongoTravel.Services.Evenement
             _paymentService = paymentService;
             _flexPayInitiationService = flexPayInitiationService;
             _reservationService = reservationService;
+            _currentUserService = currentUserService;
             _logger = logger;
         }
 
         public async Task<EvenementReservationWithPaiementResponseDto> CreateCashAsync(
-            int idSociete,
             EvenementReservationWithPaiementRequestDto request,
             CancellationToken cancellationToken = default)
         {
@@ -49,6 +54,9 @@ namespace CongoTravel.Services.Evenement
                 throw new InvalidOperationException(
                     "Cet endpoint accepte uniquement CASH (ou espèces).");
             }
+
+            var idSociete = await ResolvePurchaseSocieteIdAsync(
+                request.IdEvenementSession, cancellationToken);
 
             var effectiveIdSite = await ResolveEffectiveIdSiteAsync(
                 idSociete, request, requireSite: false, cancellationToken);
@@ -93,7 +101,6 @@ namespace CongoTravel.Services.Evenement
         }
 
         public async Task<EvenementReservationWithPaiementResponseDto> InitiateElectronicAsync(
-            int idSociete,
             EvenementReservationWithPaiementRequestDto request,
             CancellationToken cancellationToken = default)
         {
@@ -104,6 +111,9 @@ namespace CongoTravel.Services.Evenement
                     "L'endpoint électronique accepte uniquement MOBILE_MONEY ou CARTE_BANCAIRE. " +
                     "Utilisez POST /api/events/reservations/with-paiement pour CASH.");
             }
+
+            var idSociete = await ResolvePurchaseSocieteIdAsync(
+                request.IdEvenementSession, cancellationToken);
 
             var effectiveIdSite = await ResolveEffectiveIdSiteAsync(
                 idSociete, request, requireSite: true, cancellationToken);
@@ -162,6 +172,48 @@ namespace CongoTravel.Services.Evenement
                 await TryRollbackHoldAsync(hold.IdEvenementReservation, idSociete, ex, cancellationToken);
                 throw;
             }
+        }
+
+        /// <summary>
+        /// Staff : société JWT (guichet). Client / non-staff : société organisatrice de la session Published
+        /// (aligné catalogue public multi-sociétés).
+        /// </summary>
+        private async Task<int> ResolvePurchaseSocieteIdAsync(
+            int idEvenementSession,
+            CancellationToken cancellationToken)
+        {
+            if (_currentUserService.IsStaff && !_currentUserService.IsSuperAdmin)
+            {
+                var jwtSocieteId = EvenementTenancyGuard.ResolveEffectiveSocieteId(_currentUserService);
+                var belongs = await _context.EvenementSessions
+                    .AsNoTracking()
+                    .AnyAsync(
+                        s => s.IdEvenementSession == idEvenementSession && s.IdSociete == jwtSocieteId,
+                        cancellationToken);
+                if (!belongs)
+                {
+                    throw new KeyNotFoundException(
+                        $"Session événement {idEvenementSession} introuvable pour la société {jwtSocieteId}.");
+                }
+
+                return jwtSocieteId;
+            }
+
+            // Client, Super-Admin achat catalogue, ou non-staff : société de la session Published
+            var session = await _context.EvenementSessions
+                .AsNoTracking()
+                .Where(s => s.IdEvenementSession == idEvenementSession
+                            && s.Status == EvenementSessionStatus.Published)
+                .Select(s => new { s.IdSociete })
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (session == null)
+            {
+                throw new KeyNotFoundException(
+                    $"Session événement {idEvenementSession} introuvable ou non publiée.");
+            }
+
+            return session.IdSociete;
         }
 
         private async Task<int?> ResolveEffectiveIdSiteAsync(

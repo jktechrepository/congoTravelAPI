@@ -69,6 +69,9 @@ Guards : [MODULE_01_AUTH_ET_PERMISSIONS.md](MODULE_01_AUTH_ET_PERMISSIONS.md).
 | `Evenement.Session.Write` | CRUD classes, créer/publier sessions, photos write |
 | `Evenement.Hold.Create` | **Obligatoire** avec Confirm pour les 2 POST achat |
 | `Evenement.Reservation.Confirm` | Achat + verify FlexPay + cancel |
+
+**Rôle Client (JWT app voyageur)** : doit avoir **`Evenement.Hold.Create`** et **`Evenement.Reservation.Confirm`** pour `POST .../with-paiement-electronique` (sinon **403** corps vide). `Evenement.Session.Read` pour les listes staff ; le catalogue public est souvent `AllowAnonymous`.
+
 | `Evenement.Ticket.Check` / `Use` | Contrôle entrée |
 | `Evenement.Dashboard.Read` | Dashboard |
 
@@ -82,6 +85,7 @@ Matrice : [MATRICE_ROLES_PERMISSIONS.md](MATRICE_ROLES_PERMISSIONS.md).
 
 - **Anonyme / Client** : sessions `Published` (toutes sociétés) ; `?idSociete=` filtre libre (pas de 403).
 - **Staff** : sessions de sa société ; autre `idSociete` → 403.
+- **Achat Client** (`POST .../with-paiement` / `with-paiement-electronique`) : la réservation est rattachée à la **société organisatrice de la session** (ex. MEDICO), **pas** à `utilisateur.idSociete` du JWT. Un client inscrit sur la société 1 peut donc payer une session Published de la société 12. Le staff guichet reste limité à sa société JWT.
 - Champs utiles UI carte :
 
 | Champ | Usage UI |

@@ -92,9 +92,8 @@ namespace CongoTravel.Controllers
         {
             try
             {
-                var idSociete = EvenementTenancyGuard.ResolveEffectiveSocieteId(_currentUserService);
+                // Société résolue dans le service : staff = JWT ; Client = session Published.
                 var result = await _reservationWithPaiementService.CreateCashAsync(
-                    idSociete,
                     request,
                     cancellationToken);
                 return Ok(result);
@@ -143,9 +142,8 @@ namespace CongoTravel.Controllers
         {
             try
             {
-                var idSociete = EvenementTenancyGuard.ResolveEffectiveSocieteId(_currentUserService);
+                // Société résolue dans le service : staff = JWT ; Client = session Published.
                 var result = await _reservationWithPaiementService.InitiateElectronicAsync(
-                    idSociete,
                     request,
                     cancellationToken);
                 return Ok(result);
