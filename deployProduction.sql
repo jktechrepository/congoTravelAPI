@@ -346,18 +346,6 @@ CREATE TABLE `PasswordResetTokens` (
     CONSTRAINT `FK_PasswordResetTokens_Utilisateurs_IdUtilisateur` FOREIGN KEY (`IdUtilisateur`) REFERENCES `Utilisateurs` (`IdUtilisateur`) ON DELETE CASCADE
 ) CHARACTER SET=utf8mb4;
 
-CREATE TABLE `EmailVerificationTokens` (
-    `IdEmailVerificationToken` int NOT NULL AUTO_INCREMENT,
-    `IdUtilisateur` int NOT NULL,
-    `CodeHash` varchar(128) CHARACTER SET utf8mb4 NOT NULL,
-    `DateCreation` datetime(6) NOT NULL,
-    `DateExpiration` datetime(6) NOT NULL,
-    `DateUtilisation` datetime(6) NULL,
-    `AttemptCount` int NOT NULL,
-    CONSTRAINT `PK_EmailVerificationTokens` PRIMARY KEY (`IdEmailVerificationToken`),
-    CONSTRAINT `FK_EmailVerificationTokens_Utilisateurs_IdUtilisateur` FOREIGN KEY (`IdUtilisateur`) REFERENCES `Utilisateurs` (`IdUtilisateur`) ON DELETE CASCADE
-) CHARACTER SET=utf8mb4;
-
 CREATE TABLE `PlainteClients` (
     `IdPlainte` int NOT NULL AUTO_INCREMENT,
     `IdClient` int NOT NULL,
@@ -1850,6 +1838,158 @@ VALUES ('20260703120104_EvenementSessionGlobalQuotaPricing', '6.0.25');
 
 COMMIT;
 
+START TRANSACTION;
+
+CREATE TABLE `FeuilleDeRoutes` (
+    `IdFeuilleDeRoute` int NOT NULL AUTO_INCREMENT,
+    `IdSociete` int NOT NULL,
+    `IdVoyage` int NOT NULL,
+    `DateEmbarquement` date NOT NULL,
+    `DateGenerationUtc` datetime(6) NOT NULL,
+    `IdUtilisateurGeneration` int NULL,
+    `SocieteNom` varchar(150) CHARACTER SET utf8mb4 NULL,
+    `SocieteTelephone` varchar(50) CHARACTER SET utf8mb4 NULL,
+    `SocieteEmail` varchar(256) CHARACTER SET utf8mb4 NULL,
+    `SocieteAdresse` varchar(500) CHARACTER SET utf8mb4 NULL,
+    `SocieteLogo` longtext CHARACTER SET utf8mb4 NULL,
+    `VoyageDateDepart` datetime(6) NOT NULL,
+    `VoyageHeureDepart` time(6) NOT NULL,
+    `VoyagePrix` int NOT NULL,
+    `VoyageCodeDevise` varchar(3) CHARACTER SET utf8mb4 NOT NULL,
+    `IdDestination` int NOT NULL,
+    `DestinationLibelle` varchar(450) CHARACTER SET utf8mb4 NULL,
+    `IdVehicule` int NOT NULL,
+    `VehiculeImmatriculation` varchar(20) CHARACTER SET utf8mb4 NULL,
+    `VehiculeAlias` varchar(100) CHARACTER SET utf8mb4 NULL,
+    `IdSite` int NULL,
+    `SiteNom` varchar(200) CHARACTER SET utf8mb4 NULL,
+    `NombrePassagers` int NOT NULL,
+    CONSTRAINT `PK_FeuilleDeRoutes` PRIMARY KEY (`IdFeuilleDeRoute`),
+    CONSTRAINT `FK_FeuilleDeRoutes_Societes_IdSociete` FOREIGN KEY (`IdSociete`) REFERENCES `Societes` (`IdSociete`) ON DELETE RESTRICT,
+    CONSTRAINT `FK_FeuilleDeRoutes_Utilisateurs_IdUtilisateurGeneration` FOREIGN KEY (`IdUtilisateurGeneration`) REFERENCES `Utilisateurs` (`IdUtilisateur`) ON DELETE RESTRICT,
+    CONSTRAINT `FK_FeuilleDeRoutes_Voyages_IdVoyage` FOREIGN KEY (`IdVoyage`) REFERENCES `Voyages` (`Id`) ON DELETE RESTRICT
+) CHARACTER SET=utf8mb4;
+
+CREATE TABLE `FeuilleDeRoutePassagers` (
+    `IdFeuilleDeRoutePassager` int NOT NULL AUTO_INCREMENT,
+    `IdFeuilleDeRoute` int NOT NULL,
+    `IdEmbarquement` int NULL,
+    `IdBillet` int NULL,
+    `IdReservationPassenger` int NULL,
+    `IdReservation` int NULL,
+    `NomComplet` varchar(200) CHARACTER SET utf8mb4 NOT NULL,
+    `Telephone` varchar(20) CHARACTER SET utf8mb4 NULL,
+    `Email` varchar(256) CHARACTER SET utf8mb4 NULL,
+    `DocumentType` varchar(50) CHARACTER SET utf8mb4 NULL,
+    `DocumentNumero` varchar(100) CHARACTER SET utf8mb4 NULL,
+    `CodeSiege` varchar(120) CHARACTER SET utf8mb4 NULL,
+    `DateEmbarquementUtc` datetime(6) NULL,
+    `IdUtilisateurEnregistrement` int NULL,
+    CONSTRAINT `PK_FeuilleDeRoutePassagers` PRIMARY KEY (`IdFeuilleDeRoutePassager`),
+    CONSTRAINT `FK_FeuilleDeRoutePassagers_FeuilleDeRoutes_IdFeuilleDeRoute` FOREIGN KEY (`IdFeuilleDeRoute`) REFERENCES `FeuilleDeRoutes` (`IdFeuilleDeRoute`) ON DELETE CASCADE
+) CHARACTER SET=utf8mb4;
+
+CREATE INDEX `IX_FeuilleDeRoutePassagers_IdFeuilleDeRoute` ON `FeuilleDeRoutePassagers` (`IdFeuilleDeRoute`);
+
+CREATE INDEX `IX_FeuilleDeRoutes_IdSociete` ON `FeuilleDeRoutes` (`IdSociete`);
+
+CREATE INDEX `IX_FeuilleDeRoutes_IdUtilisateurGeneration` ON `FeuilleDeRoutes` (`IdUtilisateurGeneration`);
+
+CREATE INDEX `IX_FeuilleDeRoutes_IdVoyage` ON `FeuilleDeRoutes` (`IdVoyage`);
+
+CREATE INDEX `IX_FeuilleDeRoutes_Societe_DateEmbarquement` ON `FeuilleDeRoutes` (`IdSociete`, `DateEmbarquement`);
+
+INSERT INTO `__EFMigrationsHistory` (`MigrationId`, `ProductVersion`)
+VALUES ('20260717104104_FeuilleDeRouteV1', '6.0.25');
+
+COMMIT;
+
+START TRANSACTION;
+
+ALTER TABLE `EvenementPayments` ADD `CodeDeviseTarif` char(3) CHARACTER SET utf8mb4 NOT NULL DEFAULT 'CDF';
+
+ALTER TABLE `EvenementPayments` ADD `MontantTarif` decimal(18,2) NOT NULL DEFAULT 0.0;
+
+ALTER TABLE `EvenementPayments` ADD `TauxVersDevisePaiement` decimal(18,8) NOT NULL DEFAULT 1.0;
+
+
+UPDATE `EvenementPayments`
+SET `MontantTarif` = `Montant`,
+    `CodeDeviseTarif` = `CodeDevise`,
+    `TauxVersDevisePaiement` = 1;
+
+
+INSERT INTO `__EFMigrationsHistory` (`MigrationId`, `ProductVersion`)
+VALUES ('20260717171358_EvenementPaymentDevisePaiement', '6.0.25');
+
+COMMIT;
+
+START TRANSACTION;
+
+CREATE TABLE `EvenementSessionPhotos` (
+    `IdEvenementSessionPhoto` int NOT NULL AUTO_INCREMENT,
+    `IdEvenementSession` int NOT NULL,
+    `PhotoData` mediumblob NOT NULL,
+    `Ordre` int NOT NULL,
+    `OriginalFileName` varchar(100) CHARACTER SET utf8mb4 NULL,
+    `TypeMIME` varchar(50) CHARACTER SET utf8mb4 NULL,
+    `FileSize` bigint NULL,
+    `Statut` tinyint(1) NOT NULL DEFAULT TRUE,
+    `DateCreation` datetime(6) NOT NULL,
+    `DateModification` datetime(6) NULL,
+    CONSTRAINT `PK_EvenementSessionPhotos` PRIMARY KEY (`IdEvenementSessionPhoto`),
+    CONSTRAINT `FK_EvenementSessionPhotos_EvenementSessions_IdEvenementSession` FOREIGN KEY (`IdEvenementSession`) REFERENCES `EvenementSessions` (`IdEvenementSession`) ON DELETE CASCADE
+) CHARACTER SET=utf8mb4;
+
+CREATE INDEX `IX_EvenementSessionPhotos_IdEvenementSession` ON `EvenementSessionPhotos` (`IdEvenementSession`);
+
+CREATE UNIQUE INDEX `IX_EvenementSessionPhotos_Session_Ordre_UQ` ON `EvenementSessionPhotos` (`IdEvenementSession`, `Ordre`);
+
+INSERT INTO `__EFMigrationsHistory` (`MigrationId`, `ProductVersion`)
+VALUES ('20260723101605_EvenementSessionPhotos', '6.0.25');
+
+COMMIT;
+
+START TRANSACTION;
+
+ALTER TABLE `EvenementSessions` ADD `IdSite` int NULL;
+
+ALTER TABLE `EvenementReservations` ADD `IdSite` int NULL;
+
+ALTER TABLE `EvenementPayments` ADD `IdSite` int NULL;
+
+
+UPDATE `EvenementSessions` es
+INNER JOIN (
+    SELECT s.`IdSociete`,
+           COALESCE(
+               MAX(CASE WHEN s.`IsSitePrincipal` = 1 THEN s.`IdSite` END),
+               MIN(s.`IdSite`)
+           ) AS `IdSite`
+    FROM `Sites` s
+    WHERE s.`Statut` = 1
+    GROUP BY s.`IdSociete`
+) pick ON pick.`IdSociete` = es.`IdSociete`
+SET es.`IdSite` = pick.`IdSite`
+WHERE es.`IdSite` IS NULL;
+
+
+CREATE INDEX `IX_EvenementSessions_IdSite` ON `EvenementSessions` (`IdSite`);
+
+CREATE INDEX `IX_EvenementReservations_IdSite` ON `EvenementReservations` (`IdSite`);
+
+CREATE INDEX `IX_EvenementPayments_IdSite` ON `EvenementPayments` (`IdSite`);
+
+ALTER TABLE `EvenementPayments` ADD CONSTRAINT `FK_EvenementPayments_Sites_IdSite` FOREIGN KEY (`IdSite`) REFERENCES `Sites` (`IdSite`) ON DELETE RESTRICT;
+
+ALTER TABLE `EvenementReservations` ADD CONSTRAINT `FK_EvenementReservations_Sites_IdSite` FOREIGN KEY (`IdSite`) REFERENCES `Sites` (`IdSite`) ON DELETE RESTRICT;
+
+ALTER TABLE `EvenementSessions` ADD CONSTRAINT `FK_EvenementSessions_Sites_IdSite` FOREIGN KEY (`IdSite`) REFERENCES `Sites` (`IdSite`) ON DELETE RESTRICT;
+
+INSERT INTO `__EFMigrationsHistory` (`MigrationId`, `ProductVersion`)
+VALUES ('20260724155844_EvenementIdSiteSessionReservationPayment', '6.0.25');
+
+COMMIT;
 
 START TRANSACTION;
 
@@ -1863,11 +2003,45 @@ COMMIT;
 START TRANSACTION;
 
 ALTER TABLE `Utilisateurs` ADD `AuthProvider` varchar(32) CHARACTER SET utf8mb4 NULL;
+
 ALTER TABLE `Utilisateurs` ADD `EmailVerified` tinyint(1) NULL;
+
 ALTER TABLE `Utilisateurs` ADD `ExternalSubjectId` varchar(128) CHARACTER SET utf8mb4 NULL;
+
 CREATE UNIQUE INDEX `IX_Utilisateurs_AuthProvider_ExternalSubjectId` ON `Utilisateurs` (`AuthProvider`, `ExternalSubjectId`);
 
 INSERT INTO `__EFMigrationsHistory` (`MigrationId`, `ProductVersion`)
 VALUES ('20260724193702_AddUtilisateurGoogleAuthFields', '6.0.25');
 
 COMMIT;
+
+START TRANSACTION;
+
+CREATE TABLE `EmailVerificationTokens` (
+    `IdEmailVerificationToken` int NOT NULL AUTO_INCREMENT,
+    `IdUtilisateur` int NOT NULL,
+    `CodeHash` varchar(128) CHARACTER SET utf8mb4 NOT NULL,
+    `DateCreation` datetime(6) NOT NULL,
+    `DateExpiration` datetime(6) NOT NULL,
+    `DateUtilisation` datetime(6) NULL,
+    `AttemptCount` int NOT NULL,
+    CONSTRAINT `PK_EmailVerificationTokens` PRIMARY KEY (`IdEmailVerificationToken`),
+    CONSTRAINT `FK_EmailVerificationTokens_Utilisateurs_IdUtilisateur` FOREIGN KEY (`IdUtilisateur`) REFERENCES `Utilisateurs` (`IdUtilisateur`) ON DELETE CASCADE
+) CHARACTER SET=utf8mb4;
+
+CREATE INDEX `IX_EmailVerificationTokens_IdUtilisateur_DateUtilisation` ON `EmailVerificationTokens` (`IdUtilisateur`, `DateUtilisation`);
+
+INSERT INTO `__EFMigrationsHistory` (`MigrationId`, `ProductVersion`)
+VALUES ('20260725143231_AddEmailVerificationTokens', '6.0.25');
+
+COMMIT;
+
+START TRANSACTION;
+
+ALTER TABLE `ConfigSocietes` ADD `HeuresOuvertureEntreeEvenementAvantDebut` int NOT NULL DEFAULT 3;
+
+INSERT INTO `__EFMigrationsHistory` (`MigrationId`, `ProductVersion`)
+VALUES ('20260801085131_AddConfigSocieteHeuresOuvertureEntreeEvenement', '6.0.25');
+
+COMMIT;
+

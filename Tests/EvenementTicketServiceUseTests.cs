@@ -4,6 +4,7 @@ using CongoTravel.Data;
 using CongoTravel.Models;
 using CongoTravel.Models.Evenement;
 using CongoTravel.Models.Evenement.Enums;
+using CongoTravel.Services;
 using CongoTravel.Services.Evenement;
 using Xunit;
 
@@ -18,7 +19,7 @@ namespace CongoTravel.Tests
                 .Options);
 
         private static EvenementTicketService CreateService(CongoTravelDbContext ctx) =>
-            new(ctx, Microsoft.Extensions.Logging.Abstractions.NullLogger<EvenementTicketService>.Instance);
+            new(ctx, new ConfigSocieteService(ctx), Microsoft.Extensions.Logging.Abstractions.NullLogger<EvenementTicketService>.Instance);
 
         [Fact]
         public async Task UseTicketAsync_marks_issued_ticket_as_used()
@@ -88,14 +89,32 @@ namespace CongoTravel.Tests
             var utcNow = DateTime.UtcNow;
             var (idSociete, ticketCode) = await SeedIssuedTicketAsync(
                 ctx,
-                sessionStart: utcNow.AddHours(2),
-                sessionEnd: utcNow.AddHours(5));
+                sessionStart: utcNow.AddHours(5),
+                sessionEnd: utcNow.AddHours(8));
             var service = CreateService(ctx);
 
             var result = await service.UseTicketAsync(ticketCode, idSociete);
 
             Assert.Equal(400, result.HttpStatusCode);
             Assert.Contains("Entrée pas encore ouverte", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+        }
+
+        [Fact]
+        public async Task UseTicketAsync_allows_entry_within_early_window()
+        {
+            await using var ctx = BuildDb(nameof(UseTicketAsync_allows_entry_within_early_window));
+            var utcNow = DateTime.UtcNow;
+            // Défaut ConfigSociete = 3 h d'avance : start dans 2 h → entrée autorisée
+            var (idSociete, ticketCode) = await SeedIssuedTicketAsync(
+                ctx,
+                sessionStart: utcNow.AddHours(2),
+                sessionEnd: utcNow.AddHours(6));
+            var service = CreateService(ctx);
+
+            var result = await service.UseTicketAsync(ticketCode, idSociete);
+
+            Assert.Equal(200, result.HttpStatusCode);
+            Assert.False(result.Response!.AlreadyUsed);
         }
 
         private static async Task<(int IdSociete, string TicketCode)> SeedIssuedTicketAsync(

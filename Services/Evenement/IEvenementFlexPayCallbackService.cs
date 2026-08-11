@@ -17,5 +17,14 @@ namespace CongoTravel.Services.Evenement
             string orderNumber,
             int idSociete,
             CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Marque le paiement PENDING en FAILED, libère le HOLD si présent, notifie SignalR Failed.
+        /// Utilisé par cancel / decline FlexPay.
+        /// </summary>
+        Task<EvenementFlexPayCallbackProcessResultDto> AbandonPendingPaymentAsync(
+            string orderNumber,
+            string message,
+            CancellationToken cancellationToken = default);
     }
 }

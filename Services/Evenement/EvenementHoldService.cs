@@ -79,6 +79,8 @@ namespace CongoTravel.Services.Evenement
                             $"Session événement {idEvenementSession} introuvable pour la société {idSociete}.");
                     }
 
+                    EvenementSessionSalesEligibilityHelper.EnsureCanSell(session, DateTime.UtcNow);
+
                     var holdStrategy = _holdStrategyFactory.GetStrategy(session.InventoryMode);
                     var holdRequest = new EvenementInventoryHoldRequest
                     {

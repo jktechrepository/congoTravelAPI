@@ -27,6 +27,9 @@ namespace CongoTravel.Tests
             Assert.Equal(ConfigSocieteDefaults.DureeValiditeBilletJours, config.DureeValiditeBilletJours);
             Assert.Equal(ConfigSocieteDefaults.HeuresLimiteReaffectation, config.HeuresLimiteReaffectation);
             Assert.Equal(ConfigSocieteDefaults.JoursAvanceMaxReservationDefault, config.JoursAvanceMaxReservation);
+            Assert.Equal(
+                ConfigSocieteDefaults.HeuresOuvertureEntreeEvenementAvantDebut,
+                config.HeuresOuvertureEntreeEvenementAvantDebut);
         }
 
         [Fact]
@@ -46,6 +49,7 @@ namespace CongoTravel.Tests
                 HeuresLimiteReaffectation = 4,
                 HeuresOuvertureEmbarquementAvantDepart = 2,
                 HeuresFermetureEmbarquementApresJourDepart = 12,
+                HeuresOuvertureEntreeEvenementAvantDebut = 1,
                 DureeHoldFlexPayMinutes = 20,
                 ReaffectationActive = false,
                 PoidsBagageParKiloOffert = 25m
@@ -54,6 +58,7 @@ namespace CongoTravel.Tests
             Assert.Equal(14, updated.DureeValiditeBilletJours);
             Assert.Equal(10m, updated.PenaliteReaffectationPourcentage);
             Assert.Equal(60, updated.JoursAvanceMaxReservation);
+            Assert.Equal(1, updated.HeuresOuvertureEntreeEvenementAvantDebut);
             Assert.False(updated.ReaffectationActive);
             Assert.Equal(25m, updated.PoidsBagageParKiloOffert);
         }

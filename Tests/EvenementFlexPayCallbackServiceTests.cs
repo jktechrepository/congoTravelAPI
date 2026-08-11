@@ -1,10 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using Microsoft.Extensions.Logging.Abstractions;
+using Moq;
 using CongoTravel.Data;
 using CongoTravel.Models.DTOs.FlexPay;
 using CongoTravel.Models.Evenement.Enums;
 using CongoTravel.Services.Evenement;
+using CongoTravel.Services.Repositories;
 using Xunit;
 
 namespace CongoTravel.Tests
@@ -67,9 +68,9 @@ namespace CongoTravel.Tests
         }
 
         [Fact]
-        public async Task ProcessCallbackAsync_marks_payment_failed_on_refusal()
+        public async Task ProcessCallbackAsync_marks_payment_failed_and_releases_hold_on_refusal()
         {
-            await using var ctx = BuildDb(nameof(ProcessCallbackAsync_marks_payment_failed_on_refusal));
+            await using var ctx = BuildDb(nameof(ProcessCallbackAsync_marks_payment_failed_and_releases_hold_on_refusal));
             var (_, idReservation, orderNumber) =
                 await EvenementTestFactories.SeedPendingFlexPayPaymentAsync(ctx, quantity: 1);
             var service = CreateCallbackService(ctx);
@@ -81,13 +82,15 @@ namespace CongoTravel.Tests
             });
 
             Assert.True(result.Success);
+            Assert.False(result.PaymentPending);
             Assert.Equal(idReservation, result.IdEvenementReservation);
 
             var payment = await ctx.EvenementPayments.SingleAsync();
             Assert.Equal(EvenementPaymentStatus.FAILED, payment.Status);
 
             var reservation = await ctx.EvenementReservations.SingleAsync();
-            Assert.Equal(EvenementReservationStatus.HOLD, reservation.Status);
+            Assert.Equal(EvenementReservationStatus.CANCELLED, reservation.Status);
+            Assert.Equal(0, await ctx.EvenementSessionGlobalQuotas.Select(q => q.QuantiteHold).SingleAsync());
         }
 
         [Fact]
@@ -126,6 +129,107 @@ namespace CongoTravel.Tests
             Assert.False(result.Success);
             var payment = await ctx.EvenementPayments.SingleAsync();
             Assert.Equal(EvenementPaymentStatus.FAILED, payment.Status);
+            Assert.Equal(EvenementReservationStatus.CANCELLED,
+                await ctx.EvenementReservations.Select(r => r.Status).SingleAsync());
+        }
+
+        [Fact]
+        public async Task ProcessCallbackAsync_notifies_signalr_on_success()
+        {
+            await using var ctx = BuildDb(nameof(ProcessCallbackAsync_notifies_signalr_on_success));
+            var (_, idReservation, orderNumber) =
+                await EvenementTestFactories.SeedPendingFlexPayPaymentAsync(ctx, quantity: 1, idUtilisateur: 42);
+            var realtime = new Mock<IFlexPayRealtimeNotifier>();
+            var service = EvenementTestFactories.CreateCallbackService(ctx, realtimeNotifier: realtime.Object);
+
+            var result = await service.ProcessCallbackAsync(new FlexPayCallbackDto
+            {
+                Code = "0",
+                OrderNumber = orderNumber,
+                Amount = "20",
+                Currency = "USD"
+            });
+
+            Assert.True(result.Success);
+            var idPayment = result.IdEvenementPayment!.Value;
+            realtime.Verify(
+                n => n.NotifyPaymentConfirmedAsync(
+                    42, orderNumber, idReservation, idPayment, It.IsAny<CancellationToken>()),
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task ProcessCallbackAsync_notifies_signalr_on_refusal()
+        {
+            await using var ctx = BuildDb(nameof(ProcessCallbackAsync_notifies_signalr_on_refusal));
+            var (_, _, orderNumber) =
+                await EvenementTestFactories.SeedPendingFlexPayPaymentAsync(ctx, quantity: 1, idUtilisateur: 7);
+            var realtime = new Mock<IFlexPayRealtimeNotifier>();
+            var service = EvenementTestFactories.CreateCallbackService(ctx, realtimeNotifier: realtime.Object);
+
+            await service.ProcessCallbackAsync(new FlexPayCallbackDto
+            {
+                Code = "1",
+                OrderNumber = orderNumber
+            });
+
+            realtime.Verify(
+                n => n.NotifyPaymentFailedAsync(
+                    7, orderNumber, It.IsAny<string>(), It.IsAny<CancellationToken>()),
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task AbandonPendingPaymentAsync_marks_failed_and_releases_hold()
+        {
+            await using var ctx = BuildDb(nameof(AbandonPendingPaymentAsync_marks_failed_and_releases_hold));
+            var (_, idReservation, orderNumber) =
+                await EvenementTestFactories.SeedPendingFlexPayPaymentAsync(ctx, quantity: 2, idUtilisateur: 9);
+            var realtime = new Mock<IFlexPayRealtimeNotifier>();
+            var service = EvenementTestFactories.CreateCallbackService(ctx, realtimeNotifier: realtime.Object);
+
+            var result = await service.AbandonPendingPaymentAsync(orderNumber, "Paiement annulé.");
+
+            Assert.True(result.Success);
+            Assert.False(result.PaymentPending);
+            Assert.Equal(EvenementPaymentStatus.FAILED,
+                await ctx.EvenementPayments.Select(p => p.Status).SingleAsync());
+            Assert.Equal(EvenementReservationStatus.CANCELLED,
+                await ctx.EvenementReservations.Select(r => r.Status).SingleAsync());
+            Assert.Equal(0, await ctx.EvenementSessionGlobalQuotas.Select(q => q.QuantiteHold).SingleAsync());
+            realtime.Verify(
+                n => n.NotifyPaymentFailedAsync(
+                    9, orderNumber, "Paiement annulé.", It.IsAny<CancellationToken>()),
+                Times.Once);
+            Assert.Equal(idReservation, result.IdEvenementReservation);
+        }
+
+        /// <summary>
+        /// Reproduit le bug prod : réservation déjà trackée sans Lines sur le DbContext partagé
+        /// (CancelAsync voyait Lines vide et le catch avalait l’erreur → HOLD restait).
+        /// </summary>
+        [Fact]
+        public async Task AbandonPendingPaymentAsync_releases_hold_when_reservation_pretracked_without_lines()
+        {
+            await using var ctx = BuildDb(
+                nameof(AbandonPendingPaymentAsync_releases_hold_when_reservation_pretracked_without_lines));
+            var (_, idReservation, orderNumber) =
+                await EvenementTestFactories.SeedPendingFlexPayPaymentAsync(ctx, quantity: 1);
+
+            // Stub tracké sans Include(Lines) — comme l’ancien AbandonPendingPaymentAsync.
+            _ = await ctx.EvenementReservations
+                .FirstAsync(r => r.IdEvenementReservation == idReservation);
+
+            var service = EvenementTestFactories.CreateCallbackService(ctx);
+            var result = await service.AbandonPendingPaymentAsync(orderNumber, "Paiement annulé.");
+
+            Assert.True(result.Success);
+            Assert.False(result.PaymentPending);
+            Assert.Equal(EvenementReservationStatus.CANCELLED,
+                await ctx.EvenementReservations.AsNoTracking().Select(r => r.Status).SingleAsync());
+            Assert.Equal(EvenementPaymentStatus.FAILED,
+                await ctx.EvenementPayments.AsNoTracking().Select(p => p.Status).SingleAsync());
+            Assert.Equal(0, await ctx.EvenementSessionGlobalQuotas.Select(q => q.QuantiteHold).SingleAsync());
         }
 
         private static EvenementFlexPayCallbackService CreateCallbackService(CongoTravelDbContext ctx) =>

@@ -48,6 +48,21 @@ Même contrat pour :
 
 ---
 
+## Formats date / heure (scan)
+
+Contrat actuel (pas de breaking) — sérialisation JSON ASP.NET + convertisseur `TimeSpan` global `HH:mm:ss`.
+
+| Route | Champ | Type / format | Exemple |
+|-------|-------|---------------|---------|
+| `GET /api/Billet/{QrCode}/check` | `dateDepartVoyage` | `DateTime` ISO (souvent minuit pour la date de voyage) | `"2026-05-10T00:00:00"` |
+| | `heureDepartVoyage` | string `HH:mm:ss` | `"08:30:00"` |
+| `GET /api/Billet/qrcode/{qrCode}` | `dateVoyage`, `dateGeneration`, `dateValiditeDebut`, `dateValiditeFin`, … | `DateTime` ISO | `"2026-05-10T00:00:00"` |
+| | `heureVoyage` | string `HH:mm:ss` | `"08:30:00"` |
+
+Côté app : parser l’ISO pour la date et formater `HH:mm:ss` pour l’affichage (ex. `10/05/2026 · 08:30`). Ne pas attendre un fuseau forcé (`Z`) ni un objet TimeSpan.
+
+---
+
 ## Check billet (scan QR) — CRITIQUE embarquement
 
 ```
@@ -90,15 +105,38 @@ GET /api/Billet/{QrCode}/check?idVoyageCible={optional}
 ### Flutter — scan et affichage
 
 ```dart
+String formatDepart(dynamic dateIso, dynamic heureHms) {
+  // dateDepartVoyage: "2026-05-10T00:00:00" → date locale lisible
+  // heureDepartVoyage: "08:30:00" → HH:mm pour l'UI
+  final date = dateIso != null ? DateTime.tryParse(dateIso.toString()) : null;
+  final dateTxt = date == null
+      ? '—'
+      : '${date.day.toString().padLeft(2, '0')}/'
+          '${date.month.toString().padLeft(2, '0')}/'
+          '${date.year}';
+  final heureTxt = (heureHms?.toString() ?? '').length >= 5
+      ? heureHms.toString().substring(0, 5) // "08:30"
+      : (heureHms?.toString() ?? '—');
+  return '$dateTxt · $heureTxt';
+}
+
 Future<void> onQrScanned(String qr) async {
   final resp = await api.get('/Billet/$qr/check');
   final data = resp.data;
+  final depart = formatDepart(
+    data['dateDepartVoyage'],
+    data['heureDepartVoyage'],
+  );
   // nomClient = passager réel sur cette route
   showDialog(
     context: context,
     builder: (_) => AlertDialog(
       title: Text(data['nomClient'] ?? 'Inconnu'),
-      content: Text('Tel: ${data['telephoneClient']}\n${data['message']}'),
+      content: Text(
+        'Tel: ${data['telephoneClient']}\n'
+        'Départ: $depart\n'
+        '${data['message']}',
+      ),
       actions: data['embarquementAutorise'] == true
           ? [TextButton(onPressed: () => embarquer(...), child: Text('Embarquer'))]
           : null,
@@ -126,6 +164,27 @@ GET /api/Billet/qrcode/{qrCode}
 ```
 
 Retourne `BilletResponseDto[]`. Même sémantique identité que check (`nomClient` = passager).
+
+Extrait minimal (dates / heures) :
+
+```json
+[
+  {
+    "idBillet": 502,
+    "qrCode": "ABC-123",
+    "nomClient": "Passager Réel",
+    "dateVoyage": "2026-05-10T00:00:00",
+    "heureVoyage": "08:30:00",
+    "dateGeneration": "2026-05-01T14:22:00",
+    "dateValiditeDebut": "2026-05-10T00:00:00",
+    "dateValiditeFin": "2026-05-11T00:00:00",
+    "villeDepart": "Kinshasa",
+    "villeArrivee": "Matadi"
+  }
+]
+```
+
+Affichage UI : même logique que le check (`dateVoyage` + `heureVoyage`).
 
 ---
 

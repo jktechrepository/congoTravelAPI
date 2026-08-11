@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Moq;
 using CongoTravel.Data;
 using CongoTravel.Models.Evenement.Enums;
 using CongoTravel.Services.Evenement;
@@ -90,8 +91,11 @@ namespace CongoTravel.Tests
             Assert.False(result.IsConfirmSuccess);
             Assert.NotNull(result.StatusOnly);
             Assert.True(result.StatusOnly!.Success);
+            Assert.False(result.StatusOnly.PaymentPending);
             Assert.Equal(EvenementPaymentStatus.FAILED,
                 await ctx.EvenementPayments.Select(p => p.Status).SingleAsync());
+            Assert.Equal(EvenementReservationStatus.CANCELLED,
+                await ctx.EvenementReservations.Select(r => r.Status).SingleAsync());
         }
 
         [Fact]
@@ -106,6 +110,95 @@ namespace CongoTravel.Tests
 
             await Assert.ThrowsAsync<KeyNotFoundException>(() =>
                 service.VerifyAndFinalizeAsync(orderNumber, idSociete: 99999));
+        }
+
+        [Fact]
+        public async Task VerifyAndFinalizeAsync_expired_hold_exits_pending()
+        {
+            await using var ctx = BuildDb(nameof(VerifyAndFinalizeAsync_expired_hold_exits_pending));
+            var (idSociete, _, orderNumber) =
+                await EvenementTestFactories.SeedPendingFlexPayPaymentAsync(ctx, quantity: 1, idUtilisateur: 3);
+            var reservation = await ctx.EvenementReservations.SingleAsync();
+            reservation.ExpiresAtUtc = DateTime.UtcNow.AddMinutes(-10);
+            await ctx.SaveChangesAsync();
+
+            var realtime = new Mock<CongoTravel.Services.Repositories.IFlexPayRealtimeNotifier>();
+            var service = EvenementTestFactories.CreateCallbackService(
+                ctx,
+                EvenementTestFactories.CreateFlexPayCheckMock("2"),
+                realtime.Object);
+
+            var result = await service.VerifyAndFinalizeAsync(orderNumber, idSociete);
+
+            Assert.False(result.IsConfirmSuccess);
+            Assert.NotNull(result.StatusOnly);
+            Assert.False(result.StatusOnly!.PaymentPending);
+            Assert.Contains("expiré", result.StatusOnly.Message, StringComparison.OrdinalIgnoreCase);
+            Assert.Equal(EvenementPaymentStatus.FAILED,
+                await ctx.EvenementPayments.Select(p => p.Status).SingleAsync());
+            Assert.Equal(EvenementReservationStatus.CANCELLED,
+                await ctx.EvenementReservations.Select(r => r.Status).SingleAsync());
+            realtime.Verify(
+                n => n.NotifyPaymentFailedAsync(
+                    3, orderNumber, It.IsAny<string>(), It.IsAny<CancellationToken>()),
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task VerifyAndFinalizeAsync_cancelled_reservation_pending_payment_exits_pending()
+        {
+            await using var ctx = BuildDb(
+                nameof(VerifyAndFinalizeAsync_cancelled_reservation_pending_payment_exits_pending));
+            var (idSociete, _, orderNumber) =
+                await EvenementTestFactories.SeedPendingFlexPayPaymentAsync(ctx, quantity: 1);
+            var reservation = await ctx.EvenementReservations.SingleAsync();
+            reservation.Status = EvenementReservationStatus.CANCELLED;
+            reservation.ExpiresAtUtc = null;
+            await ctx.SaveChangesAsync();
+
+            var flexPay = EvenementTestFactories.CreateFlexPayCheckMockBuilder("2");
+            var service = EvenementTestFactories.CreateCallbackService(ctx, flexPay.Object);
+
+            var result = await service.VerifyAndFinalizeAsync(orderNumber, idSociete);
+
+            Assert.False(result.IsConfirmSuccess);
+            Assert.False(result.StatusOnly!.PaymentPending);
+            Assert.Equal(EvenementPaymentStatus.FAILED,
+                await ctx.EvenementPayments.Select(p => p.Status).SingleAsync());
+            flexPay.Verify(
+                f => f.VerifierStatutTransactionAsync(
+                    It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+                Times.Never);
+        }
+
+        [Fact]
+        public async Task VerifyAndFinalizeAsync_cancelled_reservation_failed_payment_exits_pending()
+        {
+            await using var ctx = BuildDb(
+                nameof(VerifyAndFinalizeAsync_cancelled_reservation_failed_payment_exits_pending));
+            var (idSociete, _, orderNumber) =
+                await EvenementTestFactories.SeedPendingFlexPayPaymentAsync(ctx, quantity: 1);
+            var reservation = await ctx.EvenementReservations.SingleAsync();
+            reservation.Status = EvenementReservationStatus.CANCELLED;
+            reservation.ExpiresAtUtc = null;
+            var payment = await ctx.EvenementPayments.SingleAsync();
+            payment.Status = EvenementPaymentStatus.FAILED;
+            await ctx.SaveChangesAsync();
+
+            var flexPay = EvenementTestFactories.CreateFlexPayCheckMockBuilder("2");
+            var service = EvenementTestFactories.CreateCallbackService(ctx, flexPay.Object);
+
+            var result = await service.VerifyAndFinalizeAsync(orderNumber, idSociete);
+
+            Assert.False(result.IsConfirmSuccess);
+            Assert.False(result.StatusOnly!.PaymentPending);
+            Assert.Contains("non confirmé", result.StatusOnly.Message, StringComparison.OrdinalIgnoreCase);
+            Assert.Equal(EvenementPaymentStatus.FAILED,
+                await ctx.EvenementPayments.Select(p => p.Status).SingleAsync());
+            flexPay.Verify(
+                f => f.VerifierStatutTransactionAsync(
+                    It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+                Times.Never);
         }
     }
 }

@@ -37,13 +37,35 @@ namespace CongoTravel.Configuration
         /// </summary>
         public string EventCallbackRelativePath { get; set; } = "/api/events/flexpay/callback";
 
+        /// <summary>
+        /// Chemin relatif callback FlexPay site touristique (défaut <c>/api/sites-touristiques/flexpay/callback</c>).
+        /// </summary>
+        public string SiteTouristiqueCallbackRelativePath { get; set; } = "/api/sites-touristiques/flexpay/callback";
+
+        /// <summary>
+        /// Chemin relatif callback FlexPay restaurant (défaut <c>/api/restaurants/flexpay/callback</c>).
+        /// </summary>
+        public string RestaurantCallbackRelativePath { get; set; } = "/api/restaurants/flexpay/callback";
+
         /// <summary>Kill-switch dédié événement ; si <c>false</c>, seul <see cref="Enabled"/> global s'applique.</summary>
         public bool? EventEnabled { get; set; }
+
+        /// <summary>Kill-switch dédié site touristique ; si null, fallback sur <see cref="Enabled"/>.</summary>
+        public bool? SiteTouristiqueEnabled { get; set; }
+
+        /// <summary>Kill-switch dédié restaurant ; si null, fallback sur <see cref="Enabled"/>.</summary>
+        public bool? RestaurantEnabled { get; set; }
 
         /// <summary>Kill-switch global pour le reversement automatique post-paiement électronique.</summary>
         public bool AutoReversementEnabled { get; set; } = true;
 
         /// <summary>FlexPay événement actif (fallback sur <see cref="Enabled"/> si null).</summary>
         public bool IsEventEnabled => EventEnabled ?? Enabled;
+
+        /// <summary>FlexPay site touristique actif (fallback sur <see cref="Enabled"/> si null).</summary>
+        public bool IsSiteTouristiqueEnabled => SiteTouristiqueEnabled ?? Enabled;
+
+        /// <summary>FlexPay restaurant actif (fallback sur <see cref="Enabled"/> si null).</summary>
+        public bool IsRestaurantEnabled => RestaurantEnabled ?? Enabled;
     }
 }

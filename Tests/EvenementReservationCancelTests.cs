@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Moq;
 using CongoTravel.Data;
 using CongoTravel.Models;
 using CongoTravel.Models.DTOs.Evenement;
@@ -8,6 +9,7 @@ using CongoTravel.Models.Evenement.Enums;
 using CongoTravel.Services;
 using CongoTravel.Services.Evenement;
 using CongoTravel.Services.Evenement.Strategies;
+using CongoTravel.Services.Repositories;
 using Xunit;
 
 namespace CongoTravel.Tests
@@ -20,13 +22,16 @@ namespace CongoTravel.Tests
                 .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
                 .Options);
 
-        private static EvenementReservationService CreateCancelService(CongoTravelDbContext ctx) =>
+        private static EvenementReservationService CreateCancelService(
+            CongoTravelDbContext ctx,
+            IFlexPayRealtimeNotifier? realtimeNotifier = null) =>
             new(
                 ctx,
                 new EvenementInventoryCancelStrategyFactory(
                     new EvenementGlobalQuotaCancelStrategy(ctx),
                     new EvenementClassQuotaCancelStrategy(ctx),
                     new EvenementSeatNumberedCancelStrategy(ctx)),
+                realtimeNotifier ?? Mock.Of<IFlexPayRealtimeNotifier>(),
                 Microsoft.Extensions.Logging.Abstractions.NullLogger<EvenementReservationService>.Instance);
 
         private static EvenementHoldService CreateHoldService(CongoTravelDbContext ctx) =>
@@ -112,6 +117,29 @@ namespace CongoTravel.Tests
 
             await Assert.ThrowsAsync<InvalidOperationException>(() =>
                 service.CancelAsync(idReservation, idSociete));
+        }
+
+        [Fact]
+        public async Task CancelAsync_hold_with_pending_flexpay_marks_payment_failed_and_notifies()
+        {
+            await using var ctx = BuildDb(
+                nameof(CancelAsync_hold_with_pending_flexpay_marks_payment_failed_and_notifies));
+            var (idSociete, idReservation, orderNumber) =
+                await EvenementTestFactories.SeedPendingFlexPayPaymentAsync(ctx, quantity: 1, idUtilisateur: 11);
+            var realtime = new Mock<IFlexPayRealtimeNotifier>();
+            var service = CreateCancelService(ctx, realtime.Object);
+
+            var result = await service.CancelAsync(idReservation, idSociete);
+
+            Assert.Equal("CANCELLED", result.Reservation.Status);
+            Assert.Null(await ctx.EvenementReservations.Select(r => r.ExpiresAtUtc).SingleAsync());
+            Assert.Equal(EvenementPaymentStatus.FAILED,
+                await ctx.EvenementPayments.Select(p => p.Status).SingleAsync());
+            Assert.Equal(0, await ctx.EvenementSessionGlobalQuotas.Select(q => q.QuantiteHold).SingleAsync());
+            realtime.Verify(
+                n => n.NotifyPaymentFailedAsync(
+                    11, orderNumber, "Paiement annulé.", It.IsAny<CancellationToken>()),
+                Times.Once);
         }
 
         private static async Task<(int IdSociete, int IdReservation)> SeedHoldReservationAsync(

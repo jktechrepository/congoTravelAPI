@@ -22,7 +22,8 @@ namespace CongoTravel.Helpers.Evenement
             EvenementTicket? ticket,
             EvenementReservation? reservation,
             EvenementSession? session,
-            DateTime utcNow)
+            DateTime utcNow,
+            int heuresOuvertureAvantDebut = 0)
         {
             if (ticket == null)
             {
@@ -101,13 +102,13 @@ namespace CongoTravel.Helpers.Evenement
                 };
             }
 
-            if (!IsWithinEntryWindow(session, utcNow))
+            if (!IsWithinEntryWindow(session, utcNow, heuresOuvertureAvantDebut))
             {
                 return new Result
                 {
                     EntreeAutorisee = false,
                     Statut = "HorsFenetre",
-                    Message = BuildHorsFenetreMessage(session, utcNow),
+                    Message = BuildHorsFenetreMessage(session, utcNow, heuresOuvertureAvantDebut),
                     SuggestedHttpStatus = StatusCodes.Status400BadRequest
                 };
             }
@@ -121,27 +122,51 @@ namespace CongoTravel.Helpers.Evenement
             };
         }
 
-        public static bool IsWithinEntryWindow(EvenementSession session, DateTime utcNow)
+        /// <summary>
+        /// Fenêtre : [StartAtUtc − heuresAvantDebut, EndAtUtc] ou […, StartAtUtc + 24h] si pas de fin.
+        /// </summary>
+        public static bool IsWithinEntryWindow(
+            EvenementSession session,
+            DateTime utcNow,
+            int heuresOuvertureAvantDebut = 0)
         {
-            if (utcNow < session.StartAtUtc)
+            var start = EvenementDateTimeUtcHelper.NormalizeToUtc(session.StartAtUtc);
+            var now = EvenementDateTimeUtcHelper.NormalizeToUtc(utcNow);
+            var heures = Math.Clamp(heuresOuvertureAvantDebut, 0, 72);
+            var ouverture = start.AddHours(-heures);
+
+            if (now < ouverture)
                 return false;
 
             if (session.EndAtUtc.HasValue)
-                return utcNow <= session.EndAtUtc.Value;
-
-            return utcNow <= session.StartAtUtc.AddHours(24);
-        }
-
-        private static string BuildHorsFenetreMessage(EvenementSession session, DateTime utcNow)
-        {
-            if (utcNow < session.StartAtUtc)
             {
-                return $"Entrée pas encore ouverte (début session : {session.StartAtUtc:O}).";
+                var end = EvenementDateTimeUtcHelper.NormalizeToUtc(session.EndAtUtc.Value);
+                return now <= end;
             }
 
-            if (session.EndAtUtc.HasValue && utcNow > session.EndAtUtc.Value)
+            return now <= start.AddHours(24);
+        }
+
+        private static string BuildHorsFenetreMessage(
+            EvenementSession session,
+            DateTime utcNow,
+            int heuresOuvertureAvantDebut)
+        {
+            var start = EvenementDateTimeUtcHelper.NormalizeToUtc(session.StartAtUtc);
+            var now = EvenementDateTimeUtcHelper.NormalizeToUtc(utcNow);
+            var heures = Math.Clamp(heuresOuvertureAvantDebut, 0, 72);
+            var ouverture = start.AddHours(-heures);
+
+            if (now < ouverture)
             {
-                return $"Entrée fermée (fin session : {session.EndAtUtc.Value:O}).";
+                return $"Entrée pas encore ouverte (ouverture à partir de {ouverture:O} UTC ; début session {start:O} UTC).";
+            }
+
+            if (session.EndAtUtc.HasValue)
+            {
+                var end = EvenementDateTimeUtcHelper.NormalizeToUtc(session.EndAtUtc.Value);
+                if (now > end)
+                    return $"Entrée fermée (fin session : {end:O} UTC).";
             }
 
             return "Entrée hors fenêtre autorisée pour cette session.";

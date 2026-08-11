@@ -34,7 +34,7 @@ namespace CongoTravel.Tests
                 ctx, NullLogger<EvenementAvailabilityService>.Instance);
             var paymentService = CreatePaymentService(ctx);
             var ticketService = new EvenementTicketService(
-                ctx, NullLogger<EvenementTicketService>.Instance);
+                ctx, new ConfigSocieteService(ctx), NullLogger<EvenementTicketService>.Instance);
 
             var vipClasse = await classeService.CreateAsync(new EvenementCreateClasseRequestDto
             {
@@ -54,8 +54,8 @@ namespace CongoTravel.Tests
                 CodeSession = "SMOKE-B-2026",
                 IdSite = idSite,
                 Libelle = "Smoke Mode B",
-                StartAtUtc = DateTime.UtcNow.AddHours(-1),
-                EndAtUtc = DateTime.UtcNow.AddHours(6),
+                StartAtUtc = DateTime.UtcNow.AddHours(2),
+                EndAtUtc = DateTime.UtcNow.AddHours(8),
                 InventoryMode = "ClassQuota",
                 ClassQuotas = new List<EvenementCreateSessionClassQuotaDto>
                 {
@@ -125,6 +125,13 @@ namespace CongoTravel.Tests
             Assert.Equal(230m, confirm.Payment.Montant);
 
             var ticketCode = confirm.Reservation.Tickets[0].TicketCode;
+
+            var sessionEntity = await ctx.EvenementSessions.SingleAsync(
+                s => s.IdEvenementSession == published.IdEvenementSession);
+            sessionEntity.StartAtUtc = DateTime.UtcNow.AddHours(-1);
+            sessionEntity.EndAtUtc = DateTime.UtcNow.AddHours(6);
+            await ctx.SaveChangesAsync();
+
             var check = await ticketService.CheckTicketAsync(ticketCode, idSociete);
             Assert.Equal(200, check.HttpStatusCode);
             Assert.Equal("Valide", check.Response.Statut);
@@ -302,6 +309,7 @@ namespace CongoTravel.Tests
                     new EvenementGlobalQuotaCancelStrategy(ctx),
                     new EvenementClassQuotaCancelStrategy(ctx),
                     new EvenementSeatNumberedCancelStrategy(ctx)),
+                Moq.Mock.Of<CongoTravel.Services.Repositories.IFlexPayRealtimeNotifier>(),
                 NullLogger<EvenementReservationService>.Instance);
 
         private static async Task<(int IdSociete, int IdSite)> SeedSocieteAsync(

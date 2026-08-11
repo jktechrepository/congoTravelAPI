@@ -13,6 +13,8 @@
 - `DOCUMENTATION_TARIFICATION_VOYAGE.md` (tarifs par catégorie de siège, PATCH/PUT, règles frontend)
 - `DOCUMENTATION_FLEXPAY_EVENEMENT_V1.md` (paiement électronique billetterie événement — pipeline autonome)
 - `DOCUMENTATION_DASHBOARD_EVENEMENT_V1.md` (reporting / KPIs billetterie événement)
+- `DOCUMENTATION_WORKFLOW_SITE_TOURISTIQUE_V1.md` (workflow complet site touristique : lieu → planification → vente → gate)
+- `DOCUMENTATION_WORKFLOW_RESTAURANT_V1.md` (workflow complet restaurant : établissement → créneau → acompte CASH/FlexPay → dashboard)
 - `EXEMPLES_UTILISATION_SYNC.md`
 - `GUIDE_TEST_IMPORT_EXCEL.md`
 

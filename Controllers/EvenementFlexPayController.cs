@@ -97,19 +97,81 @@ namespace CongoTravel.Controllers
             }
         }
 
+        /// <summary>
+        /// Abandon explicite (JWT) : bouton Annuler de l’app — FAILED + libération HOLD + SignalR Failed.
+        /// Indispensable pour Mobile Money (FlexPay n’appelle pas cancel_url).
+        /// </summary>
+        [HttpPost("abandon/{orderNumber}")]
+        [Authorize]
+        [Permission("Evenement.Reservation.Confirm")]
+        [ProducesResponseType(typeof(EvenementFlexPayCallbackProcessResultDto), 200)]
+        public async Task<IActionResult> Abandon(string orderNumber)
+        {
+            try
+            {
+                _ = EvenementTenancyGuard.ResolveEffectiveSocieteId(_currentUserService);
+                return await AbandonAsync(orderNumber, EvenementFlexPayCallbackService.CancelMessage);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+        }
+
         [HttpGet("approve")]
         [AllowAnonymous]
         public IActionResult Approve([FromQuery] string? orderNumber) =>
             Ok(new { message = "Paiement événement en cours de confirmation.", orderNumber });
 
+        /// <summary>
+        /// Redirection FlexPay (annulation utilisateur) : FAILED + libération HOLD + SignalR Failed.
+        /// </summary>
         [HttpGet("cancel")]
         [AllowAnonymous]
-        public IActionResult Cancel([FromQuery] string? orderNumber) =>
-            Ok(new { message = "Paiement événement annulé.", orderNumber });
+        [ProducesResponseType(typeof(EvenementFlexPayCallbackProcessResultDto), 200)]
+        public async Task<IActionResult> Cancel([FromQuery] string? orderNumber)
+        {
+            return await AbandonAsync(orderNumber, EvenementFlexPayCallbackService.CancelMessage);
+        }
 
+        /// <summary>
+        /// Redirection FlexPay (refus) : FAILED + libération HOLD + SignalR Failed.
+        /// </summary>
         [HttpGet("decline")]
         [AllowAnonymous]
-        public IActionResult Decline([FromQuery] string? orderNumber) =>
-            Ok(new { message = "Paiement événement refusé.", orderNumber });
+        [ProducesResponseType(typeof(EvenementFlexPayCallbackProcessResultDto), 200)]
+        public async Task<IActionResult> Decline([FromQuery] string? orderNumber)
+        {
+            return await AbandonAsync(orderNumber, EvenementFlexPayCallbackService.DeclineMessage);
+        }
+
+        private async Task<IActionResult> AbandonAsync(string? orderNumber, string message)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(orderNumber))
+                    return BadRequest(new { message = "orderNumber requis.", paymentPending = false });
+
+                var result = await _callbackService.AbandonPendingPaymentAsync(orderNumber, message);
+                return Ok(new
+                {
+                    success = result.Success,
+                    paymentPending = result.PaymentPending,
+                    message = result.Message,
+                    idEvenementReservation = result.IdEvenementReservation,
+                    idEvenementPayment = result.IdEvenementPayment,
+                    orderNumber
+                });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message, paymentPending = false });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur abandon FlexPay événement {OrderNumber}", orderNumber);
+                return StatusCode(500, new { message = "Une erreur interne est survenue.", paymentPending = false });
+            }
+        }
     }
 }

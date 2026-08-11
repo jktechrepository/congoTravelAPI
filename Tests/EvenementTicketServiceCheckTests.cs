@@ -21,7 +21,7 @@ namespace CongoTravel.Tests
                 .Options);
 
         private static EvenementTicketService CreateService(CongoTravelDbContext ctx) =>
-            new(ctx, Microsoft.Extensions.Logging.Abstractions.NullLogger<EvenementTicketService>.Instance);
+            new(ctx, new ConfigSocieteService(ctx), Microsoft.Extensions.Logging.Abstractions.NullLogger<EvenementTicketService>.Instance);
 
         [Fact]
         public async Task CheckTicketAsync_returns_valide_for_confirmed_ticket()

@@ -5,6 +5,7 @@ using CongoTravel.Data;
 using CongoTravel.Models.DTOs.Evenement;
 using CongoTravel.Models.DTOs.FlexPay;
 using CongoTravel.Models.Evenement.Enums;
+using CongoTravel.Services;
 using CongoTravel.Services.Evenement;
 using Xunit;
 
@@ -34,7 +35,7 @@ namespace CongoTravel.Tests
             var availabilityService = new EvenementAvailabilityService(
                 ctx, NullLogger<EvenementAvailabilityService>.Instance);
             var ticketService = new EvenementTicketService(
-                ctx, NullLogger<EvenementTicketService>.Instance);
+                ctx, new ConfigSocieteService(ctx), NullLogger<EvenementTicketService>.Instance);
 
             var availabilityAfterHold = await availabilityService.GetSessionAvailabilityAsync(idSession, idSociete);
             Assert.Equal(8, availabilityAfterHold!.GlobalQuota!.QuantiteDisponible);
@@ -75,6 +76,8 @@ namespace CongoTravel.Tests
                 .SingleAsync();
             var ticketCode = confirmGraph.Lines.SelectMany(l => l.Tickets).First().TicketCode;
 
+            await OpenEntryWindowAsync(ctx, idSession);
+
             var check = await ticketService.CheckTicketAsync(ticketCode, idSociete);
             Assert.Equal(200, check.HttpStatusCode);
             Assert.Equal("Valide", check.Response.Statut);
@@ -94,13 +97,13 @@ namespace CongoTravel.Tests
         {
             await using var ctx = BuildDb(nameof(FlexPay_journey_hold_initiate_verify_check_ticket));
             var flexApi = EvenementTestFactories.CreateFlexPayApiMock(SmokeOrderNumber, checkStatus: "0");
-            var (idSociete, idSite, _, idReservation) =
+            var (idSociete, idSite, idSession, idReservation) =
                 await SeedPublishedSessionWithHoldAsync(ctx, quantity: 1);
 
             var initiationService = EvenementTestFactories.CreateFlexPayInitiationService(ctx, flexApi.Object);
             var callbackService = EvenementTestFactories.CreateCallbackService(ctx, flexApi.Object);
             var ticketService = new EvenementTicketService(
-                ctx, NullLogger<EvenementTicketService>.Instance);
+                ctx, new ConfigSocieteService(ctx), NullLogger<EvenementTicketService>.Instance);
 
             var initiated = await initiationService.InitiateAsync(
                 idReservation,
@@ -120,6 +123,7 @@ namespace CongoTravel.Tests
             Assert.Single(verified.ConfirmPayment.Reservation.Tickets);
 
             var ticketCode = verified.ConfirmPayment.Reservation.Tickets[0].TicketCode;
+            await OpenEntryWindowAsync(ctx, idSession);
             var check = await ticketService.CheckTicketAsync(ticketCode, idSociete);
             Assert.Equal(200, check.HttpStatusCode);
         }
@@ -173,8 +177,8 @@ namespace CongoTravel.Tests
             var idSession = reservation.IdEvenementSession;
 
             var session = await ctx.EvenementSessions.SingleAsync(s => s.IdEvenementSession == idSession);
-            session.StartAtUtc = DateTime.UtcNow.AddHours(-1);
-            session.EndAtUtc = DateTime.UtcNow.AddHours(6);
+            // StartAtUtc reste futur (SeedHold) pour permettre initiate + confirm ; ouverture entrée après paiement.
+            session.EndAtUtc = DateTime.UtcNow.AddDays(2).AddHours(6);
 
             var quota = await ctx.EvenementSessionGlobalQuotas.SingleAsync();
             quota.CapaciteTotale = 10;
@@ -183,6 +187,14 @@ namespace CongoTravel.Tests
             await ctx.SaveChangesAsync();
 
             return (idSociete, idSite, idSession, idReservation);
+        }
+
+        private static async Task OpenEntryWindowAsync(CongoTravelDbContext ctx, int idSession)
+        {
+            var session = await ctx.EvenementSessions.SingleAsync(s => s.IdEvenementSession == idSession);
+            session.StartAtUtc = DateTime.UtcNow.AddHours(-1);
+            session.EndAtUtc = DateTime.UtcNow.AddHours(6);
+            await ctx.SaveChangesAsync();
         }
     }
 }

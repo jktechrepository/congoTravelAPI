@@ -31,6 +31,7 @@ namespace CongoTravel.Tests
                     new EvenementGlobalQuotaCancelStrategy(ctx),
                     new EvenementClassQuotaCancelStrategy(ctx),
                     new EvenementSeatNumberedCancelStrategy(ctx)),
+                Moq.Mock.Of<CongoTravel.Services.Repositories.IFlexPayRealtimeNotifier>(),
                 NullLogger<EvenementReservationService>.Instance);
 
         private static EvenementHoldService CreateHoldService(CongoTravelDbContext ctx) =>

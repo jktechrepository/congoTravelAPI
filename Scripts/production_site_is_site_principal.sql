@@ -13,7 +13,7 @@
 --
 -- Recommandation : sauvegarde avant exécution ; fenêtre de maintenance courte.
 -- =============================================================================
-
+SET SQL_SAFE_UPDATES = 0;
 SET @db := DATABASE();
 
 -- -----------------------------------------------------------------------------

@@ -210,6 +210,9 @@ namespace CongoTravel.Data
 
                 entity.HasIndex(e => e.IdSite)
                     .HasDatabaseName("IX_EvenementReservations_IdSite");
+
+                entity.HasIndex(e => e.IdUtilisateur)
+                    .HasDatabaseName("IX_EvenementReservations_IdUtilisateur");
             });
         }
 

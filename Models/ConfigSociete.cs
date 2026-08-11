@@ -31,10 +31,19 @@ namespace CongoTravel.Models
 
         public int HeuresFermetureEmbarquementApresJourDepart { get; set; } = 24;
 
+        /// <summary>Heures avant <c>StartAtUtc</c> pour ouvrir le contrôle d'entrée événement (0–72).</summary>
+        public int HeuresOuvertureEntreeEvenementAvantDebut { get; set; } = 3;
+
         public int DureeHoldFlexPayMinutes { get; set; } = 15;
 
         /// <summary>Durée du hold réservation événementielle (minutes) ; indépendant du hold FlexPay transport.</summary>
         public int DureeHoldEvenementMinutes { get; set; } = 15;
+
+        /// <summary>Durée du hold réservation site touristique (minutes) ; indépendant du hold FlexPay transport.</summary>
+        public int DureeHoldSiteTouristiqueMinutes { get; set; } = 15;
+
+        /// <summary>Durée du hold réservation restaurant (minutes) ; indépendant des holds transport / événement / site touristique.</summary>
+        public int DureeHoldRestaurantMinutes { get; set; } = 15;
 
         public bool ReaffectationActive { get; set; } = true;
 

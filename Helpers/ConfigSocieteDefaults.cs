@@ -10,8 +10,11 @@ namespace CongoTravel.Helpers
         public const int HeuresLimiteReaffectation = 2;
         public const int HeuresOuvertureEmbarquementAvantDepart = 3;
         public const int HeuresFermetureEmbarquementApresJourDepart = 24;
+        public const int HeuresOuvertureEntreeEvenementAvantDebut = 3;
         public const int DureeHoldFlexPayMinutes = 15;
         public const int DureeHoldEvenementMinutes = 15;
+        public const int DureeHoldSiteTouristiqueMinutes = 15;
+        public const int DureeHoldRestaurantMinutes = 15;
 
         public static ConfigSociete CreateForSociete(int idSociete) => new()
         {
@@ -22,8 +25,11 @@ namespace CongoTravel.Helpers
             HeuresLimiteReaffectation = HeuresLimiteReaffectation,
             HeuresOuvertureEmbarquementAvantDepart = HeuresOuvertureEmbarquementAvantDepart,
             HeuresFermetureEmbarquementApresJourDepart = HeuresFermetureEmbarquementApresJourDepart,
+            HeuresOuvertureEntreeEvenementAvantDebut = HeuresOuvertureEntreeEvenementAvantDebut,
             DureeHoldFlexPayMinutes = DureeHoldFlexPayMinutes,
             DureeHoldEvenementMinutes = DureeHoldEvenementMinutes,
+            DureeHoldSiteTouristiqueMinutes = DureeHoldSiteTouristiqueMinutes,
+            DureeHoldRestaurantMinutes = DureeHoldRestaurantMinutes,
             ReaffectationActive = true,
             PourcentageReversementSite = 100m,
             DateCreation = DateTime.UtcNow
@@ -37,8 +43,11 @@ namespace CongoTravel.Helpers
             config.HeuresLimiteReaffectation = Math.Clamp(config.HeuresLimiteReaffectation, 0, 72);
             config.HeuresOuvertureEmbarquementAvantDepart = Math.Clamp(config.HeuresOuvertureEmbarquementAvantDepart, 0, 72);
             config.HeuresFermetureEmbarquementApresJourDepart = Math.Clamp(config.HeuresFermetureEmbarquementApresJourDepart, 1, 168);
+            config.HeuresOuvertureEntreeEvenementAvantDebut = Math.Clamp(config.HeuresOuvertureEntreeEvenementAvantDebut, 0, 72);
             config.DureeHoldFlexPayMinutes = Math.Clamp(config.DureeHoldFlexPayMinutes, 1, 120);
             config.DureeHoldEvenementMinutes = Math.Clamp(config.DureeHoldEvenementMinutes, 1, 120);
+            config.DureeHoldSiteTouristiqueMinutes = Math.Clamp(config.DureeHoldSiteTouristiqueMinutes, 1, 120);
+            config.DureeHoldRestaurantMinutes = Math.Clamp(config.DureeHoldRestaurantMinutes, 1, 120);
             if (config.JoursAvanceMaxReservation.HasValue)
                 config.JoursAvanceMaxReservation = Math.Clamp(config.JoursAvanceMaxReservation.Value, 1, 730);
 

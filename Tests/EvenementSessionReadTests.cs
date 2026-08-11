@@ -165,6 +165,58 @@ namespace CongoTravel.Tests
         }
 
         [Fact]
+        public async Task ListPublishedGlobalAsync_includes_in_progress_excludes_ended()
+        {
+            await using var ctx = BuildDb(nameof(ListPublishedGlobalAsync_includes_in_progress_excludes_ended));
+            var (idSociete, idSite) = await SeedSocieteAsync(ctx);
+            var service = CreateService(ctx);
+
+            var future = await service.CreateDraftAsync(BuildValidCreateRequest("FUTURE-PUB", idSite), idSociete);
+            await service.PublishAsync(future.IdEvenementSession, idSociete);
+
+            var inProgress = await service.CreateDraftAsync(new EvenementCreateSessionRequestDto
+            {
+                CodeSession = "LIVE-PUB",
+                IdSite = idSite,
+                Libelle = "In progress",
+                StartAtUtc = DateTime.UtcNow.AddHours(-1),
+                EndAtUtc = DateTime.UtcNow.AddHours(4),
+                InventoryMode = "GlobalQuota",
+                GlobalQuota = new EvenementCreateSessionGlobalQuotaDto
+                {
+                    CapaciteTotale = 10,
+                    PrixUnitaire = 5m,
+                    CodeDevise = "CDF"
+                }
+            }, idSociete);
+            await service.PublishAsync(inProgress.IdEvenementSession, idSociete);
+
+            var ended = await service.CreateDraftAsync(new EvenementCreateSessionRequestDto
+            {
+                CodeSession = "ENDED-PUB",
+                IdSite = idSite,
+                Libelle = "Ended session",
+                StartAtUtc = DateTime.UtcNow.AddHours(-5),
+                EndAtUtc = DateTime.UtcNow.AddHours(-1),
+                InventoryMode = "GlobalQuota",
+                GlobalQuota = new EvenementCreateSessionGlobalQuotaDto
+                {
+                    CapaciteTotale = 10,
+                    PrixUnitaire = 5m,
+                    CodeDevise = "CDF"
+                }
+            }, idSociete);
+            await service.PublishAsync(ended.IdEvenementSession, idSociete);
+
+            var global = await service.ListPublishedGlobalAsync();
+
+            Assert.Equal(2, global.Count);
+            Assert.Contains(global, s => s.CodeSession == "FUTURE-PUB");
+            Assert.Contains(global, s => s.CodeSession == "LIVE-PUB");
+            Assert.DoesNotContain(global, s => s.CodeSession == "ENDED-PUB");
+        }
+
+        [Fact]
         public async Task ListPublishedGlobalAsync_respects_inventory_mode_filter()
         {
             await using var ctx = BuildDb(nameof(ListPublishedGlobalAsync_respects_inventory_mode_filter));

@@ -64,6 +64,8 @@ namespace CongoTravel.Services.Evenement
                     "Session associée à la réservation introuvable.");
             }
 
+            EvenementSessionSalesEligibilityHelper.EnsureCanSell(session, DateTime.UtcNow);
+
             var confirmStrategy = _confirmStrategyFactory.GetStrategy(session.InventoryMode);
             await confirmStrategy.ConfirmHoldAsync(
                 new EvenementInventoryConfirmRequest

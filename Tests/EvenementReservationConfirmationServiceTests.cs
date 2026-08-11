@@ -106,6 +106,72 @@ namespace CongoTravel.Tests
             Assert.Contains("expiré", ex.Message, StringComparison.OrdinalIgnoreCase);
         }
 
+        [Fact]
+        public async Task ConfirmHoldAndEmitTicketsAsync_allows_session_started_before_end()
+        {
+            await using var ctx = BuildDb(nameof(ConfirmHoldAndEmitTicketsAsync_allows_session_started_before_end));
+            var (idSociete, idReservation) = await SeedHoldAsync(ctx, quantity: 1);
+            var reservation = await ctx.EvenementReservations
+                .Include(r => r.Lines)
+                .SingleAsync(r => r.IdEvenementReservation == idReservation);
+
+            var session = await ctx.EvenementSessions.SingleAsync(
+                s => s.IdEvenementSession == reservation.IdEvenementSession);
+            session.StartAtUtc = DateTime.UtcNow.AddHours(-1);
+            session.EndAtUtc = DateTime.UtcNow.AddHours(4);
+            await ctx.SaveChangesAsync();
+
+            var service = EvenementTestFactories.CreateConfirmationService(ctx);
+            var payment = new EvenementPayment
+            {
+                ReferencePaiement = "EVT-PAY-INPROGRESS",
+                Provider = "CASH",
+                Montant = reservation.MontantSousTotal,
+                CodeDevise = reservation.CodeDevise,
+                MontantTarif = reservation.MontantSousTotal,
+                CodeDeviseTarif = reservation.CodeDevise,
+                TauxVersDevisePaiement = 1m
+            };
+
+            await service.ConfirmHoldAndEmitTicketsAsync(reservation, payment, idSociete);
+            await ctx.SaveChangesAsync();
+
+            Assert.Equal(EvenementReservationStatus.CONFIRMED, reservation.Status);
+            Assert.Equal(1, await ctx.EvenementTickets.CountAsync());
+        }
+
+        [Fact]
+        public async Task ConfirmHoldAndEmitTicketsAsync_rejects_session_already_ended()
+        {
+            await using var ctx = BuildDb(nameof(ConfirmHoldAndEmitTicketsAsync_rejects_session_already_ended));
+            var (idSociete, idReservation) = await SeedHoldAsync(ctx, quantity: 1);
+            var reservation = await ctx.EvenementReservations
+                .Include(r => r.Lines)
+                .SingleAsync(r => r.IdEvenementReservation == idReservation);
+
+            var session = await ctx.EvenementSessions.SingleAsync(
+                s => s.IdEvenementSession == reservation.IdEvenementSession);
+            session.StartAtUtc = DateTime.UtcNow.AddHours(-5);
+            session.EndAtUtc = DateTime.UtcNow.AddHours(-1);
+            await ctx.SaveChangesAsync();
+
+            var service = EvenementTestFactories.CreateConfirmationService(ctx);
+            var payment = new EvenementPayment
+            {
+                ReferencePaiement = "EVT-PAY-ENDED",
+                Provider = "CASH",
+                Montant = reservation.MontantSousTotal,
+                CodeDevise = reservation.CodeDevise,
+                MontantTarif = reservation.MontantSousTotal,
+                CodeDeviseTarif = reservation.CodeDevise,
+                TauxVersDevisePaiement = 1m
+            };
+
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                service.ConfirmHoldAndEmitTicketsAsync(reservation, payment, idSociete));
+            Assert.Contains("Vente fermée", ex.Message);
+        }
+
         private static async Task<(int IdSociete, int IdReservation)> SeedHoldAsync(
             CongoTravelDbContext ctx,
             int quantity)

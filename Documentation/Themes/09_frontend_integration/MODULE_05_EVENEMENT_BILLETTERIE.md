@@ -83,8 +83,9 @@ Matrice : [MATRICE_ROLES_PERMISSIONS.md](MATRICE_ROLES_PERMISSIONS.md).
 
 ### 4.1 Catalogue — `GET /api/events/sessions`
 
-- **Anonyme / Client** : sessions `Published` (toutes sociétés) ; `?idSociete=` filtre libre (pas de 403).
+- **Anonyme / Client** : sessions `Published` encore en vente (`endAtUtc` futur, ou `startAtUtc + 24h` si pas de fin) toutes sociétés ; `?idSociete=` filtre libre (pas de 403). Sessions **terminées** exclues ; sessions **en cours** restent listées.
 - **Staff** : sessions de sa société ; autre `idSociete` → 403.
+- **Fenêtre de vente** : hold / CASH / FlexPay autorisés tant que `utcNow < endAtUtc` (ou `startAtUtc + 24h` sans fin) et statut `Published`. Rejet « Vente fermée » après la fin. Même garde à la confirmation (callback FlexPay).
 - **Achat Client** (`POST .../with-paiement` / `with-paiement-electronique`) : la réservation est rattachée à la **société organisatrice de la session** (ex. MEDICO), **pas** à `utilisateur.idSociete` du JWT. Un client inscrit sur la société 1 peut donc payer une session Published de la société 12. Le staff guichet reste limité à sa société JWT.
 - Champs utiles UI carte :
 
@@ -192,6 +193,32 @@ Réponse clé :
 Puis : `GET /api/events/flexpay/verifier/{orderNumber}` toutes les ~3 s jusqu’à succès / échec / expiration.  
 **Ne jamais** appeler `POST /api/events/flexpay/callback` depuis le front.
 
+**SignalR (même events que le transport)** — groupe `user_{idUtilisateur}` :
+- `FlexPayPaymentConfirmed` → `{ orderNumber, idReservation, idPaiement, status, timestampUtc }` (`idReservation` = `idEvenementReservation`, `idPaiement` = `idEvenementPayment`)
+- `FlexPayPaymentFailed` → `{ orderNumber, message, status, timestampUtc }`
+
+Réutiliser les handlers transport. Continuer le poll verifier en secours (callback / push peuvent arriver dans n’importe quel ordre).  
+Sur `paymentPending: false` sans confirmation (refus, cancel, hold expiré) → sortir du pending et proposer un nouvel achat.
+
+| Événement SignalR | Quand |
+|-------------------|--------|
+| `FlexPayPaymentConfirmed` | Paiement OK (callback / verifier) |
+| `FlexPayPaymentFailed` | Refus FlexPay **ou** hold expiré (job serveur) |
+
+**Guide dédié (Vue + Flutter)** : [INTEGRATION_SIGNALR_EVENEMENT_FLEXPAY.md](INTEGRATION_SIGNALR_EVENEMENT_FLEXPAY.md) — connexion hub, mapping IDs, exemples web/mobile, poll secours, checklist.
+
+**Annulation / expiration (même pattern que Confirm, sans POST Flutter obligatoire en MM)** :
+- **Succès** : SignalR `FlexPayPaymentConfirmed` + statut succès (déjà en place).
+- **Refus FlexPay** (`callback code ≠ 0`) : `FAILED` + HOLD libéré + SignalR `FlexPayPaymentFailed`.
+- **Hold expiré** (job serveur) : résa `EXPIRED`, FlexPay `PENDING`→`FAILED`, SignalR Failed (« Hold expiré… »). En MM, FlexPay n’appelle en général **pas** `cancel_url` : c’est le chemin principal si le client refuse sans callback d’échec.
+- Poll `verifier` = **secours** (comme pour le succès) → `paymentPending: false` + message.
+- `POST /api/events/reservations/{id}/cancel` = **optionnel** (annulation anticipée dans l’app) → `CANCELLED` + FAILED + SignalR Failed. **Pas** obligatoire en MM.
+- Ne **pas** exiger `GET .../flexpay/cancel` pour le MM.
+- **Carte** (redirections FlexPay, sans JWT) :
+  - `GET /api/events/flexpay/cancel?orderNumber=` → FAILED + HOLD libéré (« Paiement annulé. »)
+  - `GET /api/events/flexpay/decline?orderNumber=` → idem (« Paiement refusé. »)
+  - `GET .../approve` reste informatif ; la confirmation réelle vient du callback / verifier.
+
 ### 4.4 Erreurs UI
 
 | Situation | HTTP / signal | Comportement |
@@ -201,7 +228,16 @@ Puis : `GET /api/events/flexpay/verifier/{orderNumber}` toutes les ~3 s jusqu’
 | FlexPay déjà en cours | `PENDING` | Continuer le poll, ne pas relancer |
 | Verify encore pending | `statusOnly.paymentPending` | Attendre ~3 s |
 | Ticket déjà utilisé | `entreeAutorisee: false` | Bloquer `use` |
+| Hors fenêtre entrée | `statut: HorsFenetre` | Afficher `message` (heure d’ouverture UTC) |
 | Permission manquante | 403 | Masquer l’action / écran forbidden |
+
+### 4.5 Contrôle d’entrée — fenêtre horaire
+
+- **Ouverture** : `startAtUtc − heuresOuvertureEntreeEvenementAvantDebut` (config société, **défaut 3 h**).
+- **Fermeture** : `endAtUtc` si renseigné, sinon `startAtUtc + 24 h`.
+- Config : `GET/PUT` config société → champ `heuresOuvertureEntreeEvenementAvantDebut` (0–72). Valeur `0` = ouverture exactement à `startAtUtc`.
+
+**Fuseau (Kinshasa = UTC+1, sans heure d’été)** : `startAtUtc` / `endAtUtc` sont des instants **UTC**. Le picker back-office doit convertir l’heure locale avant envoi, ex. 18:00 Kinshasa → `"2026-08-01T17:00:00Z"`. Envoyer 18:00 sans `Z`/offset comme si c’était UTC provoque ~**1 h** de décalage à la porte.
 
 ---
 
@@ -235,7 +271,11 @@ Puis : `GET /api/events/flexpay/verifier/{orderNumber}` toutes les ~3 s jusqu’
 
 ### FlexPay / Dashboard
 
-- `GET /api/events/flexpay/verifier/{orderNumber}`
+- `GET /api/events/flexpay/verifier/{orderNumber}` — poll JWT
+- `POST /api/events/flexpay/abandon/{orderNumber}` — abandon JWT (bouton Annuler app / MM)
+- `GET /api/events/flexpay/cancel?orderNumber=` / `decline?orderNumber=` — redirects carte (FAILED + HOLD)
+- `GET /api/events/flexpay/approve?orderNumber=` — informatif seulement
+- SignalR `FlexPayPaymentConfirmed` / `FlexPayPaymentFailed` (groupe `user_{id}`)
 - `GET /api/events/dashboard?month=yyyy-MM`
 
 ---
@@ -334,13 +374,16 @@ if (!init.flexPayAccepted) {
 }
 
 async function pollFlexPayEvent(orderNumber, expiresAtUtc) {
-  while (new Date(expiresAtUtc) > new Date()) {
+  const deadline = new Date(expiresAtUtc).getTime() + 60_000;
+  while (Date.now() < deadline) {
     const { data } = await api.get(`/events/flexpay/verifier/${orderNumber}`);
-    if (data.confirmPayment) return data.confirmPayment;
-    if (data.statusOnly && !data.statusOnly.paymentPending) {
-      throw new Error(data.statusOnly.message || 'Paiement échoué');
+    // Succès : DTO confirm à la racine
+    if (data.reservation && data.payment) return data;
+    if (data.paymentPending === true) {
+      await new Promise((r) => setTimeout(r, 3000));
+      continue;
     }
-    await new Promise((r) => setTimeout(r, 3000));
+    throw new Error(data.message || 'Paiement échoué');
   }
   throw new Error('Hold expiré');
 }
@@ -393,7 +436,7 @@ Stack : Flutter, Dio, `flutter_secure_storage`, `mobile_scanner` — Dio : [docu
 3. Construire `items` selon `inventoryMode`  
 4. `POST /events/reservations/with-paiement-electronique`  
 5. Si `paymentUrl` → WebView ; sinon écran « validez sur le téléphone »  
-6. Poll `GET /events/flexpay/verifier/{orderNumber}` (~3 s) — **pas** `/api/FlexPay/verifier/...`  
+6. Poll `GET /events/flexpay/verifier/{orderNumber}` (~3 s) **et** écouter SignalR `FlexPayPaymentConfirmed` / `Failed` — **pas** `/api/FlexPay/verifier/...`  
 7. Afficher QR : `ticketCode` via `GET /events/reservations/{id}/tickets`
 
 ```dart
@@ -425,22 +468,25 @@ final orderNumber = init['orderNumber'] as String;
 final paymentUrl = init['paymentUrl'] as String?;
 final expiresAt = DateTime.parse(init['reservationExpiresAtUtc'] as String);
 // paymentUrl != null → WebView ; sinon message push MM
+// hub.on('FlexPayPaymentConfirmed') / Failed — mêmes handlers que transport
 
 Future<Map<String, dynamic>> pollFlexPayEvent(
   String orderNumber,
   DateTime expiresAt,
 ) async {
-  while (DateTime.now().toUtc().isBefore(expiresAt.toUtc())) {
+  while (DateTime.now().toUtc().isBefore(expiresAt.toUtc().add(const Duration(minutes: 1)))) {
     final res = await api.get('/events/flexpay/verifier/$orderNumber');
     final data = res.data as Map<String, dynamic>;
-    if (data['confirmPayment'] != null) {
-      return data['confirmPayment'] as Map<String, dynamic>;
+    // Succès : corps = DTO confirm (reservation + payment + tickets)
+    if (data['reservation'] != null && data['payment'] != null) {
+      return data;
     }
-    final statusOnly = data['statusOnly'] as Map<String, dynamic>?;
-    if (statusOnly != null && statusOnly['paymentPending'] != true) {
-      throw Exception(statusOnly['message'] ?? 'Paiement échoué');
+    // Pending / échec / hold expiré : EvenementFlexPayCallbackProcessResultDto
+    if (data['paymentPending'] == true) {
+      await Future<void>.delayed(const Duration(seconds: 3));
+      continue;
     }
-    await Future<void>.delayed(const Duration(seconds: 3));
+    throw Exception(data['message'] ?? 'Paiement échoué');
   }
   throw Exception('Hold expiré');
 }
@@ -452,6 +498,7 @@ final tickets = await api.get('/events/reservations/$reservationId/tickets');
 
 ### 7.C Contrôle entrée (agent)
 
+Fenêtre : ouverture **N heures avant** `startAtUtc` (config `heuresOuvertureEntreeEvenementAvantDebut`, défaut 3).  
 Champs utiles de `GET /events/tickets/{ticketCode}/check` :
 
 | Champ | Usage |
@@ -502,6 +549,7 @@ sequenceDiagram
 - [DOCUMENTATION_COMPLETE_INTEGRATION_FRONTEND.md](DOCUMENTATION_COMPLETE_INTEGRATION_FRONTEND.md) — auth, Axios/Dio, personas
 - [MODULE_01_AUTH_ET_PERMISSIONS.md](MODULE_01_AUTH_ET_PERMISSIONS.md) — guards
 - [MODULE_04_PAIEMENT_FLEXPAY.md](MODULE_04_PAIEMENT_FLEXPAY.md) — FlexPay **transport** (ne pas mélanger)
+- [INTEGRATION_SIGNALR_EVENEMENT_FLEXPAY.md](INTEGRATION_SIGNALR_EVENEMENT_FLEXPAY.md) — SignalR paiement événement (web + mobile)
 - [MATRICE_ROLES_PERMISSIONS.md](MATRICE_ROLES_PERMISSIONS.md)
 
 ### Backend événement

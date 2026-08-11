@@ -119,6 +119,45 @@ namespace CongoTravel.Tests
         }
 
         [Fact]
+        public async Task CreateHoldAsync_allows_session_started_before_end()
+        {
+            await using var ctx = BuildDb(nameof(CreateHoldAsync_allows_session_started_before_end));
+            var (idSociete, idSession) = await SeedPublishedSessionAsync(ctx, capacity: 10, hold: 0, sold: 0);
+            var session = await ctx.EvenementSessions.SingleAsync(s => s.IdEvenementSession == idSession);
+            session.StartAtUtc = DateTime.UtcNow.AddHours(-1);
+            session.EndAtUtc = DateTime.UtcNow.AddHours(4);
+            await ctx.SaveChangesAsync();
+            var service = CreateService(ctx);
+
+            var hold = await service.CreateHoldAsync(idSession, idSociete, new EvenementHoldRequestDto
+            {
+                Items = new List<EvenementHoldItemRequestDto> { new() { Quantity = 1 } }
+            });
+
+            Assert.Equal("HOLD", hold.Status);
+        }
+
+        [Fact]
+        public async Task CreateHoldAsync_rejects_session_already_ended()
+        {
+            await using var ctx = BuildDb(nameof(CreateHoldAsync_rejects_session_already_ended));
+            var (idSociete, idSession) = await SeedPublishedSessionAsync(ctx, capacity: 10, hold: 0, sold: 0);
+            var session = await ctx.EvenementSessions.SingleAsync(s => s.IdEvenementSession == idSession);
+            session.StartAtUtc = DateTime.UtcNow.AddHours(-5);
+            session.EndAtUtc = DateTime.UtcNow.AddHours(-1);
+            await ctx.SaveChangesAsync();
+            var service = CreateService(ctx);
+
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                service.CreateHoldAsync(idSession, idSociete, new EvenementHoldRequestDto
+                {
+                    Items = new List<EvenementHoldItemRequestDto> { new() { Quantity = 1 } }
+                }));
+
+            Assert.Contains("Vente fermée", ex.Message);
+        }
+
+        [Fact]
         public async Task CreateHoldAsync_throws_when_session_not_found_for_societe()
         {
             await using var ctx = BuildDb(nameof(CreateHoldAsync_throws_when_session_not_found_for_societe));

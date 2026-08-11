@@ -167,6 +167,18 @@ Les dashboards ont été **refactorés** : un seul `GET` racine retourne un DTO 
 
 ## 2. Changelog par statut
 
+### Clarifications / non-breaking (2026-07-28)
+
+Documentation et comportement documentés — **aucun changement de format** `DateTime` / `TimeSpan` côté API.
+
+| Sujet | Détail | Impact front |
+|-------|--------|--------------|
+| OAuth Google / Apple | `POST /api/Utilisateur/auth/google`, `.../auth/apple` | Voir [INTEGRATION_LOGIN_GOOGLE_APPLE_VUE_FLUTTER.md](INTEGRATION_LOGIN_GOOGLE_APPLE_VUE_FLUTTER.md) |
+| Vérif email inscription | Lien SMTP + `POST /api/Client/verify-email` (+ resend) | Voir [INTEGRATION_VERIFICATION_EMAIL_VUE_FLUTTER.md](INTEGRATION_VERIFICATION_EMAIL_VUE_FLUTTER.md) |
+| Permissions Client événement | Seed : `Evenement.Session.Read`, `Hold.Create`, **`Reservation.Confirm`** (achat en ligne) | Éviter 403 sur confirm / with-paiement |
+| Tenancy achat session | Client FlexPay = société **de la session** Published, pas `idSociete` JWT | Ne pas forcer la société JWT côté Client |
+| Scan billet date/heure | `dateDepartVoyage` ISO ; `heureDepartVoyage` = `"HH:mm:ss"` | Affichage UI — [MODULE_03](MODULE_03_RESERVATION_BILLET.md#formats-date--heure-scan) |
+
 ### Nouveau (absent de l'ancienne doc front)
 
 | Module | Endpoint | Notes |
@@ -178,6 +190,8 @@ Les dashboards ont été **refactorés** : un seul `GET` racine retourne un DTO 
 | Billet | `POST /api/Billet/societe/{id}/passager/{id}/billet/{id}/embarquer` | Embarquement |
 | Auth | `POST /api/Utilisateur/revoke-token` | Révocation refresh token |
 | Auth | `POST /api/Utilisateur/revoke-all-tokens` | Révocation globale |
+| Auth | `POST /api/Utilisateur/auth/google` / `auth/apple` | Login social — non-breaking |
+| Client | `POST /api/Client/verify-email` (+ resend) | Vérif email — non-breaking |
 | Événements | `api/events/*` | Billetterie événement — voir [MODULE_05](MODULE_05_EVENEMENT_BILLETTERIE.md) |
 | Finance | `GET /api/FinanceReporting/paiements/summary` | Synthèse paiements |
 | Finance | `GET /api/FinanceReporting/rapport-caisse` | Rapport caisse multi-utilisateur |

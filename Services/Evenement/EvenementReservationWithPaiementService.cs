@@ -67,6 +67,8 @@ namespace CongoTravel.Services.Evenement
                 ToHoldRequest(request, effectiveIdSite),
                 cancellationToken);
 
+            await AttachBuyerUserIdAsync(hold.IdEvenementReservation, cancellationToken);
+
             try
             {
                 var confirmed = await _paymentService.ConfirmPaymentAsync(
@@ -123,6 +125,8 @@ namespace CongoTravel.Services.Evenement
                 idSociete,
                 ToHoldRequest(request, effectiveIdSite),
                 cancellationToken);
+
+            await AttachBuyerUserIdAsync(hold.IdEvenementReservation, cancellationToken);
 
             try
             {
@@ -264,6 +268,24 @@ namespace CongoTravel.Services.Evenement
 
             if (request.Paiement == null || string.IsNullOrWhiteSpace(request.Paiement.MethodePaiement))
                 throw new InvalidOperationException("Paiement.MethodePaiement est obligatoire.");
+        }
+
+        private async Task AttachBuyerUserIdAsync(
+            int idEvenementReservation,
+            CancellationToken cancellationToken)
+        {
+            var userId = _currentUserService.UserId;
+            if (userId <= 0)
+                return;
+
+            var reservation = await _context.EvenementReservations
+                .FirstOrDefaultAsync(r => r.IdEvenementReservation == idEvenementReservation, cancellationToken);
+            if (reservation == null || reservation.IdUtilisateur == userId)
+                return;
+
+            reservation.IdUtilisateur = userId;
+            reservation.DateModification = DateTime.UtcNow;
+            await _context.SaveChangesAsync(cancellationToken);
         }
 
         private static EvenementHoldRequestDto ToHoldRequest(

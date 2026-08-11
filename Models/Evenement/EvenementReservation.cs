@@ -28,6 +28,9 @@ namespace CongoTravel.Models.Evenement
         [MaxLength(100)]
         public string? CustomerRef { get; set; }
 
+        /// <summary>Acheteur authentifié (JWT) pour notifications SignalR FlexPay ; null si guichet / legacy.</summary>
+        public int? IdUtilisateur { get; set; }
+
         [Required]
         public EvenementReservationStatus Status { get; set; } = EvenementReservationStatus.HOLD;
 

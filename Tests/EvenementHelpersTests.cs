@@ -8,6 +8,16 @@ namespace CongoTravel.Tests
     public class EvenementHelpersTests
     {
         [Fact]
+        public void NormalizeToUtc_specifies_kind_for_unspecified()
+        {
+            var value = new DateTime(2026, 8, 1, 18, 0, 0, DateTimeKind.Unspecified);
+            var utc = EvenementDateTimeUtcHelper.NormalizeToUtc(value);
+
+            Assert.Equal(DateTimeKind.Utc, utc.Kind);
+            Assert.Equal(18, utc.Hour);
+        }
+
+        [Fact]
         public void GenerateReservationReferenceCandidate_respects_max_length_and_prefix()
         {
             var reference = EvenementReferenceGenerator.GenerateReservationReferenceCandidate(

@@ -4,6 +4,7 @@ using CongoTravel.Data;
 using CongoTravel.Models;
 using CongoTravel.Models.Evenement;
 using CongoTravel.Models.Evenement.Enums;
+using CongoTravel.Services;
 using CongoTravel.Services.Evenement;
 using Xunit;
 
@@ -18,7 +19,7 @@ namespace CongoTravel.Tests
                 .Options);
 
         private static EvenementTicketService CreateService(CongoTravelDbContext ctx) =>
-            new(ctx, Microsoft.Extensions.Logging.Abstractions.NullLogger<EvenementTicketService>.Instance);
+            new(ctx, new ConfigSocieteService(ctx), Microsoft.Extensions.Logging.Abstractions.NullLogger<EvenementTicketService>.Instance);
 
         [Fact]
         public async Task GetByIdAsync_returns_detail_for_own_societe()

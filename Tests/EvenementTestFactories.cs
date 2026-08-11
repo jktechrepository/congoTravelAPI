@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -12,6 +13,7 @@ using CongoTravel.Models.Evenement.Enums;
 using CongoTravel.Services;
 using CongoTravel.Services.Evenement;
 using CongoTravel.Services.Evenement.Strategies;
+using CongoTravel.Services.Repositories;
 
 namespace CongoTravel.Tests
 {
@@ -37,12 +39,25 @@ namespace CongoTravel.Tests
 
         public static EvenementFlexPayCallbackService CreateCallbackService(
             CongoTravelDbContext ctx,
-            IFlexPayService? flexPayService = null) =>
+            IFlexPayService? flexPayService = null,
+            IFlexPayRealtimeNotifier? realtimeNotifier = null) =>
             new(
                 ctx,
                 flexPayService ?? Mock.Of<IFlexPayService>(),
                 CreateConfirmationService(ctx),
+                CreateReservationService(ctx),
+                realtimeNotifier ?? Mock.Of<IFlexPayRealtimeNotifier>(),
                 NullLogger<EvenementFlexPayCallbackService>.Instance);
+
+        public static EvenementReservationService CreateReservationService(CongoTravelDbContext ctx) =>
+            new(
+                ctx,
+                new EvenementInventoryCancelStrategyFactory(
+                    new EvenementGlobalQuotaCancelStrategy(ctx),
+                    new EvenementClassQuotaCancelStrategy(ctx),
+                    new EvenementSeatNumberedCancelStrategy(ctx)),
+                Mock.Of<IFlexPayRealtimeNotifier>(),
+                NullLogger<EvenementReservationService>.Instance);
 
         public static IFlexPayService CreateFlexPayCheckMock(string checkStatus) =>
             CreateFlexPayCheckMockBuilder(checkStatus).Object;
@@ -227,9 +242,17 @@ namespace CongoTravel.Tests
         public static async Task<(int IdSociete, int IdReservation, string OrderNumber)> SeedPendingFlexPayPaymentAsync(
             CongoTravelDbContext ctx,
             int quantity,
-            string orderNumber = "FP-CALLBACK-TEST-001")
+            string orderNumber = "FP-CALLBACK-TEST-001",
+            int? idUtilisateur = null)
         {
             var (idSociete, _, idReservation) = await SeedHoldWithFlexPayConfigAsync(ctx, quantity);
+
+            if (idUtilisateur is > 0)
+            {
+                var reservation = await ctx.EvenementReservations
+                    .FirstAsync(r => r.IdEvenementReservation == idReservation);
+                reservation.IdUtilisateur = idUtilisateur;
+            }
 
             ctx.EvenementPayments.Add(new EvenementPayment
             {

@@ -30,6 +30,8 @@ namespace CongoTravel.Services.Evenement
             CancellationToken cancellationToken = default)
         {
             var inventoryMode = ParseInventoryMode(request.InventoryMode);
+            request.StartAtUtc = EvenementDateTimeUtcHelper.NormalizeToUtc(request.StartAtUtc);
+            request.EndAtUtc = EvenementDateTimeUtcHelper.NormalizeToUtc(request.EndAtUtc);
             ValidateCreateRequest(request, inventoryMode);
 
             if (request.IdSite <= 0)
@@ -199,8 +201,11 @@ namespace CongoTravel.Services.Evenement
             EvenementSessionListFilter? filter = null,
             CancellationToken cancellationToken = default)
         {
+            var utcNow = DateTime.UtcNow;
             var query = SessionListQuery()
-                .Where(s => s.Status == EvenementSessionStatus.Published);
+                .Where(s => s.Status == EvenementSessionStatus.Published
+                            && ((s.EndAtUtc.HasValue && s.EndAtUtc > utcNow)
+                                || (!s.EndAtUtc.HasValue && s.StartAtUtc.AddHours(24) > utcNow)));
 
             if (filter?.IdSociete.HasValue == true && filter.IdSociete.Value > 0)
                 query = query.Where(s => s.IdSociete == filter.IdSociete.Value);

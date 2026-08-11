@@ -67,6 +67,61 @@ namespace CongoTravel.Tests
             Assert.Equal(400, result.SuggestedHttpStatus);
         }
 
+        [Fact]
+        public void Evaluate_allows_entry_within_early_window_hours()
+        {
+            var start = new DateTime(2026, 7, 3, 20, 0, 0, DateTimeKind.Utc);
+            var utcNow = start.AddHours(-2);
+            var result = EvenementTicketEligibilityHelper.Evaluate(
+                BuildTicket(EvenementTicketStatus.ISSUED),
+                BuildReservation(EvenementReservationStatus.CONFIRMED),
+                BuildSession(start, start.AddHours(3)),
+                utcNow,
+                heuresOuvertureAvantDebut: 3);
+
+            Assert.True(result.EntreeAutorisee);
+            Assert.Equal("Valide", result.Statut);
+        }
+
+        [Fact]
+        public void Evaluate_rejects_when_before_early_window()
+        {
+            var start = new DateTime(2026, 7, 3, 20, 0, 0, DateTimeKind.Utc);
+            var utcNow = start.AddHours(-4);
+            var result = EvenementTicketEligibilityHelper.Evaluate(
+                BuildTicket(EvenementTicketStatus.ISSUED),
+                BuildReservation(EvenementReservationStatus.CONFIRMED),
+                BuildSession(start, start.AddHours(3)),
+                utcNow,
+                heuresOuvertureAvantDebut: 3);
+
+            Assert.Equal("HorsFenetre", result.Statut);
+            Assert.Contains("ouverture à partir de", result.Message, StringComparison.OrdinalIgnoreCase);
+        }
+
+        [Fact]
+        public void IsWithinEntryWindow_treats_unspecified_kind_as_utc()
+        {
+            var start = new DateTime(2026, 7, 3, 18, 0, 0, DateTimeKind.Unspecified);
+            var session = BuildSession(start, start.AddHours(4));
+            var now = new DateTime(2026, 7, 3, 16, 0, 0, DateTimeKind.Utc);
+
+            Assert.True(EvenementTicketEligibilityHelper.IsWithinEntryWindow(session, now, heuresOuvertureAvantDebut: 3));
+            Assert.False(EvenementTicketEligibilityHelper.IsWithinEntryWindow(session, now, heuresOuvertureAvantDebut: 0));
+        }
+
+        [Fact]
+        public void IsWithinEntryWindow_n0_matches_exact_start_behavior()
+        {
+            var start = new DateTime(2026, 7, 3, 18, 0, 0, DateTimeKind.Utc);
+            var session = BuildSession(start, start.AddHours(2));
+
+            Assert.False(EvenementTicketEligibilityHelper.IsWithinEntryWindow(
+                session, start.AddMinutes(-1), heuresOuvertureAvantDebut: 0));
+            Assert.True(EvenementTicketEligibilityHelper.IsWithinEntryWindow(
+                session, start, heuresOuvertureAvantDebut: 0));
+        }
+
         private static EvenementTicket BuildTicket(EvenementTicketStatus status) =>
             new() { IdEvenementTicket = 1, TicketCode = "EVT-TKT-001", Status = status };
 

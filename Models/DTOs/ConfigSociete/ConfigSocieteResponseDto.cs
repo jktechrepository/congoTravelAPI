@@ -10,6 +10,7 @@ namespace CongoTravel.Models.DTOs.ConfigSociete
         public int HeuresLimiteReaffectation { get; set; }
         public int HeuresOuvertureEmbarquementAvantDepart { get; set; }
         public int HeuresFermetureEmbarquementApresJourDepart { get; set; }
+        public int HeuresOuvertureEntreeEvenementAvantDebut { get; set; }
         public int DureeHoldFlexPayMinutes { get; set; }
         public bool ReaffectationActive { get; set; }
         public bool AutoReversementPaiementElectronique { get; set; }

@@ -4,6 +4,7 @@ using CongoTravel.Helpers.Evenement;
 using CongoTravel.Models.DTOs.Evenement;
 using CongoTravel.Models.Evenement;
 using CongoTravel.Models.Evenement.Enums;
+using CongoTravel.Services.Repositories;
 
 namespace CongoTravel.Services.Evenement
 {
@@ -17,13 +18,16 @@ WHERE `IdEvenementTicket` = {0}
   AND `Status` = 'ISSUED'";
 
         private readonly CongoTravelDbContext _context;
+        private readonly IConfigSocieteRepository _configSocieteRepository;
         private readonly ILogger<EvenementTicketService> _logger;
 
         public EvenementTicketService(
             CongoTravelDbContext context,
+            IConfigSocieteRepository configSocieteRepository,
             ILogger<EvenementTicketService> logger)
         {
             _context = context;
+            _configSocieteRepository = configSocieteRepository;
             _logger = logger;
         }
 
@@ -176,7 +180,7 @@ WHERE `IdEvenementTicket` = {0}
                 return BuildUnknownCheckResult();
             }
 
-            return BuildCheckResult(ticket);
+            return await BuildCheckResultAsync(ticket, idSociete, cancellationToken);
         }
 
         public async Task<EvenementTicketUseResult> UseTicketAsync(
@@ -223,11 +227,13 @@ WHERE `IdEvenementTicket` = {0}
 
             var reservation = ticket.ReservationLine!.Reservation!;
             var session = reservation.Session!;
+            var heuresAvant = await ResolveEntreeHeuresAvantAsync(idSociete, cancellationToken);
             var eligibility = EvenementTicketEligibilityHelper.Evaluate(
                 ticket,
                 reservation,
                 session,
-                DateTime.UtcNow);
+                DateTime.UtcNow,
+                heuresAvant);
 
             if (!eligibility.EntreeAutorisee)
             {
@@ -283,21 +289,32 @@ WHERE `IdEvenementTicket` = {0}
             };
         }
 
-        private static EvenementTicketCheckResult BuildCheckResult(EvenementTicket? ticket)
+        private async Task<EvenementTicketCheckResult> BuildCheckResultAsync(
+            EvenementTicket? ticket,
+            int idSociete,
+            CancellationToken cancellationToken)
         {
             var reservation = ticket?.ReservationLine?.Reservation;
             var session = reservation?.Session;
+            var heuresAvant = await ResolveEntreeHeuresAvantAsync(idSociete, cancellationToken);
             var eligibility = EvenementTicketEligibilityHelper.Evaluate(
                 ticket,
                 reservation,
                 session,
-                DateTime.UtcNow);
+                DateTime.UtcNow,
+                heuresAvant);
 
             return new EvenementTicketCheckResult
             {
                 Response = EvenementTicketMapper.ToCheckResponse(ticket, reservation, session, eligibility),
                 HttpStatusCode = eligibility.SuggestedHttpStatus
             };
+        }
+
+        private async Task<int> ResolveEntreeHeuresAvantAsync(int idSociete, CancellationToken cancellationToken)
+        {
+            var config = await _configSocieteRepository.GetOrCreateAsync(idSociete, cancellationToken);
+            return config.HeuresOuvertureEntreeEvenementAvantDebut;
         }
 
         private static bool BelongsToSociete(EvenementTicket? ticket, int idSociete) =>

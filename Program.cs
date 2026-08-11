@@ -88,6 +88,9 @@ builder.Services.AddControllers()
         // Uniformiser TimeSpan en JSON: "HH:mm:ss" (lecture + écriture)
         options.JsonSerializerOptions.Converters.Add(new TimeSpanHmsJsonConverter());
         options.JsonSerializerOptions.Converters.Add(new NullableTimeSpanHmsJsonConverter());
+        // DateOnly : "yyyy-MM-dd" (+ ISO datetime en lecture) — évite 400 Swagger sur dateVisite / dateService
+        options.JsonSerializerOptions.Converters.Add(new DateOnlyJsonConverter());
+        options.JsonSerializerOptions.Converters.Add(new NullableDateOnlyJsonConverter());
     });
 
 // ═══════════════════════════════════════════════════════════════════════════════════
@@ -379,6 +382,8 @@ else
 builder.Services.AddScoped<INotificationSender, NotificationSender>();
 builder.Services.AddHostedService<NotificationJobWorker>();
 builder.Services.AddEvenementTicketing();
+builder.Services.AddSiteTouristiqueTicketing();
+builder.Services.AddRestaurantReservations();
 builder.Services.AddScoped<CongoTravel.Services.Repositories.IEmailService, CongoTravelAPI.Services.EmailService>();
 builder.Services.AddScoped<IEmailVerificationService, EmailVerificationService>();
 

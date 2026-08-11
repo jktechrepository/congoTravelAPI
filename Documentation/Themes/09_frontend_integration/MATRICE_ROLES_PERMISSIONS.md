@@ -198,7 +198,7 @@ Dashboard caissier : contrôle **rôle hardcodé** `Caissier` (+ Super-Admin).
 | Reservation | `Create`, `Read`, `ReadAll` |
 | Paiement, Billet | `Read`, `ReadAll` |
 | Voyage, Destination | `Read`, `ReadAll` |
-| Événement | `Session.Read`, `Hold.Create` |
+| Événement | `Evenement.Session.Read`, `Evenement.Hold.Create`, `Evenement.Reservation.Confirm` (achat en ligne FlexPay) |
 | Tous | `Utilisateur.DeactivateSelf` |
 
 ---

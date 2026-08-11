@@ -102,8 +102,8 @@ namespace CongoTravel.Tests
                     IdSociete = idSociete,
                     CodeSession = $"DB-{Guid.NewGuid():N}"[..10],
                     Libelle = "Dashboard session 2",
-                    StartAtUtc = DateTime.UtcNow.AddHours(-1),
-                    EndAtUtc = DateTime.UtcNow.AddHours(6),
+                    StartAtUtc = DateTime.UtcNow.AddDays(2),
+                    EndAtUtc = DateTime.UtcNow.AddDays(2).AddHours(6),
                     InventoryMode = EvenementInventoryMode.GlobalQuota,
                     Status = EvenementSessionStatus.Published,
                     DateCreation = DateTime.UtcNow
@@ -147,8 +147,8 @@ namespace CongoTravel.Tests
                     .SingleAsync(r => r.IdEvenementReservation == idReservation);
                 var session = await ctx.EvenementSessions
                     .SingleAsync(s => s.IdEvenementSession == reservationForPricing.IdEvenementSession);
-                session.StartAtUtc = DateTime.UtcNow.AddHours(-1);
-                session.EndAtUtc = DateTime.UtcNow.AddHours(6);
+                // StartAtUtc reste futur pour autoriser la confirmation (vente avant début).
+                session.EndAtUtc = session.StartAtUtc.AddHours(6);
                 var quota = await ctx.EvenementSessionGlobalQuotas
                     .SingleAsync(q => q.IdEvenementSession == session.IdEvenementSession);
                 quota.PrixUnitaire = unitPrice;

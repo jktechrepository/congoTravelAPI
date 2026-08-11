@@ -1,5 +1,7 @@
 using CongoTravel.Models;
 using CongoTravel.Models.Evenement;
+using CongoTravel.Models.Restaurant;
+using CongoTravel.Models.SiteTouristique;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using System;
@@ -81,6 +83,34 @@ namespace CongoTravel.Data
         public DbSet<EvenementTicket> EvenementTickets { get; set; }
         public DbSet<EvenementPayment> EvenementPayments { get; set; }
         public DbSet<EvenementSessionPhoto> EvenementSessionPhotos { get; set; }
+
+        public DbSet<SiteTouristiqueLieu> SiteTouristiques { get; set; }
+        public DbSet<SiteTouristiqueClasse> SiteTouristiqueClasses { get; set; }
+        public DbSet<SiteTouristiqueJournee> SiteTouristiqueJournees { get; set; }
+        public DbSet<SiteTouristiqueGlobalQuota> SiteTouristiqueGlobalQuotas { get; set; }
+        public DbSet<SiteTouristiqueClassQuota> SiteTouristiqueClassQuotas { get; set; }
+        public DbSet<SiteTouristiqueReservation> SiteTouristiqueReservations { get; set; }
+        public DbSet<SiteTouristiqueReservationLine> SiteTouristiqueReservationLines { get; set; }
+        public DbSet<SiteTouristiqueTicket> SiteTouristiqueTickets { get; set; }
+        public DbSet<SiteTouristiquePayment> SiteTouristiquePayments { get; set; }
+        public DbSet<SiteTouristiquePlanification> SiteTouristiquePlanifications { get; set; }
+        public DbSet<SiteTouristiquePlanifGlobalQuota> SiteTouristiquePlanifGlobalQuotas { get; set; }
+        public DbSet<SiteTouristiquePlanifClassQuota> SiteTouristiquePlanifClassQuotas { get; set; }
+        public DbSet<SiteTouristiquePlanifGenerationLog> SiteTouristiquePlanifGenerationLogs { get; set; }
+
+        public DbSet<Restaurant> Restaurants { get; set; }
+        public DbSet<RestaurantZone> RestaurantZones { get; set; }
+        public DbSet<RestaurantCreneau> RestaurantCreneaux { get; set; }
+        public DbSet<RestaurantCreneauGlobalQuota> RestaurantCreneauGlobalQuotas { get; set; }
+        public DbSet<RestaurantCreneauZoneQuota> RestaurantCreneauZoneQuotas { get; set; }
+        public DbSet<RestaurantReservation> RestaurantReservations { get; set; }
+        public DbSet<RestaurantReservationLine> RestaurantReservationLines { get; set; }
+        public DbSet<RestaurantPayment> RestaurantPayments { get; set; }
+        public DbSet<RestaurantPlanification> RestaurantPlanifications { get; set; }
+        public DbSet<RestaurantPlanificationPlage> RestaurantPlanificationPlages { get; set; }
+        public DbSet<RestaurantPlanifPlageGlobalQuota> RestaurantPlanifPlageGlobalQuotas { get; set; }
+        public DbSet<RestaurantPlanifPlageZoneQuota> RestaurantPlanifPlageZoneQuotas { get; set; }
+        public DbSet<RestaurantPlanifGenerationLog> RestaurantPlanifGenerationLogs { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -641,8 +671,11 @@ namespace CongoTravel.Data
                 entity.Property(e => e.HeuresLimiteReaffectation).HasDefaultValue(2);
                 entity.Property(e => e.HeuresOuvertureEmbarquementAvantDepart).HasDefaultValue(3);
                 entity.Property(e => e.HeuresFermetureEmbarquementApresJourDepart).HasDefaultValue(24);
+                entity.Property(e => e.HeuresOuvertureEntreeEvenementAvantDebut).HasDefaultValue(3);
                 entity.Property(e => e.DureeHoldFlexPayMinutes).HasDefaultValue(15);
                 entity.Property(e => e.DureeHoldEvenementMinutes).HasDefaultValue(15);
+                entity.Property(e => e.DureeHoldSiteTouristiqueMinutes).HasDefaultValue(15);
+                entity.Property(e => e.DureeHoldRestaurantMinutes).HasDefaultValue(15);
                 entity.Property(e => e.ReaffectationActive).HasDefaultValue(true);
                 entity.Property(e => e.AutoReversementPaiementElectronique).HasDefaultValue(false);
                 entity.Property(e => e.PourcentageReversementSite).HasColumnType("decimal(18,2)").HasDefaultValue(100m);
@@ -1488,6 +1521,8 @@ namespace CongoTravel.Data
                 .HasDatabaseName("IX_Billets_IdSite");
 
             ConfigureEvenementEntities(modelBuilder);
+            ConfigureSiteTouristiqueEntities(modelBuilder);
+            ConfigureRestaurantEntities(modelBuilder);
         }
 
         /// <summary>Code site réservé à l'initialisation (unique par société).</summary>

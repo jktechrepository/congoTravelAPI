@@ -765,6 +765,11 @@ namespace CongoTravel.Migrations
                         .HasColumnType("int")
                         .HasDefaultValue(3);
 
+                    b.Property<int>("HeuresOuvertureEntreeEvenementAvantDebut")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(3);
+
                     b.Property<int>("IdSociete")
                         .HasColumnType("int");
 
@@ -1123,6 +1128,9 @@ namespace CongoTravel.Migrations
                     b.Property<int>("IdSociete")
                         .HasColumnType("int");
 
+                    b.Property<int?>("IdUtilisateur")
+                        .HasColumnType("int");
+
                     b.Property<string>("IdempotencyKey")
                         .HasMaxLength(120)
                         .HasColumnType("varchar(120)");
@@ -1145,6 +1153,9 @@ namespace CongoTravel.Migrations
 
                     b.HasIndex("IdSite")
                         .HasDatabaseName("IX_EvenementReservations_IdSite");
+
+                    b.HasIndex("IdUtilisateur")
+                        .HasDatabaseName("IX_EvenementReservations_IdUtilisateur");
 
                     b.HasIndex("IdEvenementSession", "Status")
                         .HasDatabaseName("IX_EvenementReservations_Session_Status");

@@ -5,6 +5,8 @@
 - **`DOCUMENTATION_COMPLETE_INTEGRATION_FRONTEND.md`** — point d'entrée unique (Vue.js + Flutter, 3 personas)
 - Fiches modules : `MODULE_01` à `MODULE_09` (voir index dans le document maître)
 - **`MODULE_05_EVENEMENT_BILLETTERIE.md`** — billetterie événement (catalogue, `with-paiement` / électronique, Vue guichet + Flutter voyageur / gate)
+- **`MODULE_10_SITE_TOURISTIQUE.md`** — billetterie site touristique (`/api/sites-touristiques/*`, Vue guichet + Flutter client/gate ; voir aussi workflow [`DOCUMENTATION_WORKFLOW_SITE_TOURISTIQUE_V1.md`](../05_transport_sync/DOCUMENTATION_WORKFLOW_SITE_TOURISTIQUE_V1.md))
+- **`MODULE_11_RESTAURANT.md`** — réservation restaurant (`/api/restaurants/*`, Vue admin + Flutter client acompte ; voir aussi workflow [`DOCUMENTATION_WORKFLOW_RESTAURANT_V1.md`](../05_transport_sync/DOCUMENTATION_WORKFLOW_RESTAURANT_V1.md))
 - **`INTEGRATION_FLUTTER_FLEXPAY.md`** — paiement Mobile Money / carte **transport** (modèle unifié + verifier + billets)
 
 ## Ensuite

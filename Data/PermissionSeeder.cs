@@ -455,6 +455,30 @@ namespace CongoTravel.Data
                 new Permission { Nom = "Evenement.Ticket.Check", Categorie = "Evenement", Action = "Ticket.Check", Description = "Vérifier un ticket événement (contrôle entrée)", Statut = true },
                 new Permission { Nom = "Evenement.Ticket.Use", Categorie = "Evenement", Action = "Ticket.Use", Description = "Marquer un ticket événement comme utilisé", Statut = true },
                 new Permission { Nom = "Evenement.Dashboard.Read", Categorie = "Evenement", Action = "Dashboard.Read", Description = "Consulter le dashboard billetterie événement", Statut = true },
+
+                // ================================
+                // SITE TOURISTIQUE (billetterie V1)
+                // ================================
+                new Permission { Nom = "SiteTouristique.Lieu.Read", Categorie = "SiteTouristique", Action = "Lieu.Read", Description = "Lister / consulter lieux, journées et disponibilités site touristique", Statut = true },
+                new Permission { Nom = "SiteTouristique.Lieu.Write", Categorie = "SiteTouristique", Action = "Lieu.Write", Description = "Créer, publier ou fermer un lieu / journée site touristique", Statut = true },
+                new Permission { Nom = "SiteTouristique.Classe.Read", Categorie = "SiteTouristique", Action = "Classe.Read", Description = "Lister / consulter classes site touristique", Statut = true },
+                new Permission { Nom = "SiteTouristique.Classe.Write", Categorie = "SiteTouristique", Action = "Classe.Write", Description = "Créer ou modifier des classes site touristique", Statut = true },
+                new Permission { Nom = "SiteTouristique.Hold.Create", Categorie = "SiteTouristique", Action = "Hold.Create", Description = "Créer un hold réservation site touristique", Statut = true },
+                new Permission { Nom = "SiteTouristique.Reservation.Confirm", Categorie = "SiteTouristique", Action = "Reservation.Confirm", Description = "Confirmer paiement ou annuler une réservation site touristique", Statut = true },
+                new Permission { Nom = "SiteTouristique.Ticket.Check", Categorie = "SiteTouristique", Action = "Ticket.Check", Description = "Vérifier un ticket site touristique (contrôle entrée)", Statut = true },
+                new Permission { Nom = "SiteTouristique.Ticket.Use", Categorie = "SiteTouristique", Action = "Ticket.Use", Description = "Marquer un ticket site touristique comme utilisé", Statut = true },
+                new Permission { Nom = "SiteTouristique.Dashboard.Read", Categorie = "SiteTouristique", Action = "Dashboard.Read", Description = "Consulter le dashboard billetterie site touristique", Statut = true },
+
+                // ================================
+                // RESTAURANT (réservation V1 — Phase 1 + readiness Phase 2/4)
+                // ================================
+                new Permission { Nom = "Restaurant.Etablissement.Read", Categorie = "Restaurant", Action = "Etablissement.Read", Description = "Lister / consulter établissements et créneaux restaurant", Statut = true },
+                new Permission { Nom = "Restaurant.Etablissement.Write", Categorie = "Restaurant", Action = "Etablissement.Write", Description = "Créer, publier ou fermer un établissement / créneau restaurant", Statut = true },
+                new Permission { Nom = "Restaurant.Zone.Read", Categorie = "Restaurant", Action = "Zone.Read", Description = "Lister / consulter zones restaurant (V1.1)", Statut = true },
+                new Permission { Nom = "Restaurant.Zone.Write", Categorie = "Restaurant", Action = "Zone.Write", Description = "Créer ou modifier des zones restaurant (V1.1)", Statut = true },
+                new Permission { Nom = "Restaurant.Hold.Create", Categorie = "Restaurant", Action = "Hold.Create", Description = "Créer un hold réservation restaurant", Statut = true },
+                new Permission { Nom = "Restaurant.Reservation.Confirm", Categorie = "Restaurant", Action = "Reservation.Confirm", Description = "Confirmer acompte ou annuler une réservation restaurant", Statut = true },
+                new Permission { Nom = "Restaurant.Dashboard.Read", Categorie = "Restaurant", Action = "Dashboard.Read", Description = "Consulter le dashboard réservation restaurant", Statut = true },
             };
         }
 
@@ -555,7 +579,9 @@ namespace CongoTravel.Data
                     p.Categorie == "FinanceReporting" ||
                     p.Categorie == "Statistiques" ||
                     p.Categorie == "Sync" ||
-                    p.Categorie == "Evenement"
+                    p.Categorie == "Evenement" ||
+                    p.Categorie == "SiteTouristique" ||
+                    p.Categorie == "Restaurant"
                 ).ToList();
 
                 // Vérifier les permissions déjà assignées
@@ -631,7 +657,9 @@ namespace CongoTravel.Data
                     p.Categorie == "FinanceReporting" ||
                     p.Categorie == "Statistiques" ||
                     p.Categorie == "Sync" ||
-                    p.Categorie == "Evenement"
+                    p.Categorie == "Evenement" ||
+                    p.Categorie == "SiteTouristique" ||
+                    p.Categorie == "Restaurant"
                 ).ToList();
 
                 // Vérifier les permissions déjà assignées
@@ -690,7 +718,15 @@ namespace CongoTravel.Data
                     p.Nom == "Evenement.Hold.Create" ||
                     p.Nom == "Evenement.Reservation.Confirm" ||
                     p.Nom == "Evenement.Ticket.Check" ||
-                    p.Nom == "Evenement.Ticket.Use"
+                    p.Nom == "Evenement.Ticket.Use" ||
+                    p.Nom == "SiteTouristique.Lieu.Read" ||
+                    p.Nom == "SiteTouristique.Hold.Create" ||
+                    p.Nom == "SiteTouristique.Reservation.Confirm" ||
+                    p.Nom == "SiteTouristique.Ticket.Check" ||
+                    p.Nom == "SiteTouristique.Ticket.Use" ||
+                    p.Nom == "Restaurant.Etablissement.Read" ||
+                    p.Nom == "Restaurant.Hold.Create" ||
+                    p.Nom == "Restaurant.Reservation.Confirm"
                 ).ToList();
 
                 // Vérifier les permissions déjà assignées
@@ -772,7 +808,14 @@ namespace CongoTravel.Data
                     p.Nom == "Evenement.Session.Read" ||
                     p.Nom == "Evenement.Reservation.Confirm" ||
                     p.Nom == "Evenement.Ticket.Check" ||
-                    p.Nom == "Evenement.Dashboard.Read"
+                    p.Nom == "Evenement.Dashboard.Read" ||
+                    p.Nom == "SiteTouristique.Lieu.Read" ||
+                    p.Nom == "SiteTouristique.Reservation.Confirm" ||
+                    p.Nom == "SiteTouristique.Ticket.Check" ||
+                    p.Nom == "SiteTouristique.Dashboard.Read" ||
+                    p.Nom == "Restaurant.Etablissement.Read" ||
+                    p.Nom == "Restaurant.Reservation.Confirm" ||
+                    p.Nom == "Restaurant.Dashboard.Read"
                 ).ToList();
 
                 // Vérifier les permissions déjà assignées
@@ -823,7 +866,15 @@ namespace CongoTravel.Data
                     // Événementiel : achat en ligne FlexPay (hold + confirm) — pas contrôle entrée ni admin session
                     p.Nom == "Evenement.Session.Read" ||
                     p.Nom == "Evenement.Hold.Create" ||
-                    p.Nom == "Evenement.Reservation.Confirm"
+                    p.Nom == "Evenement.Reservation.Confirm" ||
+                    // Site touristique : même pattern Client
+                    p.Nom == "SiteTouristique.Lieu.Read" ||
+                    p.Nom == "SiteTouristique.Hold.Create" ||
+                    p.Nom == "SiteTouristique.Reservation.Confirm" ||
+                    // Restaurant : même pattern Client
+                    p.Nom == "Restaurant.Etablissement.Read" ||
+                    p.Nom == "Restaurant.Hold.Create" ||
+                    p.Nom == "Restaurant.Reservation.Confirm"
                 ).ToList();
 
                 var legacyClientPermissionIds = allPermissions

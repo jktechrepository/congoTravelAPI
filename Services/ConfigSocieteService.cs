@@ -51,6 +51,7 @@ namespace CongoTravel.Services
             config.HeuresLimiteReaffectation = dto.HeuresLimiteReaffectation;
             config.HeuresOuvertureEmbarquementAvantDepart = dto.HeuresOuvertureEmbarquementAvantDepart;
             config.HeuresFermetureEmbarquementApresJourDepart = dto.HeuresFermetureEmbarquementApresJourDepart;
+            config.HeuresOuvertureEntreeEvenementAvantDebut = dto.HeuresOuvertureEntreeEvenementAvantDebut;
             config.DureeHoldFlexPayMinutes = dto.DureeHoldFlexPayMinutes;
             config.ReaffectationActive = dto.ReaffectationActive;
             config.AutoReversementPaiementElectronique = dto.AutoReversementPaiementElectronique;

@@ -29,15 +29,15 @@ namespace CongoTravel.Tests
             var holdService = CreateHoldService(ctx);
             var availabilityService = new EvenementAvailabilityService(ctx, NullLogger<EvenementAvailabilityService>.Instance);
             var paymentService = CreatePaymentService(ctx);
-            var ticketService = new EvenementTicketService(ctx, NullLogger<EvenementTicketService>.Instance);
+            var ticketService = new EvenementTicketService(ctx, new ConfigSocieteService(ctx), NullLogger<EvenementTicketService>.Instance);
 
             var draft = await sessionService.CreateDraftAsync(new EvenementCreateSessionRequestDto
             {
                 CodeSession = "SMOKE-A-2026",
                 IdSite = idSite,
                 Libelle = "Smoke Mode A",
-                StartAtUtc = DateTime.UtcNow.AddHours(-1),
-                EndAtUtc = DateTime.UtcNow.AddHours(6),
+                StartAtUtc = DateTime.UtcNow.AddHours(2),
+                EndAtUtc = DateTime.UtcNow.AddHours(8),
                 InventoryMode = "SeatNumbered",
                 Sections = new List<EvenementCreateSessionSectionDto>
                 {
@@ -84,6 +84,13 @@ namespace CongoTravel.Tests
 
             Assert.Single(confirm.Reservation.Tickets);
             var ticketCode = confirm.Reservation.Tickets[0].TicketCode;
+
+            // Ouvre la fenêtre d'entrée (vente déjà clôturée si StartAtUtc passé).
+            var sessionEntity = await ctx.EvenementSessions.SingleAsync(
+                s => s.IdEvenementSession == published.IdEvenementSession);
+            sessionEntity.StartAtUtc = DateTime.UtcNow.AddHours(-1);
+            sessionEntity.EndAtUtc = DateTime.UtcNow.AddHours(6);
+            await ctx.SaveChangesAsync();
 
             var check = await ticketService.CheckTicketAsync(ticketCode, idSociete);
             Assert.Equal(200, check.HttpStatusCode);
@@ -160,6 +167,7 @@ namespace CongoTravel.Tests
                     new EvenementGlobalQuotaCancelStrategy(ctx),
                     new EvenementClassQuotaCancelStrategy(ctx),
                     new EvenementSeatNumberedCancelStrategy(ctx)),
+                Moq.Mock.Of<CongoTravel.Services.Repositories.IFlexPayRealtimeNotifier>(),
                 NullLogger<EvenementReservationService>.Instance);
 
         private static async Task<(int IdSociete, int IdSite)> SeedSocieteAsync(

@@ -421,6 +421,7 @@ namespace CongoTravel.Controllers
                 HeuresLimiteReaffectation = config.HeuresLimiteReaffectation,
                 HeuresOuvertureEmbarquementAvantDepart = config.HeuresOuvertureEmbarquementAvantDepart,
                 HeuresFermetureEmbarquementApresJourDepart = config.HeuresFermetureEmbarquementApresJourDepart,
+                HeuresOuvertureEntreeEvenementAvantDebut = config.HeuresOuvertureEntreeEvenementAvantDebut,
                 DureeHoldFlexPayMinutes = config.DureeHoldFlexPayMinutes,
                 ReaffectationActive = config.ReaffectationActive,
                 AutoReversementPaiementElectronique = config.AutoReversementPaiementElectronique,

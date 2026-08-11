@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Http;
 using CongoTravel.Helpers.Evenement;
+using CongoTravel.Helpers.Restaurant;
+using CongoTravel.Helpers.SiteTouristique;
 
 namespace CongoTravel.Helpers
 {
@@ -45,9 +47,60 @@ namespace CongoTravel.Helpers
             HttpContext? httpContext,
             string? callbackBaseUrl,
             string eventCallbackRelativePath,
-            bool forceProductionCallbackInDev)
+            bool forceProductionCallbackInDev) =>
+            ResolveModuleCallbackUrl(
+                httpContext,
+                callbackBaseUrl,
+                eventCallbackRelativePath,
+                EvenementFlexPayConstants.CallbackRoute,
+                forceProductionCallbackInDev,
+                "événement");
+
+        /// <summary>URL callback FlexPay pour le module site touristique (pipeline autonome).</summary>
+        public static string ResolveSiteTouristiqueCallbackUrl(
+            HttpContext? httpContext,
+            string? callbackBaseUrl,
+            string siteTouristiqueCallbackRelativePath,
+            bool forceProductionCallbackInDev) =>
+            ResolveModuleCallbackUrl(
+                httpContext,
+                callbackBaseUrl,
+                siteTouristiqueCallbackRelativePath,
+                SiteTouristiqueFlexPayConstants.CallbackRoute,
+                forceProductionCallbackInDev,
+                "site touristique");
+
+        /// <summary>URL callback FlexPay pour le module restaurant (pipeline autonome).</summary>
+        public static string ResolveRestaurantCallbackUrl(
+            HttpContext? httpContext,
+            string? callbackBaseUrl,
+            string restaurantCallbackRelativePath,
+            bool forceProductionCallbackInDev) =>
+            ResolveModuleCallbackUrl(
+                httpContext,
+                callbackBaseUrl,
+                restaurantCallbackRelativePath,
+                RestaurantFlexPayConstants.CallbackRoute,
+                forceProductionCallbackInDev,
+                "restaurant");
+
+        public static string DeriveRedirectUrl(string callbackBaseUrl, string action)
         {
-            var relativePath = NormalizeRelativePath(eventCallbackRelativePath);
+            var baseUrl = callbackBaseUrl.Trim();
+            if (baseUrl.EndsWith("/callback", StringComparison.OrdinalIgnoreCase))
+                return baseUrl[..^"/callback".Length] + "/" + action;
+            return baseUrl.TrimEnd('/') + "/" + action;
+        }
+
+        private static string ResolveModuleCallbackUrl(
+            HttpContext? httpContext,
+            string? callbackBaseUrl,
+            string? relativePathConfig,
+            string defaultRelativePath,
+            bool forceProductionCallbackInDev,
+            string moduleLabel)
+        {
+            var relativePath = NormalizeRelativePath(relativePathConfig, defaultRelativePath);
 
             if (!string.IsNullOrWhiteSpace(callbackBaseUrl)
                 && (forceProductionCallbackInDev || httpContext == null || !IsPrivateHost(httpContext.Request.Host.Host)))
@@ -64,15 +117,7 @@ namespace CongoTravel.Helpers
                 return CombineBaseAndPath(callbackBaseUrl.Trim(), relativePath);
 
             throw new InvalidOperationException(
-                "FlexPay:CallbackBaseUrl doit être configuré pour les callbacks événement en local.");
-        }
-
-        public static string DeriveRedirectUrl(string callbackBaseUrl, string action)
-        {
-            var baseUrl = callbackBaseUrl.Trim();
-            if (baseUrl.EndsWith("/callback", StringComparison.OrdinalIgnoreCase))
-                return baseUrl[..^"/callback".Length] + "/" + action;
-            return baseUrl.TrimEnd('/') + "/" + action;
+                $"FlexPay:CallbackBaseUrl doit être configuré pour les callbacks {moduleLabel} en local.");
         }
 
         private static bool IsPrivateHost(string host)
@@ -87,11 +132,11 @@ namespace CongoTravel.Helpers
             return false;
         }
 
-        private static string NormalizeRelativePath(string? eventCallbackRelativePath)
+        private static string NormalizeRelativePath(string? relativePathConfig, string defaultRelativePath)
         {
-            var path = string.IsNullOrWhiteSpace(eventCallbackRelativePath)
-                ? EvenementFlexPayConstants.CallbackRoute
-                : eventCallbackRelativePath.Trim();
+            var path = string.IsNullOrWhiteSpace(relativePathConfig)
+                ? defaultRelativePath
+                : relativePathConfig.Trim();
 
             return path.StartsWith('/') ? path : "/" + path;
         }

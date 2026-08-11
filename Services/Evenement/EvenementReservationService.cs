@@ -5,6 +5,7 @@ using CongoTravel.Helpers.Evenement;
 using CongoTravel.Models.DTOs.Evenement;
 using CongoTravel.Models.Evenement.Enums;
 using CongoTravel.Services.Evenement.Strategies;
+using CongoTravel.Services.Repositories;
 
 namespace CongoTravel.Services.Evenement
 {
@@ -12,15 +13,18 @@ namespace CongoTravel.Services.Evenement
     {
         private readonly CongoTravelDbContext _context;
         private readonly IEvenementInventoryCancelStrategyFactory _cancelStrategyFactory;
+        private readonly IFlexPayRealtimeNotifier _flexPayRealtimeNotifier;
         private readonly ILogger<EvenementReservationService> _logger;
 
         public EvenementReservationService(
             CongoTravelDbContext context,
             IEvenementInventoryCancelStrategyFactory cancelStrategyFactory,
+            IFlexPayRealtimeNotifier flexPayRealtimeNotifier,
             ILogger<EvenementReservationService> logger)
         {
             _context = context;
             _cancelStrategyFactory = cancelStrategyFactory;
+            _flexPayRealtimeNotifier = flexPayRealtimeNotifier;
             _logger = logger;
         }
 
@@ -203,6 +207,8 @@ namespace CongoTravel.Services.Evenement
 
                 try
                 {
+                    DetachTrackedReservation(idEvenementReservation);
+
                     var reservation = await _context.EvenementReservations
                         .Include(r => r.Lines)
                             .ThenInclude(l => l.Tickets)
@@ -239,6 +245,7 @@ namespace CongoTravel.Services.Evenement
                     }
 
                     var fromConfirmed = reservation.Status == EvenementReservationStatus.CONFIRMED;
+                    var wasHold = reservation.Status == EvenementReservationStatus.HOLD;
                     var cancelStrategy = _cancelStrategyFactory.GetStrategy(session.InventoryMode);
                     await cancelStrategy.ReleaseReservationAsync(
                         new EvenementInventoryCancelRequest
@@ -251,6 +258,9 @@ namespace CongoTravel.Services.Evenement
 
                     var ticketsVoided = VoidUnusedTickets(reservation);
                     MarkPaymentsRefunded(reservation);
+                    var flexPayFailedOrders = wasHold
+                        ? MarkPendingFlexPayPaymentsFailed(reservation)
+                        : Array.Empty<(string OrderNumber, int UserId)>();
 
                     reservation.Status = EvenementReservationStatus.CANCELLED;
                     reservation.ExpiresAtUtc = null;
@@ -260,6 +270,8 @@ namespace CongoTravel.Services.Evenement
 
                     if (transaction != null)
                         await transaction.CommitAsync(cancellationToken);
+
+                    await TryNotifyFlexPayFailedAsync(flexPayFailedOrders, cancellationToken);
 
                     _logger.LogInformation(
                         "Réservation événement annulée — Id={Id}, TicketsVoided={TicketsVoided}, FromConfirmed={FromConfirmed}",
@@ -331,6 +343,70 @@ namespace CongoTravel.Services.Evenement
                 payment.Status = EvenementPaymentStatus.REFUNDED;
                 payment.DateModification = utcNow;
             }
+        }
+
+        /// <summary>
+        /// Annulation d’un HOLD avec paiement FlexPay encore PENDING (ex. abandon MM depuis l’app).
+        /// </summary>
+        private static IReadOnlyList<(string OrderNumber, int UserId)> MarkPendingFlexPayPaymentsFailed(
+            Models.Evenement.EvenementReservation reservation)
+        {
+            var utcNow = DateTime.UtcNow;
+            var toNotify = new List<(string OrderNumber, int UserId)>();
+
+            foreach (var payment in reservation.Payments.Where(p =>
+                         p.Status == EvenementPaymentStatus.PENDING
+                         && string.Equals(
+                             p.Provider,
+                             EvenementFlexPayConstants.Provider,
+                             StringComparison.OrdinalIgnoreCase)))
+            {
+                payment.Status = EvenementPaymentStatus.FAILED;
+                payment.DateModification = utcNow;
+
+                if (!string.IsNullOrWhiteSpace(payment.ProviderTxRef)
+                    && reservation.IdUtilisateur is > 0)
+                {
+                    toNotify.Add((payment.ProviderTxRef.Trim(), reservation.IdUtilisateur.Value));
+                }
+            }
+
+            return toNotify;
+        }
+
+        private async Task TryNotifyFlexPayFailedAsync(
+            IReadOnlyList<(string OrderNumber, int UserId)> orders,
+            CancellationToken cancellationToken)
+        {
+            foreach (var (orderNumber, userId) in orders)
+            {
+                try
+                {
+                    await _flexPayRealtimeNotifier.NotifyPaymentFailedAsync(
+                        userId,
+                        orderNumber,
+                        "Paiement annulé.",
+                        cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(
+                        ex,
+                        "SignalR FlexPayPaymentFailed (cancel réservation) non envoyé pour order {OrderNumber}",
+                        orderNumber);
+                }
+            }
+        }
+
+        private void DetachTrackedReservation(int idEvenementReservation)
+        {
+            var tracked = _context.ChangeTracker
+                .Entries<Models.Evenement.EvenementReservation>()
+                .Where(e => e.Entity.IdEvenementReservation == idEvenementReservation)
+                .ToList();
+
+            foreach (var entry in tracked)
+                entry.State = EntityState.Detached;
         }
 
         private IQueryable<Models.Evenement.EvenementReservation> BuildListQuery(
