@@ -429,6 +429,12 @@ namespace CongoTravel.Services.SiteTouristique
                 query = query.Where(r => r.CustomerRef == customerRef);
             }
 
+            if (filter?.IdUtilisateur.HasValue == true)
+                query = query.Where(r => r.IdUtilisateur == filter.IdUtilisateur.Value);
+
+            if (filter?.IdClient.HasValue == true)
+                query = query.Where(r => r.IdClient == filter.IdClient.Value);
+
             return query.OrderByDescending(r => r.DateCreation);
         }
 

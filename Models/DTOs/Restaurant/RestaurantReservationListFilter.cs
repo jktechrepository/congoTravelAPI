@@ -11,5 +11,9 @@ namespace CongoTravel.Models.DTOs.Restaurant
         public int? IdRestaurantCreneau { get; set; }
 
         public string? CustomerRef { get; set; }
+
+        public int? IdUtilisateur { get; set; }
+
+        public int? IdClient { get; set; }
     }
 }

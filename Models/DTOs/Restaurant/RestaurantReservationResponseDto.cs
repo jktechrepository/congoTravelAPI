@@ -16,6 +16,10 @@ namespace CongoTravel.Models.DTOs.Restaurant
 
         public string? CustomerRef { get; set; }
 
+        public int? IdUtilisateur { get; set; }
+
+        public int? IdClient { get; set; }
+
         public string Status { get; set; } = string.Empty;
 
         public DateTime? ExpiresAtUtc { get; set; }
@@ -31,6 +35,8 @@ namespace CongoTravel.Models.DTOs.Restaurant
         public DateTime? DateModification { get; set; }
 
         public List<RestaurantReservationLineResponseDto> Lines { get; set; } = new();
+
+        public List<RestaurantTicketResponseDto> Tickets { get; set; } = new();
 
         public List<RestaurantPaymentResponseDto> Payments { get; set; } = new();
     }

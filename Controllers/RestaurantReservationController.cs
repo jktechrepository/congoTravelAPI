@@ -41,6 +41,8 @@ namespace CongoTravel.Controllers
             [FromQuery] int? idRestaurant,
             [FromQuery] int? idRestaurantCreneau,
             [FromQuery] string? customerRef,
+            [FromQuery] int? idUtilisateur,
+            [FromQuery] int? idClient,
             CancellationToken cancellationToken = default)
         {
             try
@@ -57,7 +59,9 @@ namespace CongoTravel.Controllers
                     Status = parsedStatus,
                     IdRestaurant = idRestaurant,
                     IdRestaurantCreneau = idRestaurantCreneau,
-                    CustomerRef = customerRef
+                    CustomerRef = customerRef,
+                    IdUtilisateur = idUtilisateur,
+                    IdClient = idClient
                 };
 
                 var reservations = await _reservationService.ListAsync(

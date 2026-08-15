@@ -10,12 +10,14 @@ namespace CongoTravel.Data
         private static void ConfigureRestaurantEntities(ModelBuilder modelBuilder)
         {
             ConfigureRestaurant(modelBuilder);
+            ConfigureRestaurantPhoto(modelBuilder);
             ConfigureRestaurantZone(modelBuilder);
             ConfigureRestaurantCreneau(modelBuilder);
             ConfigureRestaurantCreneauGlobalQuota(modelBuilder);
             ConfigureRestaurantCreneauZoneQuota(modelBuilder);
             ConfigureRestaurantReservation(modelBuilder);
             ConfigureRestaurantReservationLine(modelBuilder);
+            ConfigureRestaurantTicket(modelBuilder);
             ConfigureRestaurantPayment(modelBuilder);
             ConfigureRestaurantPlanification(modelBuilder);
             ConfigureRestaurantPlanificationPlage(modelBuilder);
@@ -57,6 +59,32 @@ namespace CongoTravel.Data
 
                 entity.HasIndex(e => e.IdSite)
                     .HasDatabaseName("IX_Restaurants_IdSite");
+            });
+        }
+
+        private static void ConfigureRestaurantPhoto(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<RestaurantPhoto>(entity =>
+            {
+                entity.ToTable("RestaurantPhotos");
+                entity.Property(e => e.PhotoData).IsRequired().HasColumnType("mediumblob");
+                entity.Property(e => e.Ordre).IsRequired();
+                entity.Property(e => e.Statut).IsRequired().HasDefaultValue(true);
+                entity.Property(e => e.OriginalFileName).HasMaxLength(100);
+                entity.Property(e => e.TypeMIME).HasMaxLength(50);
+
+                entity.HasOne(e => e.Restaurant)
+                    .WithMany(r => r.Photos)
+                    .HasForeignKey(e => e.IdRestaurant)
+                    .IsRequired()
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(e => new { e.IdRestaurant, e.Ordre })
+                    .IsUnique()
+                    .HasDatabaseName("IX_RestaurantPhotos_Restaurant_Ordre_UQ");
+
+                entity.HasIndex(e => e.IdRestaurant)
+                    .HasDatabaseName("IX_RestaurantPhotos_IdRestaurant");
             });
         }
 
@@ -263,8 +291,17 @@ namespace CongoTravel.Data
                 entity.HasIndex(e => e.IdUtilisateur)
                     .HasDatabaseName("IX_RestaurantReservations_IdUtilisateur");
 
+                entity.HasIndex(e => e.IdClient)
+                    .HasDatabaseName("IX_RestaurantReservations_IdClient");
+
                 entity.HasIndex(e => e.IdRestaurant)
                     .HasDatabaseName("IX_RestaurantReservations_IdRestaurant");
+
+                entity.HasOne(e => e.Client)
+                    .WithMany()
+                    .HasForeignKey(e => e.IdClient)
+                    .IsRequired(false)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
         }
 
@@ -304,6 +341,31 @@ namespace CongoTravel.Data
                 entity.HasCheckConstraint(
                     "CK_RestaurantReservationLines_Quantite",
                     "`Quantite` > 0");
+            });
+        }
+
+        private static void ConfigureRestaurantTicket(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<RestaurantTicket>(entity =>
+            {
+                entity.ToTable("RestaurantTickets");
+                entity.Property(e => e.TicketCode).IsRequired().HasMaxLength(100);
+                entity.Property(e => e.Status)
+                    .HasConversion<string>()
+                    .HasColumnType("enum('ISSUED','USED','VOID')")
+                    .HasDefaultValue(RestaurantTicketStatus.ISSUED);
+
+                entity.HasOne(e => e.ReservationLine)
+                    .WithMany(l => l.Tickets)
+                    .HasForeignKey(e => e.IdRestaurantReservationLine)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasIndex(e => e.TicketCode)
+                    .IsUnique()
+                    .HasDatabaseName("IX_RestaurantTickets_TicketCode_UQ");
+
+                entity.HasIndex(e => e.Status)
+                    .HasDatabaseName("IX_RestaurantTickets_Status");
             });
         }
 

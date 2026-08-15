@@ -140,6 +140,7 @@ Ids issus du détail / availability.
 {
   "idEvenementSession": 12,
   "customerRef": "GUICHET-42",
+  "idClient": 42,
   "idempotencyKey": "cash-001",
   "items": [{ "classId": 3, "quantity": 2 }],
   "paiement": {
@@ -149,6 +150,8 @@ Ids issus du détail / availability.
 }
 ```
 
+`idClient` (optionnel) : client acheteur. S’il est fourni, il prime sur `Utilisateur.IdClient` du JWT ; le client doit exister en base.
+
 Réponse clé :
 
 | Champ | Valeur typique |
@@ -157,6 +160,7 @@ Réponse clé :
 | `reservation.status` | `CONFIRMED` |
 | `payment.status` | `SUCCEEDED` |
 | `tickets[]` | billets `ISSUED` (`ticketCode` = QR) |
+| `reservation.idUtilisateur` / `reservation.idClient` | JWT + body/`Utilisateur.IdClient` |
 
 #### FlexPay — `POST /api/events/reservations/with-paiement-electronique`
 

@@ -27,6 +27,9 @@ namespace CongoTravel.Models.Restaurant
         /// <summary>Acheteur authentifié (JWT) ; null si guichet / legacy.</summary>
         public int? IdUtilisateur { get; set; }
 
+        /// <summary>Client lié à l'acheteur (Utilisateur.IdClient) ; null si guichet / utilisateur sans profil client.</summary>
+        public int? IdClient { get; set; }
+
         [Required]
         [MaxLength(64)]
         public string ReferenceReservation { get; set; } = string.Empty;
@@ -64,6 +67,10 @@ namespace CongoTravel.Models.Restaurant
         [JsonIgnore]
         [ValidateNever]
         public Societe? Societe { get; set; }
+
+        [JsonIgnore]
+        [ValidateNever]
+        public Client? Client { get; set; }
 
         [JsonIgnore]
         [ValidateNever]

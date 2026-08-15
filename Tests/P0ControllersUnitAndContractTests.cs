@@ -665,6 +665,7 @@ namespace CongoTravel.Tests
             var controller = new BilletController(
                 repo.Object,
                 new Mock<IBilletPricingEnrichmentService>().Object,
+                new Mock<IBilletReportService>().Object,
                 mapper.Object,
                 NullLogger<BilletController>.Instance,
                 currentUser.Object);
@@ -722,6 +723,7 @@ namespace CongoTravel.Tests
             var controller = new BilletController(
                 repo.Object,
                 enrichment.Object,
+                new Mock<IBilletReportService>().Object,
                 mapper.Object,
                 NullLogger<BilletController>.Instance,
                 currentUser.Object);
@@ -748,6 +750,7 @@ namespace CongoTravel.Tests
             var controller = new BilletController(
                 repo.Object,
                 new Mock<IBilletPricingEnrichmentService>().Object,
+                new Mock<IBilletReportService>().Object,
                 mapper.Object,
                 NullLogger<BilletController>.Instance,
                 currentUser.Object);

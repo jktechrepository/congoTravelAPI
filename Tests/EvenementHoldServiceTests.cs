@@ -68,6 +68,55 @@ namespace CongoTravel.Tests
         }
 
         [Fact]
+        public async Task CreateHoldAsync_attaches_buyer_from_jwt()
+        {
+            await using var ctx = BuildDb(nameof(CreateHoldAsync_attaches_buyer_from_jwt));
+            var (idSociete, idSession) = await SeedPublishedSessionAsync(ctx, capacity: 20, hold: 0, sold: 0);
+
+            ctx.Clients.Add(new Client
+            {
+                NomClient = "Hold Buyer",
+                Statut = true,
+                IsActif = true,
+                DateCreation = DateTime.UtcNow
+            });
+            await ctx.SaveChangesAsync();
+            var idClient = await ctx.Clients.Select(c => c.IdClient).SingleAsync();
+
+            ctx.Utilisateurs.Add(new Utilisateur
+            {
+                NomComplet = "Hold JWT",
+                MotDePasseHash = "x",
+                IdClient = idClient,
+                Statut = true
+            });
+            await ctx.SaveChangesAsync();
+            var userId = await ctx.Utilisateurs.Select(u => u.IdUtilisateur).SingleAsync();
+
+            var currentUser = new Moq.Mock<CongoTravel.Services.Repositories.ICurrentUserService>();
+            currentUser.SetupGet(u => u.UserId).Returns(userId);
+
+            var service = new EvenementHoldService(
+                ctx,
+                new EvenementInventoryHoldStrategyFactory(
+                    new EvenementGlobalQuotaHoldStrategy(ctx),
+                    new EvenementClassQuotaHoldStrategy(ctx),
+                    new EvenementSeatNumberedHoldStrategy(ctx)),
+                new ConfigSocieteService(ctx),
+                Microsoft.Extensions.Logging.Abstractions.NullLogger<EvenementHoldService>.Instance,
+                currentUser.Object);
+
+            await service.CreateHoldAsync(idSession, idSociete, new EvenementHoldRequestDto
+            {
+                Items = new List<EvenementHoldItemRequestDto> { new() { Quantity = 1 } }
+            });
+
+            var reservation = await ctx.EvenementReservations.SingleAsync();
+            Assert.Equal(userId, reservation.IdUtilisateur);
+            Assert.Equal(idClient, reservation.IdClient);
+        }
+
+        [Fact]
         public async Task CreateHoldAsync_returns_existing_on_idempotency_key()
         {
             await using var ctx = BuildDb(nameof(CreateHoldAsync_returns_existing_on_idempotency_key));

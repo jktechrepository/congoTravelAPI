@@ -31,6 +31,9 @@ namespace CongoTravel.Models.Evenement
         /// <summary>Acheteur authentifié (JWT) pour notifications SignalR FlexPay ; null si guichet / legacy.</summary>
         public int? IdUtilisateur { get; set; }
 
+        /// <summary>Client lié à l'acheteur (Utilisateur.IdClient) ; null si guichet / utilisateur sans profil client.</summary>
+        public int? IdClient { get; set; }
+
         [Required]
         public EvenementReservationStatus Status { get; set; } = EvenementReservationStatus.HOLD;
 
@@ -56,6 +59,10 @@ namespace CongoTravel.Models.Evenement
         [JsonIgnore]
         [ValidateNever]
         public Societe? Societe { get; set; }
+
+        [JsonIgnore]
+        [ValidateNever]
+        public Client? Client { get; set; }
 
         [JsonIgnore]
         [ValidateNever]

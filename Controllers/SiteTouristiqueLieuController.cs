@@ -16,15 +16,18 @@ namespace CongoTravel.Controllers
     public class SiteTouristiqueLieuController : ControllerBase
     {
         private readonly ISiteTouristiqueLieuService _lieuService;
+        private readonly ISiteTouristiqueLieuPhotoService _photoService;
         private readonly ICurrentUserService _currentUserService;
         private readonly ILogger<SiteTouristiqueLieuController> _logger;
 
         public SiteTouristiqueLieuController(
             ISiteTouristiqueLieuService lieuService,
+            ISiteTouristiqueLieuPhotoService photoService,
             ICurrentUserService currentUserService,
             ILogger<SiteTouristiqueLieuController> logger)
         {
             _lieuService = lieuService;
+            _photoService = photoService;
             _currentUserService = currentUserService;
             _logger = logger;
         }
@@ -214,6 +217,10 @@ namespace CongoTravel.Controllers
             {
                 return Conflict(new { message = ex.Message });
             }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
             catch (InvalidOperationException ex)
             {
                 return BadRequest(new { message = ex.Message });
@@ -288,6 +295,178 @@ namespace CongoTravel.Controllers
                 _logger.LogError(ex, "Erreur publish lieu {Id}", id);
                 return StatusCode(500, new { message = "Une erreur interne est survenue." });
             }
+        }
+
+        /// <summary>Liste les photos d'un lieu (max 3).</summary>
+        [HttpGet("{id:int}/photos")]
+        [AllowAnonymous]
+        [ProducesResponseType(typeof(IEnumerable<SiteTouristiqueLieuPhotoDto>), 200)]
+        [ProducesResponseType(404)]
+        public async Task<ActionResult<IEnumerable<SiteTouristiqueLieuPhotoDto>>> GetPhotos(
+            int id,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var lieu = await ResolveLieuForPublicReadAsync(id, cancellationToken);
+                if (lieu == null)
+                    return NotFound(new { message = $"Lieu {id} introuvable." });
+
+                var photos = await _photoService.GetByLieuIdAsync(id, lieu.IdSociete, cancellationToken);
+                return Ok(photos.Select(SiteTouristiqueLieuMapper.ToPhotoDto).ToList());
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur GET photos lieu site touristique {Id}", id);
+                return StatusCode(500, new { message = "Une erreur interne est survenue." });
+            }
+        }
+
+        /// <summary>Ajoute une photo à un lieu (max 3).</summary>
+        [HttpPost("{id:int}/photos")]
+        [Permission("SiteTouristique.Lieu.Write")]
+        [ProducesResponseType(typeof(SiteTouristiqueLieuPhotoDto), 201)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
+        public async Task<ActionResult<SiteTouristiqueLieuPhotoDto>> AddPhoto(
+            int id,
+            [FromBody] AddSiteTouristiqueLieuPhotoDto dto,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var idSociete = SiteTouristiqueTenancyGuard.ResolveEffectiveSocieteId(_currentUserService);
+                var photo = await _photoService.AddPhotoAsync(id, idSociete, dto, cancellationToken);
+                return CreatedAtAction(
+                    nameof(GetPhotos),
+                    new { id },
+                    SiteTouristiqueLieuMapper.ToPhotoDto(photo));
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur POST photo lieu site touristique {Id}", id);
+                return StatusCode(500, new { message = "Une erreur interne est survenue." });
+            }
+        }
+
+        /// <summary>Met à jour l'ordre d'affichage d'une photo (1..3).</summary>
+        [HttpPut("{id:int}/photos/{photoId:int}/ordre")]
+        [Permission("SiteTouristique.Lieu.Write")]
+        [ProducesResponseType(typeof(SiteTouristiqueLieuPhotoDto), 200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
+        public async Task<ActionResult<SiteTouristiqueLieuPhotoDto>> UpdatePhotoOrdre(
+            int id,
+            int photoId,
+            [FromBody] UpdateSiteTouristiqueLieuPhotoOrdreDto dto,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var idSociete = SiteTouristiqueTenancyGuard.ResolveEffectiveSocieteId(_currentUserService);
+                var photo = await _photoService.UpdateOrdreAsync(id, idSociete, photoId, dto.Ordre, cancellationToken);
+                if (photo == null)
+                    return NotFound(new { message = $"Photo {photoId} introuvable pour le lieu {id}." });
+
+                return Ok(SiteTouristiqueLieuMapper.ToPhotoDto(photo));
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur PUT ordre photo {PhotoId} lieu {Id}", photoId, id);
+                return StatusCode(500, new { message = "Une erreur interne est survenue." });
+            }
+        }
+
+        /// <summary>Supprime une photo de lieu.</summary>
+        [HttpDelete("{id:int}/photos/{photoId:int}")]
+        [Permission("SiteTouristique.Lieu.Write")]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> DeletePhoto(
+            int id,
+            int photoId,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var idSociete = SiteTouristiqueTenancyGuard.ResolveEffectiveSocieteId(_currentUserService);
+                var deleted = await _photoService.DeletePhotoAsync(id, idSociete, photoId, cancellationToken);
+                if (!deleted)
+                    return NotFound(new { message = $"Photo {photoId} introuvable pour le lieu {id}." });
+
+                return NoContent();
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur DELETE photo {PhotoId} lieu {Id}", photoId, id);
+                return StatusCode(500, new { message = "Une erreur interne est survenue." });
+            }
+        }
+
+        private async Task<SiteTouristiqueLieuResponseDto?> ResolveLieuForPublicReadAsync(
+            int id,
+            CancellationToken cancellationToken)
+        {
+            if (_currentUserService.IsSuperAdmin)
+                return await _lieuService.GetByIdAsync(id, cancellationToken: cancellationToken);
+
+            var isStaffTenant = SiteTouristiqueTenancyGuard.TryResolveStaffTenantForCatalogList(
+                _currentUserService,
+                null,
+                out var effectiveSocieteId);
+
+            if (isStaffTenant && effectiveSocieteId.HasValue)
+                return await _lieuService.GetByIdAsync(id, effectiveSocieteId.Value, cancellationToken);
+
+            return await _lieuService.GetPublishedByIdAsync(id, cancellationToken);
         }
 
         private static bool TryParseOptionalStatus(

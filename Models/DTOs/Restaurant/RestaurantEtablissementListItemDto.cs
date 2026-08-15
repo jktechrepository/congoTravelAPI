@@ -15,5 +15,7 @@ namespace CongoTravel.Models.DTOs.Restaurant
         public string Status { get; set; } = string.Empty;
         public DateTime DateCreation { get; set; }
         public DateTime? DateModification { get; set; }
+
+        public RestaurantPhotoDto? PhotoCouverture { get; set; }
     }
 }

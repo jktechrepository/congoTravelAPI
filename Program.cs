@@ -286,6 +286,7 @@ builder.Services.AddScoped<IVoyageReportNotificationService, VoyageReportNotific
 builder.Services.AddScoped<IFeuilleDeRouteService, FeuilleDeRouteService>();
 builder.Services.AddScoped<IReservationRepository, ReservationService>();
 builder.Services.AddScoped<IBilletRepository, BilletService>();
+builder.Services.AddScoped<IBilletReportService, BilletReportService>();
 builder.Services.AddScoped<IPaiementRepository, PaiementService>();
 
 // Services pour le workflow paiement→billet automatique

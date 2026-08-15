@@ -17,18 +17,21 @@ namespace CongoTravel.Services.Restaurant
         private readonly CongoTravelDbContext _context;
         private readonly IRestaurantInventoryHoldStrategyFactory _holdStrategyFactory;
         private readonly IConfigSocieteRepository _configSocieteRepository;
+        private readonly ICurrentUserService? _currentUserService;
         private readonly ILogger<RestaurantHoldService> _logger;
 
         public RestaurantHoldService(
             CongoTravelDbContext context,
             IRestaurantInventoryHoldStrategyFactory holdStrategyFactory,
             IConfigSocieteRepository configSocieteRepository,
-            ILogger<RestaurantHoldService> logger)
+            ILogger<RestaurantHoldService> logger,
+            ICurrentUserService? currentUserService = null)
         {
             _context = context;
             _holdStrategyFactory = holdStrategyFactory;
             _configSocieteRepository = configSocieteRepository;
             _logger = logger;
+            _currentUserService = currentUserService;
         }
 
         public async Task<RestaurantHoldResponseDto> CreateHoldAsync(
@@ -146,6 +149,9 @@ namespace CongoTravel.Services.Restaurant
                         DateCreation = utcNow
                     };
 
+                    await ApplyIdClientFromRequestAsync(reservation, request.IdClient, cancellationToken);
+                    await ApplyBuyerFromCurrentUserAsync(reservation, cancellationToken);
+
                     foreach (var line in strategyResult.Lines)
                     {
                         reservation.Lines.Add(new RestaurantReservationLine
@@ -207,6 +213,47 @@ namespace CongoTravel.Services.Restaurant
 
             throw new InvalidOperationException(
                 "Impossible de générer une référence de réservation restaurant unique.");
+        }
+
+        private async Task ApplyBuyerFromCurrentUserAsync(
+            RestaurantReservation reservation,
+            CancellationToken cancellationToken)
+        {
+            var userId = _currentUserService?.UserId ?? 0;
+            if (userId <= 0)
+                return;
+
+            reservation.IdUtilisateur = userId;
+
+            // Ne pas écraser un IdClient déjà fourni dans le body.
+            if (reservation.IdClient is > 0)
+                return;
+
+            reservation.IdClient = await _context.Utilisateurs
+                .AsNoTracking()
+                .Where(u => u.IdUtilisateur == userId)
+                .Select(u => u.IdClient)
+                .FirstOrDefaultAsync(cancellationToken);
+        }
+
+        private async Task ApplyIdClientFromRequestAsync(
+            RestaurantReservation reservation,
+            int? idClientFromRequest,
+            CancellationToken cancellationToken)
+        {
+            if (idClientFromRequest is not > 0)
+                return;
+
+            var exists = await _context.Clients
+                .AsNoTracking()
+                .AnyAsync(c => c.IdClient == idClientFromRequest.Value, cancellationToken);
+            if (!exists)
+            {
+                throw new InvalidOperationException(
+                    $"Client {idClientFromRequest.Value} introuvable.");
+            }
+
+            reservation.IdClient = idClientFromRequest.Value;
         }
     }
 }

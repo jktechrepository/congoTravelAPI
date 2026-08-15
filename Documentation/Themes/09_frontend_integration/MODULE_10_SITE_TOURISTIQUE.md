@@ -116,13 +116,45 @@ POST /api/sites-touristiques/lieux
   "codeLieu": "PARC-01",
   "nom": "Parc National",
   "description": "Visite journalière",
-  "idSite": 1
+  "province": "Kinshasa",
+  "ville": "Mont Ngafula",
+  "adresse": "Route de Kasangulu",
+  "telephone": "+243810000001",
+  "heureOuverture": "08:00:00",
+  "heureFermeture": "17:30:00",
+  "jourOuverture": "Lun-Dim",
+  "idSite": 1,
+  "photos": [
+    { "photoBase64": "<base64 ou data-URL>", "fileName": "cover.jpg", "ordre": 1 }
+  ]
 }
 ```
 
 Puis : `PUT /api/sites-touristiques/lieux/{id}/publish`.
 
 `idSite` = guichet FlexPay / caisse de la société.
+
+**Fiche lieu (list / detail)** expose aussi : `province`, `ville`, `adresse`, `telephone`, `heureOuverture`, `heureFermeture`, `jourOuverture`, `photoCouverture`, `photos[]`.
+
+| Champ | Règle |
+|-------|--------|
+| Localisation / téléphone | Optionnels ; chaînes vides → `null` |
+| `heureOuverture` / `heureFermeture` | `TimeOnly` JSON `"HH:mm:ss"` ; si les deux sont renseignées, `heureFermeture` doit être **strictement** après `heureOuverture` |
+| `jourOuverture` | Texte libre (ex. `Lun-Dim`), max 100 |
+| Photos | Max **3** ; data-URL en réponse |
+
+**CRUD photos** (après création) :
+
+| Méthode | Route |
+|---------|-------|
+| GET | `/api/sites-touristiques/lieux/{id}/photos` |
+| POST | `/api/sites-touristiques/lieux/{id}/photos` |
+| PUT | `/api/sites-touristiques/lieux/{id}/photos/{photoId}/ordre` |
+| DELETE | `/api/sites-touristiques/lieux/{id}/photos/{photoId}` |
+
+Update lieu : `PUT /api/sites-touristiques/lieux/{id}` avec `nom`, `description`, localisation, horaires, `idSite?` (pas de `codeLieu`).
+
+Changelog journée : [CHANGELOG_2026-08-15_RESTAURANT_ET_SITE_TOURISTIQUE.md](CHANGELOG_2026-08-15_RESTAURANT_ET_SITE_TOURISTIQUE.md).
 
 ### 4.2 Classes (Mode B)
 
@@ -248,6 +280,7 @@ Ids `classId` issus du détail / availability.
 {
   "idSiteTouristiqueJournee": 10,
   "customerRef": "GUICHET-42",
+  "idClient": 42,
   "idempotencyKey": "cash-st-001",
   "items": [{ "quantity": 2 }],
   "paiement": {
@@ -258,12 +291,15 @@ Ids `classId` issus du détail / availability.
 }
 ```
 
+`idClient` (optionnel) : client acheteur. S’il est fourni, il prime sur `Utilisateur.IdClient` du JWT ; le client doit exister en base.
+
 | Champ réponse | Valeur typique |
 |---------------|----------------|
 | `transactionStatut` | `Succes` |
 | `reservation.status` | `CONFIRMED` |
 | `payment.status` | `SUCCEEDED` |
 | `tickets[]` | `ISSUED` (`ticketCode` = QR) |
+| `reservation.idUtilisateur` / `reservation.idClient` | JWT + body/`Utilisateur.IdClient` |
 
 #### FlexPay — `POST /api/sites-touristiques/reservations/with-paiement-electronique`
 
@@ -393,7 +429,8 @@ POST /api/sites-touristiques/tickets/{ticketCode}/use
 
 ### Vue (admin / guichet)
 
-- [ ] CRUD lieu + publish
+- [ ] CRUD lieu + publish (localisation, horaires, photos max 3)
+- [ ] CRUD photos lieu
 - [ ] Classes si Mode B
 - [ ] Planification → générer → publier journées Draft
 - [ ] Vente CASH `with-paiement`
@@ -403,7 +440,7 @@ POST /api/sites-touristiques/tickets/{ticketCode}/use
 
 ### Flutter (client)
 
-- [ ] Catalogue lieux / journées Published
+- [ ] Catalogue lieux / journées Published (afficher ville, horaires, cover)
 - [ ] Builder `items[]` selon `inventoryMode`
 - [ ] `with-paiement-electronique` + SignalR + poll verifier
 - [ ] Affichage QR `ticketCode`

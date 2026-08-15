@@ -65,6 +65,8 @@ namespace CongoTravel.Helpers.Restaurant
                 IdSite = reservation.IdSite,
                 ReferenceReservation = reservation.ReferenceReservation,
                 CustomerRef = reservation.CustomerRef,
+                IdUtilisateur = reservation.IdUtilisateur,
+                IdClient = reservation.IdClient,
                 Status = reservation.Status.ToString(),
                 ExpiresAtUtc = reservation.ExpiresAtUtc,
                 MontantSousTotal = reservation.MontantSousTotal,
@@ -74,8 +76,15 @@ namespace CongoTravel.Helpers.Restaurant
                 DateModification = reservation.DateModification
             };
 
-        public static RestaurantReservationResponseDto ToResponseDto(RestaurantReservation reservation) =>
-            new()
+        public static RestaurantReservationResponseDto ToResponseDto(RestaurantReservation reservation)
+        {
+            var tickets = reservation.Lines
+                .SelectMany(l => l.Tickets)
+                .OrderBy(t => t.IdRestaurantTicket)
+                .Select(ToTicketResponse)
+                .ToList();
+
+            return new()
             {
                 IdRestaurantReservation = reservation.IdRestaurantReservation,
                 IdSociete = reservation.IdSociete,
@@ -84,6 +93,8 @@ namespace CongoTravel.Helpers.Restaurant
                 IdSite = reservation.IdSite,
                 ReferenceReservation = reservation.ReferenceReservation,
                 CustomerRef = reservation.CustomerRef,
+                IdUtilisateur = reservation.IdUtilisateur,
+                IdClient = reservation.IdClient,
                 Status = reservation.Status.ToString(),
                 ExpiresAtUtc = reservation.ExpiresAtUtc,
                 MontantSousTotal = reservation.MontantSousTotal,
@@ -95,10 +106,23 @@ namespace CongoTravel.Helpers.Restaurant
                     .OrderBy(l => l.IdRestaurantReservationLine)
                     .Select(ToLineResponse)
                     .ToList(),
+                Tickets = tickets,
                 Payments = reservation.Payments
                     .OrderBy(p => p.IdRestaurantPayment)
                     .Select(ToPaymentResponse)
                     .ToList()
+            };
+        }
+
+        public static RestaurantTicketResponseDto ToTicketResponse(RestaurantTicket ticket) =>
+            new()
+            {
+                IdRestaurantTicket = ticket.IdRestaurantTicket,
+                IdRestaurantReservationLine = ticket.IdRestaurantReservationLine,
+                TicketCode = ticket.TicketCode,
+                Status = ticket.Status.ToString(),
+                IssuedAtUtc = ticket.IssuedAtUtc,
+                UsedAtUtc = ticket.UsedAtUtc
             };
 
         public static RestaurantReservationLineResponseDto ToLineResponse(RestaurantReservationLine line) =>

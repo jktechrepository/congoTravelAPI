@@ -52,6 +52,12 @@ namespace CongoTravel.Tests
                 Mock.Of<IFlexPayRealtimeNotifier>(),
                 NullLogger<SiteTouristiqueReservationService>.Instance);
 
+        public static SiteTouristiqueLieuPhotoService CreateLieuPhotoService(CongoTravelDbContext ctx) =>
+            new(ctx, NullLogger<SiteTouristiqueLieuPhotoService>.Instance);
+
+        public static SiteTouristiqueLieuService CreateLieuService(CongoTravelDbContext ctx) =>
+            new(ctx, CreateLieuPhotoService(ctx), NullLogger<SiteTouristiqueLieuService>.Instance);
+
         public static Site CreateSiteEntity(
             int idSociete,
             string nomSite = "Site Test",
@@ -104,7 +110,7 @@ namespace CongoTravel.Tests
                 Statut = true
             });
 
-            var lieuService = new SiteTouristiqueLieuService(ctx, NullLogger<SiteTouristiqueLieuService>.Instance);
+            var lieuService = SiteTouristiqueTestFactories.CreateLieuService(ctx);
             var journeeService = new SiteTouristiqueJourneeService(ctx, NullLogger<SiteTouristiqueJourneeService>.Instance);
 
             var lieu = await lieuService.CreateDraftAsync(new SiteTouristiqueCreateLieuRequestDto

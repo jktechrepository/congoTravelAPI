@@ -24,5 +24,8 @@ namespace CongoTravel.Models.DTOs.Restaurant
         [Required]
         [Range(1, int.MaxValue)]
         public int IdSite { get; set; }
+
+        /// <summary>Photos optionnelles à la création (max 3).</summary>
+        public List<AddRestaurantPhotoDto>? Photos { get; set; }
     }
 }

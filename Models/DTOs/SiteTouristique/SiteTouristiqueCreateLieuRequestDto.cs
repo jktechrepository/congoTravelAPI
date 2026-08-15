@@ -15,8 +15,30 @@ namespace CongoTravel.Models.DTOs.SiteTouristique
         [MaxLength(2000)]
         public string? Description { get; set; }
 
+        [MaxLength(120)]
+        public string? Province { get; set; }
+
+        [MaxLength(120)]
+        public string? Ville { get; set; }
+
+        [MaxLength(500)]
+        public string? Adresse { get; set; }
+
+        [MaxLength(30)]
+        public string? Telephone { get; set; }
+
+        public TimeOnly? HeureOuverture { get; set; }
+
+        public TimeOnly? HeureFermeture { get; set; }
+
+        [MaxLength(100)]
+        public string? JourOuverture { get; set; }
+
         [Required]
         [Range(1, int.MaxValue)]
         public int IdSite { get; set; }
+
+        /// <summary>Photos optionnelles à la création (max 3).</summary>
+        public List<AddSiteTouristiqueLieuPhotoDto>? Photos { get; set; }
     }
 }

@@ -12,6 +12,30 @@
 3. `production_site_touristique_hold_expiration_procedure_only.sql` — procédure `sp_ExpireSiteTouristiqueHolds`
 4. (Optionnel) `production_site_touristique_hold_expiration_job.sql` — event scheduler MariaDB
 5. **`assign_site_touristique_permissions_admin_gerant.sql`** — permissions + grants (**obligatoire** sur DB existante)
+6. (DB déjà en prod / UAT) **`add_site_touristique_reservation_id_client.sql`** — colonne `IdClient` sur `SiteTouristiqueReservations` (no-op si table absente)
+
+### Schéma EF vs scripts `production_*`
+
+Le schéma ST est désormais aussi dans les migrations EF (`AddSiteTouristiqueAndRestaurantSchema` → inclus dans `deployProduction.sql`). Deux voies possibles :
+
+| Situation | Action |
+|-----------|--------|
+| DB neuve / from-scratch | `deployProduction.sql` (ou `dotnet ef database update`) crée les tables ST + `IdClient` |
+| DB déjà créée via `production_site_touristique_*.sql` | **Ne pas** rejouer les `CREATE` EF. Insérer la migration dans `__EFMigrationsHistory` (voir UAT ci-dessous) |
+| DB sans tables ST | Appliquer la migration EF **incrémentale** depuis la dernière migration déjà appliquée — **pas** tout le script from-scratch sur une DB peuplée |
+| Colonne `IdClient` seule manquante | `add_site_touristique_reservation_id_client.sql` (no-op si table absente) |
+
+### Important — UAT / prod
+
+- Si `__EFMigrationsHistory` contient `20260811111200_AddSiteTouristiqueAndRestaurantReservationIdClient` (migration ALTER retirée) : **supprimer** cette ligne.
+- Tables déjà là via `production_*` : marquer la migration EF comme appliquée sans exécuter les `CREATE` :
+
+```sql
+INSERT INTO `__EFMigrationsHistory` (`MigrationId`, `ProductVersion`)
+VALUES ('20260811142803_AddSiteTouristiqueAndRestaurantSchema', '6.0.25');
+```
+
+- Pour Événement seul : `add_evenement_reservation_id_client.sql` (indépendant de ST).
 
 Sans l’étape 5, un compte **Admin** ou **Gerant** déjà créé obtient **403** sur  
 `POST /api/sites-touristiques/lieux` (`SiteTouristique.Lieu.Write`).  

@@ -178,6 +178,7 @@ namespace CongoTravel.Services.Restaurant
 
                 var reservation = await _context.RestaurantReservations
                     .Include(r => r.Lines)
+                        .ThenInclude(l => l.Tickets)
                     .Include(r => r.Payments)
                     .FirstOrDefaultAsync(
                         r => r.IdRestaurantReservation == payment.IdRestaurantReservation,
@@ -242,6 +243,7 @@ namespace CongoTravel.Services.Restaurant
 
                         var trackedReservation = await _context.RestaurantReservations
                             .Include(r => r.Lines)
+                                .ThenInclude(l => l.Tickets)
                             .FirstAsync(
                                 r => r.IdRestaurantReservation == reservation.IdRestaurantReservation,
                                 cancellationToken);
@@ -264,7 +266,7 @@ namespace CongoTravel.Services.Restaurant
 
                         trackedPayment.ProviderTxRef = callback.OrderNumber?.Trim() ?? trackedPayment.ProviderTxRef;
 
-                        await _confirmationService.ConfirmHoldAndMarkPaymentSucceededAsync(
+                        await _confirmationService.ConfirmHoldAndEmitTicketsAsync(
                             trackedReservation,
                             trackedPayment,
                             trackedReservation.IdSociete,
@@ -638,6 +640,7 @@ namespace CongoTravel.Services.Restaurant
             return await _context.RestaurantReservations
                 .AsNoTracking()
                 .Include(r => r.Lines)
+                    .ThenInclude(l => l.Tickets)
                 .Include(r => r.Payments)
                 .FirstOrDefaultAsync(
                     r => r.IdRestaurantReservation == idRestaurantReservation && r.IdSociete == idSociete,

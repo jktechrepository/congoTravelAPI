@@ -11,6 +11,7 @@ namespace CongoTravel.Helpers
         public const int HeuresOuvertureEmbarquementAvantDepart = 3;
         public const int HeuresFermetureEmbarquementApresJourDepart = 24;
         public const int HeuresOuvertureEntreeEvenementAvantDebut = 3;
+        public const int HeuresOuvertureEntreeRestaurantAvantDebut = 1;
         public const int DureeHoldFlexPayMinutes = 15;
         public const int DureeHoldEvenementMinutes = 15;
         public const int DureeHoldSiteTouristiqueMinutes = 15;
@@ -26,6 +27,7 @@ namespace CongoTravel.Helpers
             HeuresOuvertureEmbarquementAvantDepart = HeuresOuvertureEmbarquementAvantDepart,
             HeuresFermetureEmbarquementApresJourDepart = HeuresFermetureEmbarquementApresJourDepart,
             HeuresOuvertureEntreeEvenementAvantDebut = HeuresOuvertureEntreeEvenementAvantDebut,
+            HeuresOuvertureEntreeRestaurantAvantDebut = HeuresOuvertureEntreeRestaurantAvantDebut,
             DureeHoldFlexPayMinutes = DureeHoldFlexPayMinutes,
             DureeHoldEvenementMinutes = DureeHoldEvenementMinutes,
             DureeHoldSiteTouristiqueMinutes = DureeHoldSiteTouristiqueMinutes,
@@ -44,6 +46,7 @@ namespace CongoTravel.Helpers
             config.HeuresOuvertureEmbarquementAvantDepart = Math.Clamp(config.HeuresOuvertureEmbarquementAvantDepart, 0, 72);
             config.HeuresFermetureEmbarquementApresJourDepart = Math.Clamp(config.HeuresFermetureEmbarquementApresJourDepart, 1, 168);
             config.HeuresOuvertureEntreeEvenementAvantDebut = Math.Clamp(config.HeuresOuvertureEntreeEvenementAvantDebut, 0, 72);
+            config.HeuresOuvertureEntreeRestaurantAvantDebut = Math.Clamp(config.HeuresOuvertureEntreeRestaurantAvantDebut, 0, 72);
             config.DureeHoldFlexPayMinutes = Math.Clamp(config.DureeHoldFlexPayMinutes, 1, 120);
             config.DureeHoldEvenementMinutes = Math.Clamp(config.DureeHoldEvenementMinutes, 1, 120);
             config.DureeHoldSiteTouristiqueMinutes = Math.Clamp(config.DureeHoldSiteTouristiqueMinutes, 1, 120);

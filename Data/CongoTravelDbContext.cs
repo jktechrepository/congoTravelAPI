@@ -85,6 +85,7 @@ namespace CongoTravel.Data
         public DbSet<EvenementSessionPhoto> EvenementSessionPhotos { get; set; }
 
         public DbSet<SiteTouristiqueLieu> SiteTouristiques { get; set; }
+        public DbSet<SiteTouristiqueLieuPhoto> SiteTouristiqueLieuPhotos { get; set; }
         public DbSet<SiteTouristiqueClasse> SiteTouristiqueClasses { get; set; }
         public DbSet<SiteTouristiqueJournee> SiteTouristiqueJournees { get; set; }
         public DbSet<SiteTouristiqueGlobalQuota> SiteTouristiqueGlobalQuotas { get; set; }
@@ -99,12 +100,14 @@ namespace CongoTravel.Data
         public DbSet<SiteTouristiquePlanifGenerationLog> SiteTouristiquePlanifGenerationLogs { get; set; }
 
         public DbSet<Restaurant> Restaurants { get; set; }
+        public DbSet<RestaurantPhoto> RestaurantPhotos { get; set; }
         public DbSet<RestaurantZone> RestaurantZones { get; set; }
         public DbSet<RestaurantCreneau> RestaurantCreneaux { get; set; }
         public DbSet<RestaurantCreneauGlobalQuota> RestaurantCreneauGlobalQuotas { get; set; }
         public DbSet<RestaurantCreneauZoneQuota> RestaurantCreneauZoneQuotas { get; set; }
         public DbSet<RestaurantReservation> RestaurantReservations { get; set; }
         public DbSet<RestaurantReservationLine> RestaurantReservationLines { get; set; }
+        public DbSet<RestaurantTicket> RestaurantTickets { get; set; }
         public DbSet<RestaurantPayment> RestaurantPayments { get; set; }
         public DbSet<RestaurantPlanification> RestaurantPlanifications { get; set; }
         public DbSet<RestaurantPlanificationPlage> RestaurantPlanificationPlages { get; set; }
@@ -672,6 +675,7 @@ namespace CongoTravel.Data
                 entity.Property(e => e.HeuresOuvertureEmbarquementAvantDepart).HasDefaultValue(3);
                 entity.Property(e => e.HeuresFermetureEmbarquementApresJourDepart).HasDefaultValue(24);
                 entity.Property(e => e.HeuresOuvertureEntreeEvenementAvantDebut).HasDefaultValue(3);
+                entity.Property(e => e.HeuresOuvertureEntreeRestaurantAvantDebut).HasDefaultValue(1);
                 entity.Property(e => e.DureeHoldFlexPayMinutes).HasDefaultValue(15);
                 entity.Property(e => e.DureeHoldEvenementMinutes).HasDefaultValue(15);
                 entity.Property(e => e.DureeHoldSiteTouristiqueMinutes).HasDefaultValue(15);

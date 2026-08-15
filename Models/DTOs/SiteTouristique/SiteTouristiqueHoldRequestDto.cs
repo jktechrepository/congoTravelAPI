@@ -12,6 +12,10 @@ namespace CongoTravel.Models.DTOs.SiteTouristique
         [MaxLength(100)]
         public string? CustomerRef { get; set; }
 
+        /// <summary>Client acheteur (optionnel). Prioritaire sur <c>Utilisateur.IdClient</c> du JWT.</summary>
+        [Range(1, int.MaxValue)]
+        public int? IdClient { get; set; }
+
         /// <summary>Clé d'idempotence (unique par société).</summary>
         [MaxLength(120)]
         public string? IdempotencyKey { get; set; }

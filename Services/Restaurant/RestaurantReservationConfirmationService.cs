@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using CongoTravel.Data;
+using CongoTravel.Helpers.Restaurant;
 using CongoTravel.Models.Restaurant;
 using CongoTravel.Models.Restaurant.Enums;
 using CongoTravel.Services.Restaurant.Strategies;
@@ -8,6 +9,8 @@ namespace CongoTravel.Services.Restaurant
 {
     public class RestaurantReservationConfirmationService : IRestaurantReservationConfirmationService
     {
+        private const int MaxTicketCodeAttempts = 10;
+
         private readonly CongoTravelDbContext _context;
         private readonly IRestaurantInventoryConfirmStrategyFactory _confirmStrategyFactory;
         private readonly ILogger<RestaurantReservationConfirmationService> _logger;
@@ -46,7 +49,7 @@ namespace CongoTravel.Services.Restaurant
             }
         }
 
-        public async Task ConfirmHoldAndMarkPaymentSucceededAsync(
+        public async Task ConfirmHoldAndEmitTicketsAsync(
             RestaurantReservation reservation,
             RestaurantPayment payment,
             int idSociete,
@@ -97,11 +100,57 @@ namespace CongoTravel.Services.Restaurant
                 _context.RestaurantPayments.Add(payment);
             }
 
+            await EmitTicketsAsync(reservation, idSociete, utcNow, cancellationToken);
+
             _logger.LogInformation(
-                "Réservation restaurant confirmée — IdReservation={Id}, Provider={Provider}, Couverts={Couverts}",
+                "Réservation restaurant confirmée — IdReservation={Id}, Provider={Provider}, Tickets={TicketCount}",
                 reservation.IdRestaurantReservation,
                 payment.Provider,
-                reservation.NombreCouverts);
+                reservation.Lines.Sum(l => l.Quantite));
+        }
+
+        private async Task EmitTicketsAsync(
+            RestaurantReservation reservation,
+            int idSociete,
+            DateTime utcNow,
+            CancellationToken cancellationToken)
+        {
+            foreach (var line in reservation.Lines)
+            {
+                for (var i = 0; i < line.Quantite; i++)
+                {
+                    var ticketCode = await GenerateUniqueTicketCodeAsync(idSociete, cancellationToken);
+                    var ticket = new RestaurantTicket
+                    {
+                        IdRestaurantReservationLine = line.IdRestaurantReservationLine,
+                        TicketCode = ticketCode,
+                        Status = RestaurantTicketStatus.ISSUED,
+                        IssuedAtUtc = utcNow
+                    };
+
+                    line.Tickets.Add(ticket);
+                    _context.RestaurantTickets.Add(ticket);
+                }
+            }
+        }
+
+        private async Task<string> GenerateUniqueTicketCodeAsync(
+            int idSociete,
+            CancellationToken cancellationToken)
+        {
+            for (var attempt = 0; attempt < MaxTicketCodeAttempts; attempt++)
+            {
+                var candidate = RestaurantTicketCodeGenerator.GenerateTicketCodeCandidate(idSociete);
+                var exists = await _context.RestaurantTickets
+                    .AsNoTracking()
+                    .AnyAsync(t => t.TicketCode == candidate, cancellationToken);
+
+                if (!exists)
+                    return candidate;
+            }
+
+            throw new InvalidOperationException(
+                "Impossible de générer un code ticket restaurant unique.");
         }
     }
 }

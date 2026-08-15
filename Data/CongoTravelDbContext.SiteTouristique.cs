@@ -10,6 +10,7 @@ namespace CongoTravel.Data
         private static void ConfigureSiteTouristiqueEntities(ModelBuilder modelBuilder)
         {
             ConfigureSiteTouristiqueLieu(modelBuilder);
+            ConfigureSiteTouristiqueLieuPhoto(modelBuilder);
             ConfigureSiteTouristiqueClasse(modelBuilder);
             ConfigureSiteTouristiqueJournee(modelBuilder);
             ConfigureSiteTouristiqueGlobalQuota(modelBuilder);
@@ -32,6 +33,11 @@ namespace CongoTravel.Data
                 entity.Property(e => e.CodeLieu).IsRequired().HasMaxLength(64);
                 entity.Property(e => e.Nom).IsRequired().HasMaxLength(255);
                 entity.Property(e => e.Description).HasMaxLength(2000);
+                entity.Property(e => e.Province).HasMaxLength(120);
+                entity.Property(e => e.Ville).HasMaxLength(120);
+                entity.Property(e => e.Adresse).HasMaxLength(500);
+                entity.Property(e => e.Telephone).HasMaxLength(30);
+                entity.Property(e => e.JourOuverture).HasMaxLength(100);
                 entity.Property(e => e.Status)
                     .HasConversion<string>()
                     .HasColumnType("enum('Draft','Published','Closed','Cancelled')")
@@ -53,6 +59,32 @@ namespace CongoTravel.Data
 
                 entity.HasIndex(e => e.IdSite)
                     .HasDatabaseName("IX_SiteTouristiques_IdSite");
+            });
+        }
+
+        private static void ConfigureSiteTouristiqueLieuPhoto(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<SiteTouristiqueLieuPhoto>(entity =>
+            {
+                entity.ToTable("SiteTouristiqueLieuPhotos");
+                entity.Property(e => e.PhotoData).IsRequired().HasColumnType("mediumblob");
+                entity.Property(e => e.Ordre).IsRequired();
+                entity.Property(e => e.Statut).IsRequired().HasDefaultValue(true);
+                entity.Property(e => e.OriginalFileName).HasMaxLength(100);
+                entity.Property(e => e.TypeMIME).HasMaxLength(50);
+
+                entity.HasOne(e => e.Lieu)
+                    .WithMany(l => l.Photos)
+                    .HasForeignKey(e => e.IdSiteTouristique)
+                    .IsRequired()
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(e => new { e.IdSiteTouristique, e.Ordre })
+                    .IsUnique()
+                    .HasDatabaseName("IX_SiteTouristiqueLieuPhotos_Lieu_Ordre_UQ");
+
+                entity.HasIndex(e => e.IdSiteTouristique)
+                    .HasDatabaseName("IX_SiteTouristiqueLieuPhotos_IdSiteTouristique");
             });
         }
 
@@ -238,6 +270,15 @@ namespace CongoTravel.Data
 
                 entity.HasIndex(e => e.IdUtilisateur)
                     .HasDatabaseName("IX_SiteTouristiqueReservations_IdUtilisateur");
+
+                entity.HasIndex(e => e.IdClient)
+                    .HasDatabaseName("IX_SiteTouristiqueReservations_IdClient");
+
+                entity.HasOne(e => e.Client)
+                    .WithMany()
+                    .HasForeignKey(e => e.IdClient)
+                    .IsRequired(false)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
         }
 

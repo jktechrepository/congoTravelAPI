@@ -69,5 +69,9 @@ namespace CongoTravel.Models.Restaurant
         [JsonIgnore]
         [ValidateNever]
         public ICollection<RestaurantReservation> Reservations { get; set; } = new List<RestaurantReservation>();
+
+        [JsonIgnore]
+        [ValidateNever]
+        public ICollection<RestaurantPhoto> Photos { get; set; } = new List<RestaurantPhoto>();
     }
 }

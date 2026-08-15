@@ -16,5 +16,10 @@ namespace CongoTravel.Models.DTOs.Restaurant
         public DateTime DateCreation { get; set; }
         public DateTime? DateModification { get; set; }
         public int CreneauxCount { get; set; }
+
+        public RestaurantPhotoDto? PhotoCouverture { get; set; }
+
+        /// <summary>Photos de l'établissement (max 3), base64 data-URL.</summary>
+        public List<RestaurantPhotoDto> Photos { get; set; } = new();
     }
 }

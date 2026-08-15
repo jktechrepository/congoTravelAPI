@@ -13,6 +13,30 @@
 4. `production_restaurant_phase4_zones.sql` — zones + ZoneQuota (Mode B ClassQuota)
 5. **`production_restaurant_planification_v1.sql`** — templates multi-plages + FK optionnelles sur `RestaurantCreneaux`
 6. **`assign_restaurant_permissions_admin_gerant.sql`** — permissions + grants (**obligatoire** sur DB existante)
+7. (DB déjà en prod / UAT) **`add_restaurant_reservation_id_client.sql`** — colonne `IdClient` sur `RestaurantReservations` (no-op si table absente)
+
+### Schéma EF vs scripts `production_*`
+
+Le schéma Restaurant est désormais aussi dans les migrations EF (`AddSiteTouristiqueAndRestaurantSchema` → inclus dans `deployProduction.sql`). Deux voies possibles :
+
+| Situation | Action |
+|-----------|--------|
+| DB neuve / from-scratch | `deployProduction.sql` (ou `dotnet ef database update`) crée les tables Restaurant + `IdClient` |
+| DB déjà créée via `production_restaurant_*.sql` | **Ne pas** rejouer les `CREATE` EF. Insérer la migration dans `__EFMigrationsHistory` (voir UAT ci-dessous) |
+| DB sans tables Restaurant | Appliquer la migration EF **incrémentale** depuis la dernière migration déjà appliquée — **pas** tout le script from-scratch sur une DB peuplée |
+| Colonne `IdClient` seule manquante | `add_restaurant_reservation_id_client.sql` (no-op si table absente) |
+
+### Important — UAT / prod
+
+- Si `__EFMigrationsHistory` contient `20260811111200_AddSiteTouristiqueAndRestaurantReservationIdClient` (migration ALTER retirée) : **supprimer** cette ligne.
+- Tables déjà là via `production_*` : marquer la migration EF comme appliquée sans exécuter les `CREATE` :
+
+```sql
+INSERT INTO `__EFMigrationsHistory` (`MigrationId`, `ProductVersion`)
+VALUES ('20260811142803_AddSiteTouristiqueAndRestaurantSchema', '6.0.25');
+```
+
+- Pour Événement seul : `add_evenement_reservation_id_client.sql` (indépendant de Restaurant).
 
 Sans l’étape 6, un compte **Admin** ou **Gerant** déjà créé obtient **403** sur  
 `POST /api/restaurants/etablissements` (`Restaurant.Etablissement.Write`).  

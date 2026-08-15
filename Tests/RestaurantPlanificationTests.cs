@@ -35,8 +35,7 @@ namespace CongoTravel.Tests
         {
             var (idSociete, idSite) = await SiteTouristiqueTestFactories.SeedSocieteWithSiteAsync(ctx);
 
-            var etablissementService = new RestaurantEtablissementService(
-                ctx, NullLogger<RestaurantEtablissementService>.Instance);
+            var etablissementService = RestaurantTestFactories.CreateEtablissementService(ctx);
             var etablissement = await etablissementService.PublishAsync(
                 (await etablissementService.CreateDraftAsync(new RestaurantCreateEtablissementRequestDto
                 {
@@ -179,8 +178,7 @@ namespace CongoTravel.Tests
             await using var ctx = BuildDb($"{nameof(RestaurantPlanificationTests)}_{nameof(Create_plages_chevauchantes_leve_ArgumentException)}");
             var (idSociete, idSite) = await SiteTouristiqueTestFactories.SeedSocieteWithSiteAsync(ctx);
 
-            var etablissementService = new RestaurantEtablissementService(
-                ctx, NullLogger<RestaurantEtablissementService>.Instance);
+            var etablissementService = RestaurantTestFactories.CreateEtablissementService(ctx);
             var etablissement = await etablissementService.CreateDraftAsync(new RestaurantCreateEtablissementRequestDto
             {
                 CodeRestaurant = $"REST-OV-{Guid.NewGuid():N}"[..12],

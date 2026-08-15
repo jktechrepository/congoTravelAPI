@@ -25,7 +25,7 @@ namespace CongoTravel.Tests
 
             var classeService = new SiteTouristiqueClasseService(
                 ctx, NullLogger<SiteTouristiqueClasseService>.Instance);
-            var lieuService = new SiteTouristiqueLieuService(ctx, NullLogger<SiteTouristiqueLieuService>.Instance);
+            var lieuService = SiteTouristiqueTestFactories.CreateLieuService(ctx);
             var journeeService = new SiteTouristiqueJourneeService(ctx, NullLogger<SiteTouristiqueJourneeService>.Instance);
             var holdService = SiteTouristiqueTestFactories.CreateHoldService(ctx);
             var availabilityService = new SiteTouristiqueAvailabilityService(
@@ -138,7 +138,7 @@ namespace CongoTravel.Tests
 
             var classeService = new SiteTouristiqueClasseService(
                 ctx, NullLogger<SiteTouristiqueClasseService>.Instance);
-            var lieuService = new SiteTouristiqueLieuService(ctx, NullLogger<SiteTouristiqueLieuService>.Instance);
+            var lieuService = SiteTouristiqueTestFactories.CreateLieuService(ctx);
             var journeeService = new SiteTouristiqueJourneeService(ctx, NullLogger<SiteTouristiqueJourneeService>.Instance);
             var holdService = SiteTouristiqueTestFactories.CreateHoldService(ctx);
             var cancelService = SiteTouristiqueTestFactories.CreateReservationService(ctx);

@@ -12,13 +12,16 @@ namespace CongoTravel.Services.Restaurant
     public class RestaurantEtablissementService : IRestaurantEtablissementService
     {
         private readonly CongoTravelDbContext _context;
+        private readonly IRestaurantPhotoService _photoService;
         private readonly ILogger<RestaurantEtablissementService> _logger;
 
         public RestaurantEtablissementService(
             CongoTravelDbContext context,
+            IRestaurantPhotoService photoService,
             ILogger<RestaurantEtablissementService> logger)
         {
             _context = context;
+            _photoService = photoService;
             _logger = logger;
         }
 
@@ -65,6 +68,12 @@ namespace CongoTravel.Services.Restaurant
 
             _context.Restaurants.Add(restaurant);
             await _context.SaveChangesAsync(cancellationToken);
+
+            await _photoService.AddPhotosOnCreateAsync(
+                restaurant.IdRestaurant,
+                idSociete,
+                request.Photos,
+                cancellationToken);
 
             _logger.LogInformation(
                 "Établissement restaurant Draft créé — Id={Id}, Societe={IdSociete}, Code={Code}",
@@ -201,13 +210,15 @@ namespace CongoTravel.Services.Restaurant
             _context.Restaurants
                 .AsNoTracking()
                 .Include(r => r.Societe)
-                .Include(r => r.Site);
+                .Include(r => r.Site)
+                .Include(r => r.Photos);
 
         private IQueryable<RestaurantEntity> EtablissementDetailQuery() =>
             _context.Restaurants
                 .AsNoTracking()
                 .Include(r => r.Societe)
                 .Include(r => r.Site)
-                .Include(r => r.Creneaux);
+                .Include(r => r.Creneaux)
+                .Include(r => r.Photos);
     }
 }

@@ -17,18 +17,21 @@ namespace CongoTravel.Services.Evenement
         private readonly CongoTravelDbContext _context;
         private readonly IEvenementInventoryHoldStrategyFactory _holdStrategyFactory;
         private readonly IConfigSocieteRepository _configSocieteRepository;
+        private readonly ICurrentUserService? _currentUserService;
         private readonly ILogger<EvenementHoldService> _logger;
 
         public EvenementHoldService(
             CongoTravelDbContext context,
             IEvenementInventoryHoldStrategyFactory holdStrategyFactory,
             IConfigSocieteRepository configSocieteRepository,
-            ILogger<EvenementHoldService> logger)
+            ILogger<EvenementHoldService> logger,
+            ICurrentUserService? currentUserService = null)
         {
             _context = context;
             _holdStrategyFactory = holdStrategyFactory;
             _configSocieteRepository = configSocieteRepository;
             _logger = logger;
+            _currentUserService = currentUserService;
         }
 
         public async Task<EvenementHoldResponseDto> CreateHoldAsync(
@@ -143,6 +146,9 @@ namespace CongoTravel.Services.Evenement
                         DateCreation = utcNow
                     };
 
+                    await ApplyIdClientFromRequestAsync(reservation, request.IdClient, cancellationToken);
+                    await ApplyBuyerFromCurrentUserAsync(reservation, cancellationToken);
+
                     foreach (var line in strategyResult.Lines)
                     {
                         reservation.Lines.Add(new EvenementReservationLine
@@ -237,6 +243,47 @@ namespace CongoTravel.Services.Evenement
 
             throw new InvalidOperationException(
                 "Impossible de générer une référence de réservation événement unique.");
+        }
+
+        private async Task ApplyBuyerFromCurrentUserAsync(
+            EvenementReservation reservation,
+            CancellationToken cancellationToken)
+        {
+            var userId = _currentUserService?.UserId ?? 0;
+            if (userId <= 0)
+                return;
+
+            reservation.IdUtilisateur = userId;
+
+            // Ne pas écraser un IdClient déjà fourni dans le body.
+            if (reservation.IdClient is > 0)
+                return;
+
+            reservation.IdClient = await _context.Utilisateurs
+                .AsNoTracking()
+                .Where(u => u.IdUtilisateur == userId)
+                .Select(u => u.IdClient)
+                .FirstOrDefaultAsync(cancellationToken);
+        }
+
+        private async Task ApplyIdClientFromRequestAsync(
+            EvenementReservation reservation,
+            int? idClientFromRequest,
+            CancellationToken cancellationToken)
+        {
+            if (idClientFromRequest is not > 0)
+                return;
+
+            var exists = await _context.Clients
+                .AsNoTracking()
+                .AnyAsync(c => c.IdClient == idClientFromRequest.Value, cancellationToken);
+            if (!exists)
+            {
+                throw new InvalidOperationException(
+                    $"Client {idClientFromRequest.Value} introuvable.");
+            }
+
+            reservation.IdClient = idClientFromRequest.Value;
         }
     }
 }

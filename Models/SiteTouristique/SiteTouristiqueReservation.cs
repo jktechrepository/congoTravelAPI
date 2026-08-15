@@ -31,6 +31,9 @@ namespace CongoTravel.Models.SiteTouristique
         /// <summary>Acheteur authentifié (JWT) pour notifications SignalR FlexPay ; null si guichet / legacy.</summary>
         public int? IdUtilisateur { get; set; }
 
+        /// <summary>Client lié à l'acheteur (Utilisateur.IdClient) ; null si guichet / utilisateur sans profil client.</summary>
+        public int? IdClient { get; set; }
+
         [Required]
         public SiteTouristiqueReservationStatus Status { get; set; } = SiteTouristiqueReservationStatus.HOLD;
 
@@ -56,6 +59,10 @@ namespace CongoTravel.Models.SiteTouristique
         [JsonIgnore]
         [ValidateNever]
         public Societe? Societe { get; set; }
+
+        [JsonIgnore]
+        [ValidateNever]
+        public Client? Client { get; set; }
 
         [JsonIgnore]
         [ValidateNever]

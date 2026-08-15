@@ -69,11 +69,7 @@ namespace CongoTravel.Services.Restaurant
                     ?? throw new KeyNotFoundException(
                         $"Réservation restaurant {idRestaurantReservation} introuvable pour la société {idSociete}.");
 
-                return new RestaurantCancelReservationResponseDto
-                {
-                    Reservation = RestaurantReservationMapper.ToResponseDto(cancelled),
-                    AlreadyCancelled = true
-                };
+                return BuildCancelResponse(cancelled, alreadyCancelled: true, ticketsVoided: 0);
             }
 
             if (snapshot.Status == RestaurantReservationStatus.EXPIRED)
@@ -95,6 +91,7 @@ namespace CongoTravel.Services.Restaurant
 
                     var reservation = await _context.RestaurantReservations
                         .Include(r => r.Lines)
+                            .ThenInclude(l => l.Tickets)
                         .Include(r => r.Payments)
                         .FirstOrDefaultAsync(
                             r => r.IdRestaurantReservation == idRestaurantReservation && r.IdSociete == idSociete,
@@ -111,11 +108,7 @@ namespace CongoTravel.Services.Restaurant
                         if (transaction != null)
                             await transaction.CommitAsync(cancellationToken);
 
-                        return new RestaurantCancelReservationResponseDto
-                        {
-                            Reservation = RestaurantReservationMapper.ToResponseDto(reservation),
-                            AlreadyCancelled = true
-                        };
+                        return BuildCancelResponse(reservation, alreadyCancelled: true, ticketsVoided: 0);
                     }
 
                     EnsureCancellable(reservation);
@@ -142,6 +135,7 @@ namespace CongoTravel.Services.Restaurant
                         },
                         cancellationToken);
 
+                    var ticketsVoided = VoidUnusedTickets(reservation);
                     MarkPaymentsRefunded(reservation);
 
                     reservation.Status = RestaurantReservationStatus.CANCELLED;
@@ -154,15 +148,12 @@ namespace CongoTravel.Services.Restaurant
                         await transaction.CommitAsync(cancellationToken);
 
                     _logger.LogInformation(
-                        "Réservation restaurant annulée — Id={Id}, FromConfirmed={FromConfirmed}",
+                        "Réservation restaurant annulée — Id={Id}, TicketsVoided={TicketsVoided}, FromConfirmed={FromConfirmed}",
                         reservation.IdRestaurantReservation,
+                        ticketsVoided,
                         fromConfirmed);
 
-                    return new RestaurantCancelReservationResponseDto
-                    {
-                        Reservation = RestaurantReservationMapper.ToResponseDto(reservation),
-                        AlreadyCancelled = false
-                    };
+                    return BuildCancelResponse(reservation, alreadyCancelled: false, ticketsVoided);
                 }
                 catch
                 {
@@ -186,9 +177,48 @@ namespace CongoTravel.Services.Restaurant
                     $"Impossible d'annuler une réservation au statut {reservation.Status}.");
             }
 
+            if (reservation.Status == RestaurantReservationStatus.CONFIRMED)
+            {
+                var hasUsedTicket = reservation.Lines
+                    .SelectMany(l => l.Tickets)
+                    .Any(t => t.Status == RestaurantTicketStatus.USED);
+
+                if (hasUsedTicket)
+                {
+                    throw new InvalidOperationException(
+                        "Impossible d'annuler : au moins un ticket a déjà été utilisé.");
+                }
+            }
+
             if (reservation.Lines.Count == 0)
                 throw new InvalidOperationException("La réservation ne contient aucune ligne.");
         }
+
+        private static int VoidUnusedTickets(Models.Restaurant.RestaurantReservation reservation)
+        {
+            var count = 0;
+            foreach (var ticket in reservation.Lines.SelectMany(l => l.Tickets))
+            {
+                if (ticket.Status != RestaurantTicketStatus.ISSUED)
+                    continue;
+
+                ticket.Status = RestaurantTicketStatus.VOID;
+                count++;
+            }
+
+            return count;
+        }
+
+        private static RestaurantCancelReservationResponseDto BuildCancelResponse(
+            Models.Restaurant.RestaurantReservation reservation,
+            bool alreadyCancelled,
+            int ticketsVoided) =>
+            new()
+            {
+                Reservation = RestaurantReservationMapper.ToResponseDto(reservation),
+                AlreadyCancelled = alreadyCancelled,
+                TicketsVoided = ticketsVoided
+            };
 
         private static void MarkPaymentsRefunded(Models.Restaurant.RestaurantReservation reservation)
         {
@@ -234,6 +264,12 @@ namespace CongoTravel.Services.Restaurant
                 query = query.Where(r => r.CustomerRef == customerRef);
             }
 
+            if (filter?.IdUtilisateur.HasValue == true)
+                query = query.Where(r => r.IdUtilisateur == filter.IdUtilisateur.Value);
+
+            if (filter?.IdClient.HasValue == true)
+                query = query.Where(r => r.IdClient == filter.IdClient.Value);
+
             return query.OrderByDescending(r => r.DateCreation);
         }
 
@@ -245,6 +281,7 @@ namespace CongoTravel.Services.Restaurant
             return await _context.RestaurantReservations
                 .AsNoTracking()
                 .Include(r => r.Lines)
+                    .ThenInclude(l => l.Tickets)
                 .Include(r => r.Payments)
                 .FirstOrDefaultAsync(
                     r => r.IdRestaurantReservation == idRestaurantReservation && r.IdSociete == idSociete,

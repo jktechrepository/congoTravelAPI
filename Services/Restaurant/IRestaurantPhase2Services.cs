@@ -24,7 +24,7 @@ namespace CongoTravel.Services.Restaurant
     {
         void EnsureHoldConfirmable(Models.Restaurant.RestaurantReservation reservation);
 
-        Task ConfirmHoldAndMarkPaymentSucceededAsync(
+        Task ConfirmHoldAndEmitTicketsAsync(
             Models.Restaurant.RestaurantReservation reservation,
             Models.Restaurant.RestaurantPayment payment,
             int idSociete,

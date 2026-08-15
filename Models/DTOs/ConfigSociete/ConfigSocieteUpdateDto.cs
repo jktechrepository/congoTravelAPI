@@ -26,6 +26,10 @@ namespace CongoTravel.Models.DTOs.ConfigSociete
         [Range(0, 72)]
         public int HeuresOuvertureEntreeEvenementAvantDebut { get; set; }
 
+        /// <summary>Heures avant le début créneau pour ouvrir l'entrée restaurant (0–72).</summary>
+        [Range(0, 72)]
+        public int HeuresOuvertureEntreeRestaurantAvantDebut { get; set; }
+
         [Range(1, 120)]
         public int DureeHoldFlexPayMinutes { get; set; }
 

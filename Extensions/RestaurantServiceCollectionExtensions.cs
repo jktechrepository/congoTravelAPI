@@ -25,6 +25,7 @@ namespace CongoTravel.Extensions
             services.AddScoped<IRestaurantInventoryCancelStrategyFactory, RestaurantInventoryCancelStrategyFactory>();
 
             services.AddScoped<IRestaurantEtablissementService, RestaurantEtablissementService>();
+            services.AddScoped<IRestaurantPhotoService, RestaurantPhotoService>();
             services.AddScoped<IRestaurantZoneService, RestaurantZoneService>();
             services.AddScoped<IRestaurantCreneauService, RestaurantCreneauService>();
             services.AddScoped<IRestaurantPlanificationService, RestaurantPlanificationService>();
@@ -36,6 +37,7 @@ namespace CongoTravel.Extensions
             services.AddScoped<IRestaurantFlexPayCallbackService, RestaurantFlexPayCallbackService>();
             services.AddScoped<IRestaurantPaymentService, RestaurantPaymentService>();
             services.AddScoped<IRestaurantReservationService, RestaurantReservationService>();
+            services.AddScoped<IRestaurantTicketService, RestaurantTicketService>();
             services.AddScoped<IRestaurantReservationWithPaiementService, RestaurantReservationWithPaiementService>();
             services.AddScoped<IRestaurantDashboardService, RestaurantDashboardService>();
 

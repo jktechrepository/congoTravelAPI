@@ -15,6 +15,7 @@
 - `DOCUMENTATION_DASHBOARD_EVENEMENT_V1.md` (reporting / KPIs billetterie événement)
 - `DOCUMENTATION_WORKFLOW_SITE_TOURISTIQUE_V1.md` (workflow complet site touristique : lieu → planification → vente → gate)
 - `DOCUMENTATION_WORKFLOW_RESTAURANT_V1.md` (workflow complet restaurant : établissement → créneau → acompte CASH/FlexPay → dashboard)
+- `DOCUMENTATION_API_TICKETS_RESTAURANT_V1.md` (API `api/restaurants/tickets` — list / check / use)
 - `EXEMPLES_UTILISATION_SYNC.md`
 - `GUIDE_TEST_IMPORT_EXCEL.md`
 

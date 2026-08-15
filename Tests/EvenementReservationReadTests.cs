@@ -120,6 +120,50 @@ namespace CongoTravel.Tests
         }
 
         [Fact]
+        public async Task ListAsync_filters_by_IdClient_and_exposes_buyer_fields()
+        {
+            await using var ctx = BuildDb(nameof(ListAsync_filters_by_IdClient_and_exposes_buyer_fields));
+            var (idSociete, idSession) = await SeedPublishedSessionAsync(ctx);
+            var holdService = CreateHoldService(ctx);
+
+            var hold = await holdService.CreateHoldAsync(
+                idSession,
+                idSociete,
+                new EvenementHoldRequestDto
+                {
+                    Items = new List<EvenementHoldItemRequestDto> { new() { Quantity = 1 } }
+                });
+
+            var reservation = await ctx.EvenementReservations
+                .FirstAsync(r => r.IdEvenementReservation == hold.IdEvenementReservation);
+            reservation.IdUtilisateur = 42;
+            reservation.IdClient = 77;
+            await ctx.SaveChangesAsync();
+
+            await holdService.CreateHoldAsync(
+                idSession,
+                idSociete,
+                new EvenementHoldRequestDto
+                {
+                    Items = new List<EvenementHoldItemRequestDto> { new() { Quantity = 1 } }
+                });
+
+            var service = CreateService(ctx);
+            var byClient = await service.ListAsync(
+                idSociete,
+                new EvenementReservationListFilter { IdClient = 77 });
+
+            Assert.Single(byClient);
+            Assert.Equal(77, byClient[0].IdClient);
+            Assert.Equal(42, byClient[0].IdUtilisateur);
+
+            var detail = await service.GetByIdAsync(hold.IdEvenementReservation, idSociete);
+            Assert.NotNull(detail);
+            Assert.Equal(77, detail!.IdClient);
+            Assert.Equal(42, detail.IdUtilisateur);
+        }
+
+        [Fact]
         public async Task GetByReferenceAsync_returns_matching_reservation()
         {
             await using var ctx = BuildDb(nameof(GetByReferenceAsync_returns_matching_reservation));

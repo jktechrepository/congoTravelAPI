@@ -5,5 +5,7 @@ namespace CongoTravel.Models.DTOs.Restaurant
         public RestaurantReservationResponseDto Reservation { get; set; } = new();
 
         public bool AlreadyCancelled { get; set; }
+
+        public int TicketsVoided { get; set; }
     }
 }

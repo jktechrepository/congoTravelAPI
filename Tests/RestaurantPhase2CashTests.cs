@@ -23,13 +23,13 @@ namespace CongoTravel.Tests
                 .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
                 .Options);
 
-        private static Mock<ICurrentUserService> MockClientUser(int jwtSocieteId = 999)
+        private static Mock<ICurrentUserService> MockClientUser(int jwtSocieteId = 999, int userId = 0)
         {
             var mock = new Mock<ICurrentUserService>();
             mock.SetupGet(u => u.IsStaff).Returns(false);
             mock.SetupGet(u => u.IsSuperAdmin).Returns(false);
             mock.SetupGet(u => u.SocieteId).Returns(jwtSocieteId);
-            mock.SetupGet(u => u.UserId).Returns(0);
+            mock.SetupGet(u => u.UserId).Returns(userId);
             return mock;
         }
 
@@ -90,8 +90,7 @@ namespace CongoTravel.Tests
             var (idSociete, idSite) = await SiteTouristiqueTestFactories.SeedSocieteWithSiteAsync(
                 ctx, $"Resto P2 {suffix}");
 
-            var etablissementService = new RestaurantEtablissementService(
-                ctx, NullLogger<RestaurantEtablissementService>.Instance);
+            var etablissementService = RestaurantTestFactories.CreateEtablissementService(ctx);
             var creneauService = new RestaurantCreneauService(
                 ctx, NullLogger<RestaurantCreneauService>.Instance);
 
@@ -154,6 +153,7 @@ namespace CongoTravel.Tests
             Assert.NotNull(provider.GetService<IRestaurantHoldExpirationRunner>());
             Assert.NotNull(provider.GetService<IRestaurantFlexPayInitiationService>());
             Assert.NotNull(provider.GetService<IRestaurantFlexPayCallbackService>());
+            Assert.NotNull(provider.GetService<IRestaurantTicketService>());
         }
 
         [Fact]
@@ -191,6 +191,124 @@ namespace CongoTravel.Tests
                 .SingleAsync(q => q.IdRestaurantCreneau == idCreneau);
             Assert.Equal(0, quota.QuantiteHold);
             Assert.Equal(2, quota.QuantiteVendue);
+        }
+
+        [Fact]
+        public async Task With_paiement_CASH_attaches_IdUtilisateur_and_IdClient_from_jwt()
+        {
+            await using var ctx = BuildDb(nameof(With_paiement_CASH_attaches_IdUtilisateur_and_IdClient_from_jwt));
+            var (_, _, idCreneau) = await SeedPublishedCreneauAsync(
+                ctx, "BUYER", capacite: 20, prixUnitaire: 50m, acomptePourcent: 20m);
+
+            ctx.Clients.Add(new CongoTravel.Models.Client
+            {
+                NomClient = "Resto Acheteur",
+                Statut = true,
+                IsActif = true,
+                DateCreation = DateTime.UtcNow
+            });
+            await ctx.SaveChangesAsync();
+            var idClient = await ctx.Clients.Select(c => c.IdClient).SingleAsync();
+
+            ctx.Utilisateurs.Add(new CongoTravel.Models.Utilisateur
+            {
+                NomComplet = "Resto JWT",
+                MotDePasseHash = "x",
+                IdClient = idClient,
+                Statut = true
+            });
+            await ctx.SaveChangesAsync();
+            var userId = await ctx.Utilisateurs.Select(u => u.IdUtilisateur).SingleAsync();
+
+            var service = CreateWithPaiementService(ctx, MockClientUser(userId: userId).Object);
+
+            var result = await service.CreateCashAsync(new RestaurantReservationWithPaiementRequestDto
+            {
+                IdRestaurantCreneau = idCreneau,
+                Items = new List<RestaurantHoldItemRequestDto> { new() { Quantity = 1 } },
+                Paiement = new RestaurantReservationPaiementBlockDto
+                {
+                    MethodePaiement = "CASH",
+                    ReferenceTransaction = "CAISSE-BUYER"
+                }
+            });
+
+            Assert.Equal(userId, result.Reservation.IdUtilisateur);
+            Assert.Equal(idClient, result.Reservation.IdClient);
+
+            var listed = await CreateReservationService(ctx).ListAsync(
+                result.Reservation.IdSociete,
+                new RestaurantReservationListFilter { IdClient = idClient });
+            Assert.Single(listed);
+            Assert.Equal(userId, listed[0].IdUtilisateur);
+        }
+
+        [Fact]
+        public async Task With_paiement_CASH_uses_IdClient_from_body_over_jwt()
+        {
+            await using var ctx = BuildDb(nameof(With_paiement_CASH_uses_IdClient_from_body_over_jwt));
+            var (_, _, idCreneau) = await SeedPublishedCreneauAsync(
+                ctx, "BODY", capacite: 20, prixUnitaire: 50m, acomptePourcent: 20m);
+
+            ctx.Clients.AddRange(
+                new CongoTravel.Models.Client { NomClient = "JWT Client", Statut = true, IsActif = true, DateCreation = DateTime.UtcNow },
+                new CongoTravel.Models.Client { NomClient = "Body Client", Statut = true, IsActif = true, DateCreation = DateTime.UtcNow });
+            await ctx.SaveChangesAsync();
+            var clients = await ctx.Clients.OrderBy(c => c.IdClient).Select(c => c.IdClient).ToListAsync();
+            var jwtClientId = clients[0];
+            var bodyClientId = clients[1];
+
+            ctx.Utilisateurs.Add(new CongoTravel.Models.Utilisateur
+            {
+                NomComplet = "Resto JWT",
+                MotDePasseHash = "x",
+                IdClient = jwtClientId,
+                Statut = true
+            });
+            await ctx.SaveChangesAsync();
+            var userId = await ctx.Utilisateurs.Select(u => u.IdUtilisateur).SingleAsync();
+
+            var service = CreateWithPaiementService(ctx, MockClientUser(userId: userId).Object);
+
+            var result = await service.CreateCashAsync(new RestaurantReservationWithPaiementRequestDto
+            {
+                IdRestaurantCreneau = idCreneau,
+                IdClient = bodyClientId,
+                Items = new List<RestaurantHoldItemRequestDto> { new() { Quantity = 1 } },
+                Paiement = new RestaurantReservationPaiementBlockDto
+                {
+                    MethodePaiement = "CASH",
+                    ReferenceTransaction = "CAISSE-BODY"
+                }
+            });
+
+            Assert.Equal(userId, result.Reservation.IdUtilisateur);
+            Assert.Equal(bodyClientId, result.Reservation.IdClient);
+            Assert.Equal(bodyClientId, (await ctx.RestaurantReservations.SingleAsync()).IdClient);
+        }
+
+        [Fact]
+        public async Task With_paiement_CASH_rejects_unknown_IdClient_in_body()
+        {
+            await using var ctx = BuildDb(nameof(With_paiement_CASH_rejects_unknown_IdClient_in_body));
+            var (_, _, idCreneau) = await SeedPublishedCreneauAsync(ctx, "BAD", capacite: 10);
+            var service = CreateWithPaiementService(ctx);
+
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                service.CreateCashAsync(new RestaurantReservationWithPaiementRequestDto
+                {
+                    IdRestaurantCreneau = idCreneau,
+                    IdClient = 999999,
+                    Items = new List<RestaurantHoldItemRequestDto> { new() { Quantity = 1 } },
+                    Paiement = new RestaurantReservationPaiementBlockDto
+                    {
+                        MethodePaiement = "CASH",
+                        ReferenceTransaction = "CAISSE-BAD"
+                    }
+                }));
+
+            Assert.Contains("999999", ex.Message);
+            Assert.Equal(0, await ctx.RestaurantReservations.CountAsync());
         }
 
         [Fact]

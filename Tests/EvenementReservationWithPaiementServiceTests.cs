@@ -23,12 +23,13 @@ namespace CongoTravel.Tests
                 .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
                 .Options);
 
-        private static Mock<ICurrentUserService> MockClientUser(int jwtSocieteId = 1)
+        private static Mock<ICurrentUserService> MockClientUser(int jwtSocieteId = 1, int userId = 0)
         {
             var mock = new Mock<ICurrentUserService>();
             mock.SetupGet(u => u.IsStaff).Returns(false);
             mock.SetupGet(u => u.IsSuperAdmin).Returns(false);
             mock.SetupGet(u => u.SocieteId).Returns(jwtSocieteId);
+            mock.SetupGet(u => u.UserId).Returns(userId);
             return mock;
         }
 
@@ -113,6 +114,120 @@ namespace CongoTravel.Tests
             Assert.Equal(0, quota.QuantiteHold);
             Assert.Equal(2, quota.QuantiteVendue);
             Assert.Equal(1, await ctx.EvenementReservations.CountAsync());
+        }
+
+        [Fact]
+        public async Task CreateCashAsync_attaches_IdUtilisateur_and_IdClient_from_jwt()
+        {
+            await using var ctx = BuildDb(nameof(CreateCashAsync_attaches_IdUtilisateur_and_IdClient_from_jwt));
+            var (idSociete, _, idSession) = await SeedPublishedGlobalSessionAsync(ctx, capacite: 20, prix: 15m);
+
+            ctx.Clients.Add(new Client
+            {
+                NomClient = "Acheteur Test",
+                Statut = true,
+                IsActif = true,
+                DateCreation = DateTime.UtcNow
+            });
+            await ctx.SaveChangesAsync();
+            var idClient = await ctx.Clients.Select(c => c.IdClient).SingleAsync();
+
+            ctx.Utilisateurs.Add(new Utilisateur
+            {
+                NomComplet = "Acheteur JWT",
+                MotDePasseHash = "x",
+                IdClient = idClient,
+                Statut = true
+            });
+            await ctx.SaveChangesAsync();
+            var userId = await ctx.Utilisateurs.Select(u => u.IdUtilisateur).SingleAsync();
+
+            var service = CreateService(ctx, currentUser: MockClientUser(jwtSocieteId: 999, userId: userId).Object);
+
+            var result = await service.CreateCashAsync(new EvenementReservationWithPaiementRequestDto
+            {
+                IdEvenementSession = idSession,
+                Items = new List<EvenementHoldItemRequestDto> { new() { Quantity = 1 } },
+                Paiement = new EvenementReservationPaiementBlockDto
+                {
+                    MethodePaiement = "CASH",
+                    ReferenceTransaction = "CAISSE-BUYER"
+                }
+            });
+
+            Assert.Equal(userId, result.Reservation.IdUtilisateur);
+            Assert.Equal(idClient, result.Reservation.IdClient);
+
+            var stored = await ctx.EvenementReservations.SingleAsync();
+            Assert.Equal(userId, stored.IdUtilisateur);
+            Assert.Equal(idClient, stored.IdClient);
+        }
+
+        [Fact]
+        public async Task CreateCashAsync_uses_IdClient_from_body_over_jwt()
+        {
+            await using var ctx = BuildDb(nameof(CreateCashAsync_uses_IdClient_from_body_over_jwt));
+            var (_, _, idSession) = await SeedPublishedGlobalSessionAsync(ctx, capacite: 20, prix: 15m);
+
+            ctx.Clients.AddRange(
+                new Client { NomClient = "JWT Client", Statut = true, IsActif = true, DateCreation = DateTime.UtcNow },
+                new Client { NomClient = "Body Client", Statut = true, IsActif = true, DateCreation = DateTime.UtcNow });
+            await ctx.SaveChangesAsync();
+            var clients = await ctx.Clients.OrderBy(c => c.IdClient).Select(c => c.IdClient).ToListAsync();
+            var jwtClientId = clients[0];
+            var bodyClientId = clients[1];
+
+            ctx.Utilisateurs.Add(new Utilisateur
+            {
+                NomComplet = "Acheteur JWT",
+                MotDePasseHash = "x",
+                IdClient = jwtClientId,
+                Statut = true
+            });
+            await ctx.SaveChangesAsync();
+            var userId = await ctx.Utilisateurs.Select(u => u.IdUtilisateur).SingleAsync();
+
+            var service = CreateService(ctx, currentUser: MockClientUser(jwtSocieteId: 999, userId: userId).Object);
+
+            var result = await service.CreateCashAsync(new EvenementReservationWithPaiementRequestDto
+            {
+                IdEvenementSession = idSession,
+                IdClient = bodyClientId,
+                Items = new List<EvenementHoldItemRequestDto> { new() { Quantity = 1 } },
+                Paiement = new EvenementReservationPaiementBlockDto
+                {
+                    MethodePaiement = "CASH",
+                    ReferenceTransaction = "CAISSE-BODY-CLIENT"
+                }
+            });
+
+            Assert.Equal(userId, result.Reservation.IdUtilisateur);
+            Assert.Equal(bodyClientId, result.Reservation.IdClient);
+            Assert.Equal(bodyClientId, (await ctx.EvenementReservations.SingleAsync()).IdClient);
+        }
+
+        [Fact]
+        public async Task CreateCashAsync_rejects_unknown_IdClient_in_body()
+        {
+            await using var ctx = BuildDb(nameof(CreateCashAsync_rejects_unknown_IdClient_in_body));
+            var (_, _, idSession) = await SeedPublishedGlobalSessionAsync(ctx);
+            var service = CreateService(ctx);
+
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                service.CreateCashAsync(new EvenementReservationWithPaiementRequestDto
+                {
+                    IdEvenementSession = idSession,
+                    IdClient = 999999,
+                    Items = new List<EvenementHoldItemRequestDto> { new() { Quantity = 1 } },
+                    Paiement = new EvenementReservationPaiementBlockDto
+                    {
+                        MethodePaiement = "CASH",
+                        ReferenceTransaction = "CAISSE-BAD-CLIENT"
+                    }
+                }));
+
+            Assert.Contains("999999", ex.Message);
+            Assert.Equal(0, await ctx.EvenementReservations.CountAsync());
         }
 
         [Fact]

@@ -50,5 +50,9 @@ namespace CongoTravel.Models.Restaurant
         [JsonIgnore]
         [ValidateNever]
         public RestaurantCreneauZoneQuota? ZoneQuota { get; set; }
+
+        [JsonIgnore]
+        [ValidateNever]
+        public ICollection<RestaurantTicket> Tickets { get; set; } = new List<RestaurantTicket>();
     }
 }

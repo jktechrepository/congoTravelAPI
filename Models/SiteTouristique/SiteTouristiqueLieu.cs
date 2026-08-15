@@ -30,6 +30,30 @@ namespace CongoTravel.Models.SiteTouristique
         [MaxLength(2000)]
         public string? Description { get; set; }
 
+        [MaxLength(120)]
+        public string? Province { get; set; }
+
+        [MaxLength(120)]
+        public string? Ville { get; set; }
+
+        [MaxLength(500)]
+        public string? Adresse { get; set; }
+
+        [MaxLength(30)]
+        public string? Telephone { get; set; }
+
+        /// <summary>Heure d'ouverture au public (horaire récurrent du lieu).</summary>
+        [Column(TypeName = "time")]
+        public TimeOnly? HeureOuverture { get; set; }
+
+        /// <summary>Heure de fermeture au public (horaire récurrent du lieu).</summary>
+        [Column(TypeName = "time")]
+        public TimeOnly? HeureFermeture { get; set; }
+
+        /// <summary>Jours d'ouverture (texte libre, ex. Lun-Dim).</summary>
+        [MaxLength(100)]
+        public string? JourOuverture { get; set; }
+
         [Required]
         public SiteTouristiqueStatus Status { get; set; } = SiteTouristiqueStatus.Draft;
 
@@ -54,5 +78,9 @@ namespace CongoTravel.Models.SiteTouristique
         [JsonIgnore]
         [ValidateNever]
         public ICollection<SiteTouristiquePlanification> Planifications { get; set; } = new List<SiteTouristiquePlanification>();
+
+        [JsonIgnore]
+        [ValidateNever]
+        public ICollection<SiteTouristiqueLieuPhoto> Photos { get; set; } = new List<SiteTouristiqueLieuPhoto>();
     }
 }

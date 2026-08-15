@@ -19,6 +19,7 @@ namespace CongoTravel.Controllers
     {
         private readonly IBilletRepository _billetRepository;
         private readonly IBilletPricingEnrichmentService _billetPricingEnrichment;
+        private readonly IBilletReportService _billetReportService;
         private readonly IMapper _mapper;
         private readonly ILogger<BilletController> _logger;
         private readonly ICurrentUserService _currentUserService;
@@ -26,12 +27,14 @@ namespace CongoTravel.Controllers
         public BilletController(
             IBilletRepository billetRepository,
             IBilletPricingEnrichmentService billetPricingEnrichment,
+            IBilletReportService billetReportService,
             IMapper mapper,
             ILogger<BilletController> logger,
             ICurrentUserService currentUserService)
         {
             _billetRepository = billetRepository;
             _billetPricingEnrichment = billetPricingEnrichment;
+            _billetReportService = billetReportService;
             _mapper = mapper;
             _logger = logger;
             _currentUserService = currentUserService;
@@ -221,6 +224,64 @@ namespace CongoTravel.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Erreur lors de la récupération du billet {id}", id);
+                return StatusCode(500, new { message = "Erreur interne du serveur" });
+            }
+        }
+
+        /// <summary>Prévisualisation HTML du billet d'avion A4 (compagnies aériennes).</summary>
+        [HttpGet("billet_d_avion_a4/{id:int}")]
+        [Produces("text/html")]
+        public async Task<IActionResult> PreviewBilletAvionA4(int id, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var outcome = await _billetReportService.GenerateHtmlPreviewAsync(id, cancellationToken);
+                return outcome.Status switch
+                {
+                    BilletPdfOutcomeStatus.NotFound => NotFound(new { message = outcome.Message }),
+                    BilletPdfOutcomeStatus.NotAerial => Conflict(new { message = outcome.Message }),
+                    BilletPdfOutcomeStatus.Success when outcome.Pdf != null =>
+                        Content(System.Text.Encoding.UTF8.GetString(outcome.Pdf.Content), "text/html; charset=utf-8"),
+                    _ => StatusCode(500, new { message = "Erreur interne du serveur" })
+                };
+            }
+            catch (FileNotFoundException ex)
+            {
+                _logger.LogError(ex, "Template billet A4 manquant pour billet_d_avion_a4 {Id}", id);
+                return StatusCode(500, new { message = "Template de billet introuvable sur le serveur" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur prévisualisation billet_d_avion_a4 {Id}", id);
+                return StatusCode(500, new { message = "Erreur interne du serveur" });
+            }
+        }
+
+        /// <summary>Téléchargement PDF du billet d'avion A4 (compagnies aériennes).</summary>
+        [HttpGet("billet_d_avion_a4/{id:int}/pdf")]
+        [Produces("application/pdf")]
+        public async Task<IActionResult> PdfBilletAvionA4(int id, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var outcome = await _billetReportService.GeneratePdfAsync(id, cancellationToken);
+                return outcome.Status switch
+                {
+                    BilletPdfOutcomeStatus.NotFound => NotFound(new { message = outcome.Message }),
+                    BilletPdfOutcomeStatus.NotAerial => Conflict(new { message = outcome.Message }),
+                    BilletPdfOutcomeStatus.Success when outcome.Pdf != null =>
+                        File(outcome.Pdf.Content, outcome.Pdf.ContentType, outcome.Pdf.FileName),
+                    _ => StatusCode(500, new { message = "Erreur interne du serveur" })
+                };
+            }
+            catch (FileNotFoundException ex)
+            {
+                _logger.LogError(ex, "Template billet A4 manquant pour billet_d_avion_a4 {Id}", id);
+                return StatusCode(500, new { message = "Template de billet introuvable sur le serveur" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur PDF billet_d_avion_a4 {Id}", id);
                 return StatusCode(500, new { message = "Erreur interne du serveur" });
             }
         }

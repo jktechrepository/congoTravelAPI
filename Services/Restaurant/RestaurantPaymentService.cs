@@ -115,6 +115,7 @@ namespace CongoTravel.Services.Restaurant
                 {
                     var reservation = await _context.RestaurantReservations
                         .Include(r => r.Lines)
+                            .ThenInclude(l => l.Tickets)
                         .Include(r => r.Payments)
                         .FirstOrDefaultAsync(
                             r => r.IdRestaurantReservation == idRestaurantReservation && r.IdSociete == idSociete,
@@ -158,7 +159,7 @@ namespace CongoTravel.Services.Restaurant
                         IdSite = reservation.IdSite
                     };
 
-                    await _confirmationService.ConfirmHoldAndMarkPaymentSucceededAsync(
+                    await _confirmationService.ConfirmHoldAndEmitTicketsAsync(
                         reservation,
                         payment,
                         idSociete,

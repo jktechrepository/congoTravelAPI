@@ -35,7 +35,7 @@ namespace CongoTravel.Tests
         {
             var (idSociete, idSite) = await SiteTouristiqueTestFactories.SeedSocieteWithSiteAsync(ctx);
 
-            var lieuService = new SiteTouristiqueLieuService(ctx, NullLogger<SiteTouristiqueLieuService>.Instance);
+            var lieuService = SiteTouristiqueTestFactories.CreateLieuService(ctx);
             var lieu = await lieuService.CreateDraftAsync(new SiteTouristiqueCreateLieuRequestDto
             {
                 CodeLieu = $"PL-{Guid.NewGuid():N}"[..10],
@@ -127,7 +127,7 @@ namespace CongoTravel.Tests
             await using var ctx = BuildDb($"{nameof(SiteTouristiquePlanificationTests)}_{nameof(Generer_publierApresGeneration_lieu_Draft_garde_journees_Draft)}");
             var (idSociete, idSite) = await SiteTouristiqueTestFactories.SeedSocieteWithSiteAsync(ctx);
 
-            var lieuService = new SiteTouristiqueLieuService(ctx, NullLogger<SiteTouristiqueLieuService>.Instance);
+            var lieuService = SiteTouristiqueTestFactories.CreateLieuService(ctx);
             var lieu = await lieuService.CreateDraftAsync(new SiteTouristiqueCreateLieuRequestDto
             {
                 CodeLieu = $"PL-{Guid.NewGuid():N}"[..10],

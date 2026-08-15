@@ -16,15 +16,18 @@ namespace CongoTravel.Controllers
     public class RestaurantEtablissementController : ControllerBase
     {
         private readonly IRestaurantEtablissementService _etablissementService;
+        private readonly IRestaurantPhotoService _photoService;
         private readonly ICurrentUserService _currentUserService;
         private readonly ILogger<RestaurantEtablissementController> _logger;
 
         public RestaurantEtablissementController(
             IRestaurantEtablissementService etablissementService,
+            IRestaurantPhotoService photoService,
             ICurrentUserService currentUserService,
             ILogger<RestaurantEtablissementController> logger)
         {
             _etablissementService = etablissementService;
+            _photoService = photoService;
             _currentUserService = currentUserService;
             _logger = logger;
         }
@@ -139,6 +142,10 @@ namespace CongoTravel.Controllers
             {
                 return Conflict(new { message = ex.Message });
             }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
             catch (InvalidOperationException ex)
             {
                 return BadRequest(new { message = ex.Message });
@@ -213,6 +220,178 @@ namespace CongoTravel.Controllers
                 _logger.LogError(ex, "Erreur publish établissement restaurant {Id}", id);
                 return StatusCode(500, new { message = "Une erreur interne est survenue." });
             }
+        }
+
+        /// <summary>Liste les photos d'un établissement (max 3).</summary>
+        [HttpGet("{id:int}/photos")]
+        [AllowAnonymous]
+        [ProducesResponseType(typeof(IEnumerable<RestaurantPhotoDto>), 200)]
+        [ProducesResponseType(404)]
+        public async Task<ActionResult<IEnumerable<RestaurantPhotoDto>>> GetPhotos(
+            int id,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var etablissement = await ResolveEtablissementForPublicReadAsync(id, cancellationToken);
+                if (etablissement == null)
+                    return NotFound(new { message = $"Établissement {id} introuvable." });
+
+                var photos = await _photoService.GetByRestaurantIdAsync(id, etablissement.IdSociete, cancellationToken);
+                return Ok(photos.Select(RestaurantEtablissementMapper.ToPhotoDto).ToList());
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur GET photos établissement restaurant {Id}", id);
+                return StatusCode(500, new { message = "Une erreur interne est survenue." });
+            }
+        }
+
+        /// <summary>Ajoute une photo à un établissement (max 3).</summary>
+        [HttpPost("{id:int}/photos")]
+        [Permission("Restaurant.Etablissement.Write")]
+        [ProducesResponseType(typeof(RestaurantPhotoDto), 201)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
+        public async Task<ActionResult<RestaurantPhotoDto>> AddPhoto(
+            int id,
+            [FromBody] AddRestaurantPhotoDto dto,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var idSociete = RestaurantTenancyGuard.ResolveEffectiveSocieteId(_currentUserService);
+                var photo = await _photoService.AddPhotoAsync(id, idSociete, dto, cancellationToken);
+                return CreatedAtAction(
+                    nameof(GetPhotos),
+                    new { id },
+                    RestaurantEtablissementMapper.ToPhotoDto(photo));
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur POST photo établissement restaurant {Id}", id);
+                return StatusCode(500, new { message = "Une erreur interne est survenue." });
+            }
+        }
+
+        /// <summary>Met à jour l'ordre d'affichage d'une photo (1..3).</summary>
+        [HttpPut("{id:int}/photos/{photoId:int}/ordre")]
+        [Permission("Restaurant.Etablissement.Write")]
+        [ProducesResponseType(typeof(RestaurantPhotoDto), 200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
+        public async Task<ActionResult<RestaurantPhotoDto>> UpdatePhotoOrdre(
+            int id,
+            int photoId,
+            [FromBody] UpdateRestaurantPhotoOrdreDto dto,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var idSociete = RestaurantTenancyGuard.ResolveEffectiveSocieteId(_currentUserService);
+                var photo = await _photoService.UpdateOrdreAsync(id, idSociete, photoId, dto.Ordre, cancellationToken);
+                if (photo == null)
+                    return NotFound(new { message = $"Photo {photoId} introuvable pour l'établissement {id}." });
+
+                return Ok(RestaurantEtablissementMapper.ToPhotoDto(photo));
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur PUT ordre photo {PhotoId} établissement {Id}", photoId, id);
+                return StatusCode(500, new { message = "Une erreur interne est survenue." });
+            }
+        }
+
+        /// <summary>Supprime une photo d'établissement.</summary>
+        [HttpDelete("{id:int}/photos/{photoId:int}")]
+        [Permission("Restaurant.Etablissement.Write")]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> DeletePhoto(
+            int id,
+            int photoId,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var idSociete = RestaurantTenancyGuard.ResolveEffectiveSocieteId(_currentUserService);
+                var deleted = await _photoService.DeletePhotoAsync(id, idSociete, photoId, cancellationToken);
+                if (!deleted)
+                    return NotFound(new { message = $"Photo {photoId} introuvable pour l'établissement {id}." });
+
+                return NoContent();
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur DELETE photo {PhotoId} établissement {Id}", photoId, id);
+                return StatusCode(500, new { message = "Une erreur interne est survenue." });
+            }
+        }
+
+        private async Task<RestaurantEtablissementResponseDto?> ResolveEtablissementForPublicReadAsync(
+            int id,
+            CancellationToken cancellationToken)
+        {
+            if (_currentUserService.IsSuperAdmin)
+                return await _etablissementService.GetByIdAsync(id, cancellationToken: cancellationToken);
+
+            var isStaffTenant = RestaurantTenancyGuard.TryResolveStaffTenantForCatalogList(
+                _currentUserService,
+                null,
+                out var effectiveSocieteId);
+
+            if (isStaffTenant && effectiveSocieteId.HasValue)
+                return await _etablissementService.GetByIdAsync(id, effectiveSocieteId.Value, cancellationToken);
+
+            return await _etablissementService.GetPublishedByIdAsync(id, cancellationToken);
         }
 
         private static bool TryParseOptionalStatus(

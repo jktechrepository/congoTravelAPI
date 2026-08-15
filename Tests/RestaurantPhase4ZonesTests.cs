@@ -70,8 +70,7 @@ namespace CongoTravel.Tests
             var (idSociete, idSite) = await SiteTouristiqueTestFactories.SeedSocieteWithSiteAsync(
                 ctx, $"Resto P4 {suffix}");
 
-            var etablissementService = new RestaurantEtablissementService(
-                ctx, NullLogger<RestaurantEtablissementService>.Instance);
+            var etablissementService = RestaurantTestFactories.CreateEtablissementService(ctx);
             var zoneService = new RestaurantZoneService(
                 ctx, NullLogger<RestaurantZoneService>.Instance);
             var creneauService = new RestaurantCreneauService(

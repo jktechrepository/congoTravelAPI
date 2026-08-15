@@ -74,8 +74,8 @@ Scan billet (`dateDepartVoyage` + `heureDepartVoyage`, `dateVoyage` + `heureVoya
 | 6. Paiements | [MODULE_04](MODULE_04_PAIEMENT_FLEXPAY.md) | Cash, FlexPay, multi-devise |
 | 7. Reporting | [MODULE_07](MODULE_07_DASHBOARDS_ADMIN.md) | Dashboards gérant, financier |
 | 8. Événements | [MODULE_05](MODULE_05_EVENEMENT_BILLETTERIE.md) | Guichet `with-paiement` / FlexPay, sessions, tickets |
-| 9. Sites touristiques | [MODULE_10](MODULE_10_SITE_TOURISTIQUE.md) | Lieux, planification, journées, CASH/FlexPay, tickets |
-| 10. Restaurants | [MODULE_11](MODULE_11_RESTAURANT.md) | Établissements, créneaux, zones, acompte CASH/FlexPay, dashboard |
+| 9. Sites touristiques | [MODULE_10](MODULE_10_SITE_TOURISTIQUE.md) | Lieux (localisation, horaires, photos), planification, journées, CASH/FlexPay, tickets |
+| 10. Restaurants | [MODULE_11](MODULE_11_RESTAURANT.md) | Établissements (photos), créneaux, zones, acompte CASH/FlexPay, tickets gate, dashboard |
 
 **Stack recommandée** : Vue 3, Vue Router, Pinia, Axios, Chart.js.
 
@@ -92,6 +92,7 @@ Scan billet (`dateDepartVoyage` + `heureDepartVoyage`, `dateVoyage` + `heureVoya
 | 7. FlexPay | MODULE_04 | Paiement électronique + `verifier` |
 | 8. Événements (optionnel) | [MODULE_05](MODULE_05_EVENEMENT_BILLETTERIE.md) | Contrôle entrée tickets événement (`check` / `use`) |
 | 9. Sites touristiques (optionnel) | [MODULE_10](MODULE_10_SITE_TOURISTIQUE.md) | Gate tickets site touristique (`check` / `use`) |
+| 10. Restaurants (optionnel) | [MODULE_11](MODULE_11_RESTAURANT.md) | Gate tickets restaurant (`check` / `use`) |
 
 **Stack recommandée** : Flutter, Dio, flutter_secure_storage, mobile_scanner.
 
@@ -108,7 +109,7 @@ Scan billet (`dateDepartVoyage` + `heureDepartVoyage`, `dateVoyage` + `heureVoya
 | 7. Dashboard client | MODULE_06 | `GET /ClientDashboard` |
 | 8. Événements (optionnel) | [MODULE_05](MODULE_05_EVENEMENT_BILLETTERIE.md) | Catalogue → `with-paiement-electronique` → tickets QR |
 | 9. Sites touristiques (optionnel) | [MODULE_10](MODULE_10_SITE_TOURISTIQUE.md) | Catalogue lieux/journées → FlexPay → QR |
-| 10. Restaurants (optionnel) | [MODULE_11](MODULE_11_RESTAURANT.md) | Catalogue créneaux → acompte FlexPay (pas de gate QR V1) |
+| 10. Restaurants (optionnel) | [MODULE_11](MODULE_11_RESTAURANT.md) | Catalogue créneaux → acompte FlexPay → QR tickets |
 
 **Stack recommandée** : Flutter, Dio, SignalR (notifications paiement).
 
@@ -318,7 +319,9 @@ void initApi(String baseUrl) {
 | — | [INTEGRATION_SIGNALR_EVENEMENT_FLEXPAY.md](INTEGRATION_SIGNALR_EVENEMENT_FLEXPAY.md) | Client, Guichet (Vue + Flutter) | SignalR FlexPay événement + poll secours |
 | 10 | [MODULE_10_SITE_TOURISTIQUE.md](MODULE_10_SITE_TOURISTIQUE.md) | Admin, Client, Gate | Billetterie `api/sites-touristiques/*` — lieu + journée + planification, CASH/FlexPay, gate |
 | — | [DOCUMENTATION_WORKFLOW_SITE_TOURISTIQUE_V1.md](../05_transport_sync/DOCUMENTATION_WORKFLOW_SITE_TOURISTIQUE_V1.md) | Tous | Workflow métier complet Site Touristique (config → vente → entrée) |
-| 11 | [MODULE_11_RESTAURANT.md](MODULE_11_RESTAURANT.md) | Admin, Client | Réservation `api/restaurants/*` — établissement + créneau + zones, acompte CASH/FlexPay, dashboard |
+| 11 | [MODULE_11_RESTAURANT.md](MODULE_11_RESTAURANT.md) | Admin, Client, Gate | Réservation `api/restaurants/*` — établissement + créneau + zones, acompte CASH/FlexPay, tickets gate, dashboard |
+| — | [DOCUMENTATION_API_TICKETS_RESTAURANT_V1.md](../05_transport_sync/DOCUMENTATION_API_TICKETS_RESTAURANT_V1.md) | Admin, Gate | API `api/restaurants/tickets` (list / check / use) |
+| — | [CHANGELOG_2026-08-15_RESTAURANT_ET_SITE_TOURISTIQUE.md](CHANGELOG_2026-08-15_RESTAURANT_ET_SITE_TOURISTIQUE.md) | Tous | Changements 15 août 2026 (Vue + Flutter) |
 | — | [DOCUMENTATION_WORKFLOW_RESTAURANT_V1.md](../05_transport_sync/DOCUMENTATION_WORKFLOW_RESTAURANT_V1.md) | Tous | Workflow métier complet Restaurant (config → vente acompte) |
 | 06 | [MODULE_06_CLIENT_APP_VOYAGEUR.md](MODULE_06_CLIENT_APP_VOYAGEUR.md) | Client | Inscription, dashboard, plaintes |
 | — | [INTEGRATION_VERIFICATION_EMAIL_VUE_FLUTTER.md](INTEGRATION_VERIFICATION_EMAIL_VUE_FLUTTER.md) | Client (Vue + Flutter) | Vérification email par lien à l’inscription |

@@ -8,15 +8,15 @@
 >
 > Workflow métier : [DOCUMENTATION_WORKFLOW_RESTAURANT_V1.md](../05_transport_sync/DOCUMENTATION_WORKFLOW_RESTAURANT_V1.md)  
 > Analyse backend : [ANALYSE_V1_RESTAURANT.md](../11_analyses_plans/ANALYSE_V1_RESTAURANT.md)  
+> Tickets API : [DOCUMENTATION_API_TICKETS_RESTAURANT_V1.md](../05_transport_sync/DOCUMENTATION_API_TICKETS_RESTAURANT_V1.md)  
+> Changelog 15 août 2026 : [CHANGELOG_2026-08-15_RESTAURANT_ET_SITE_TOURISTIQUE.md](CHANGELOG_2026-08-15_RESTAURANT_ET_SITE_TOURISTIQUE.md)  
 > Pattern SignalR (adapter les routes) : [INTEGRATION_SIGNALR_EVENEMENT_FLEXPAY.md](INTEGRATION_SIGNALR_EVENEMENT_FLEXPAY.md)  
 > Déploiement SQL : [`Scripts/README_DEPLOIEMENT_RESTAURANT_V1.md`](../../../Scripts/README_DEPLOIEMENT_RESTAURANT_V1.md)
 
 Ce guide permet de brancher :
 
 - **Vue 3** — back-office société (admin / guichet acompte)
-- **Flutter** — app client (réservation + acompte FlexPay)
-
-**V1 : pas de gate QR / check-in salle** (Phase 6+).
+- **Flutter** — app client (réservation + acompte FlexPay) + contrôle d’entrée agent
 
 ### Prérequis permissions (évite 403 Admin / Gerant / Caissier / Client)
 
@@ -52,15 +52,17 @@ flowchart LR
   Cash[POST with-paiement]
   Elec[POST with-paiement-electronique]
   Verify[GET flexpay verifier]
-  Confirm[Confirmation acompte]
+  Tickets[Tickets QR]
+  Gate[check puis use]
 
   Restos --> Creneaux
   Creneaux --> Dispo
   Dispo --> Cash
   Dispo --> Elec
-  Cash --> Confirm
+  Cash --> Tickets
   Elec --> Verify
-  Verify --> Confirm
+  Verify --> Tickets
+  Tickets --> Gate
 ```
 
 | Étape | Endpoint |
@@ -72,6 +74,8 @@ flowchart LR
 | Acompte CASH | `POST /api/restaurants/reservations/with-paiement` |
 | Acompte FlexPay | `POST /api/restaurants/reservations/with-paiement-electronique` |
 | Poll | `GET /api/restaurants/flexpay/verifier/{orderNumber}` |
+| Tickets | `GET /api/restaurants/reservations/{id}` → `tickets[]` ou `GET /api/restaurants/tickets/reservation/{id}` |
+| Entrée | `GET /api/restaurants/tickets/{code}/check` → `POST .../use` |
 | Annulation | `POST /api/restaurants/reservations/{id}/cancel` |
 
 **Façades uniquement** pour l’achat (pas d’endpoints hold/confirm séparés côté front).
@@ -82,10 +86,9 @@ flowchart LR
 
 | Persona | Stack | Écrans | Permissions |
 |---------|-------|--------|-------------|
-| Admin / guichet | Vue 3 + Axios + Pinia | Établissements, zones, créneaux + publish, vente CASH acompte, résas, dashboard | `Etablissement.*`, `Zone.*`, `Hold.Create`, `Reservation.Confirm`, `Dashboard.Read` |
-| Client voyageur | Flutter + Dio | Catalogue restos/créneaux, panier couverts, FlexPay acompte, confirmation | `Etablissement.Read`, `Hold.Create`, `Reservation.Confirm` |
-
-**Pas de persona gate V1.**
+| Admin / guichet | Vue 3 + Axios + Pinia | Établissements (+ photos), zones, créneaux + publish, vente CASH, tickets, dashboard | `Etablissement.*`, `Zone.*`, `Hold.Create`, `Reservation.Confirm`, `Dashboard.Read` |
+| Client voyageur | Flutter + Dio | Catalogue restos/créneaux, FlexPay acompte, QR tickets | `Etablissement.Read`, `Hold.Create`, `Reservation.Confirm` |
+| Contrôle entrée | Flutter (agent) | Scan QR → check → use | `Ticket.Check`, `Ticket.Use` |
 
 Guards : [MODULE_01_AUTH_ET_PERMISSIONS.md](MODULE_01_AUTH_ET_PERMISSIONS.md).
 
@@ -95,11 +98,12 @@ Guards : [MODULE_01_AUTH_ET_PERMISSIONS.md](MODULE_01_AUTH_ET_PERMISSIONS.md).
 
 | Permission | Usage front |
 |------------|-------------|
-| `Restaurant.Etablissement.Read` | Listes établissements / créneaux / résas |
-| `Restaurant.Etablissement.Write` | CRUD établissement, créneau, publish |
+| `Restaurant.Etablissement.Read` | Listes établissements / créneaux / résas / **tickets** |
+| `Restaurant.Etablissement.Write` | CRUD établissement, créneau, publish, photos |
 | `Restaurant.Zone.Read` / `.Write` | Mode B (zones) |
 | `Restaurant.Hold.Create` | **Obligatoire** avec Confirm pour les 2 POST acompte |
 | `Restaurant.Reservation.Confirm` | Acompte + verify FlexPay + cancel |
+| `Restaurant.Ticket.Check` / `.Use` | Gate entrée |
 | `Restaurant.Dashboard.Read` | Dashboard / widget |
 
 **Rôle Client** : `Etablissement.Read` + `Hold.Create` + `Reservation.Confirm` (sinon **403** sur acompte électronique).
@@ -120,7 +124,10 @@ POST /api/restaurants/etablissements
   "description": "Cuisine congolaise",
   "adresse": "Gombe, Kinshasa",
   "acomptePourcentDefaut": 20,
-  "idSite": 1
+  "idSite": 1,
+  "photos": [
+    { "photoBase64": "<base64 ou data-URL>", "fileName": "cover.jpg", "ordre": 1 }
+  ]
 }
 ```
 
@@ -128,6 +135,17 @@ Puis : `PUT /api/restaurants/etablissements/{id}/publish`.
 
 `idSite` = guichet FlexPay / caisse de la société.  
 `acomptePourcentDefaut` : utilisé pour le calcul d’acompte si le créneau n’a pas de `montantAcompte` fixe.
+
+List/detail : `photoCouverture` + `photos[]` (max **3**).
+
+**CRUD photos** :
+
+| Méthode | Route |
+|---------|-------|
+| GET | `/api/restaurants/etablissements/{id}/photos` |
+| POST | `/api/restaurants/etablissements/{id}/photos` |
+| PUT | `/api/restaurants/etablissements/{id}/photos/{photoId}/ordre` |
+| DELETE | `/api/restaurants/etablissements/{id}/photos/{photoId}` |
 
 ### 4.2 Zones (Mode B uniquement)
 
@@ -273,6 +291,7 @@ Ids `zoneId` issus du détail / availability (`idRestaurantZone`).
 {
   "idRestaurantCreneau": 10,
   "customerRef": "GUICHET-42",
+  "idClient": 42,
   "idempotencyKey": "cash-resto-001",
   "items": [{ "quantity": 2 }],
   "paiement": {
@@ -283,12 +302,15 @@ Ids `zoneId` issus du détail / availability (`idRestaurantZone`).
 }
 ```
 
+`idClient` (optionnel) : client acheteur. S’il est fourni, il prime sur `Utilisateur.IdClient` du JWT ; le client doit exister en base.
+
 | Champ réponse | Valeur typique |
 |---------------|----------------|
 | `transactionStatut` | `Succes` |
 | `reservation.status` | `CONFIRMED` |
 | `payment.status` | `SUCCEEDED` |
 | `payment.montant` | Total acompte (pas le prix repas entier) |
+| `reservation.idUtilisateur` / `reservation.idClient` | JWT + body/`Utilisateur.IdClient` |
 
 #### FlexPay — `POST /api/restaurants/reservations/with-paiement-electronique`
 
@@ -388,7 +410,35 @@ Détail pattern partagé : [INTEGRATION_SIGNALR_EVENEMENT_FLEXPAY.md](INTEGRATIO
 
 ---
 
-## 7. Dashboard (Vue admin)
+## 7. Tickets & contrôle d’entrée (Flutter gate + Vue)
+
+Référence complète : [DOCUMENTATION_API_TICKETS_RESTAURANT_V1.md](../05_transport_sync/DOCUMENTATION_API_TICKETS_RESTAURANT_V1.md).
+
+### Émission
+
+Après acompte CASH / FlexPay réussi : **1 ticket par couvert** (`quantite`), codes `REST-TKT-…`, statut `ISSUED`, dans `reservation.tickets[]`.
+
+### Config fenêtre
+
+`ConfigSociete.heuresOuvertureEntreeRestaurantAvantDebut` (défaut **1**) — ouverture entrée dès `startAtUtc − N heures` jusqu’à `endAtUtc` du créneau.
+
+### Gate
+
+```
+GET  /api/restaurants/tickets/{ticketCode}/check
+POST /api/restaurants/tickets/{ticketCode}/use
+```
+
+- `check` : `entreeAutorisee` + `statut` (`Valide`, `HorsFenetre`, `DejaUtilise`, …)
+- `use` : `ISSUED` → `USED` ; second appel idempotent (`alreadyUsed: true`)
+
+### Cancel
+
+`POST .../reservations/{id}/cancel` → `ticketsVoided` ; **refus** si un ticket est `USED`.
+
+---
+
+## 8. Dashboard (Vue admin)
 
 Permission : `Restaurant.Dashboard.Read`.
 
@@ -398,11 +448,11 @@ Permission : `Restaurant.Dashboard.Read`.
 | `GET /api/restaurants/dashboard/super-admin?month=` | Agrégat multi-sociétés |
 | `GET /api/restaurants/dashboard/widget?month=` | Résumé compact |
 
-**KPIs V1** (pas de tickets) : établissements publiés, créneaux publiés / actifs, résas confirmées mois/jour, holds, montant acomptes `SUCCEEDED`, breakdown HOLD/CONFIRMED/CANCELLED/EXPIRED, revenu par provider (CASH / FLEXPAY) et devise, top 5 créneaux CA acompte, listes récentes.
+**KPIs V1** : établissements publiés, créneaux publiés / actifs, résas confirmées mois/jour, holds, montant acomptes `SUCCEEDED`, breakdown HOLD/CONFIRMED/CANCELLED/EXPIRED, revenu par provider (CASH / FLEXPAY) et devise, top 5 créneaux CA acompte, listes récentes. (Compteurs tickets dédiés : via `GET /api/restaurants/tickets` filtrés.)
 
 ---
 
-## 8. Erreurs UI
+## 9. Erreurs UI
 
 | Situation | Signal | Comportement |
 |-----------|--------|--------------|
@@ -412,40 +462,49 @@ Permission : `Restaurant.Dashboard.Read`.
 | Créneau Draft non publié | 404 / métier | Admin doit publish |
 | Permission manquante | 403 | Masquer l’action |
 | Confusion acompte / addition | — | Afficher clairement « acompte » dans l’UI |
+| Ticket hors fenêtre | check `HorsFenetre` | Afficher message + horaires créneau |
+| Cancel avec ticket USED | erreur métier | Interdire l’annulation côté UI |
 
 ---
 
-## 9. Checklist intégration
+## 10. Checklist intégration
 
 ### Vue (admin / guichet)
 
-- [ ] CRUD établissement + publish
+- [ ] CRUD établissement + publish + photos (max 3)
 - [ ] Zones si Mode B
 - [ ] Créneaux GlobalQuota / ClassQuota + publish
-- [ ] Vente CASH `with-paiement` (acompte)
+- [ ] Vente CASH `with-paiement` (acompte) → afficher QR `tickets[]`
 - [ ] (Optionnel) FlexPay guichet + SignalR / poll
+- [ ] Config : `heuresOuvertureEntreeRestaurantAvantDebut`
 - [ ] Dashboard + widget
 - [ ] Distinguer `idSite` vs `idRestaurant` vs `idRestaurantCreneau` / zone
 
 ### Flutter (client)
 
-- [ ] Catalogue établissements / créneaux Published
+- [ ] Catalogue établissements / créneaux Published (cover photo)
 - [ ] Builder `items[]` selon `inventoryMode` (`zoneId` en Mode B)
 - [ ] `with-paiement-electronique` + SignalR + poll verifier (`domain: 'restaurant'`)
-- [ ] Confirmation acompte (pas de QR gate V1)
+- [ ] Affichage QR `ticketCode`
 - [ ] Ne jamais appeler `/api/events/*`, `/api/sites-touristiques/*` ni `/api/FlexPay/*`
+
+### Flutter (gate)
+
+- [ ] check → use
+- [ ] Permissions `Restaurant.Ticket.Check` / `Ticket.Use`
 
 ### Tests manuels
 
-1. CASH GlobalQuota → résa `CONFIRMED` + paiement `SUCCEEDED`  
-2. FlexPay MM → Confirmed (SignalR ou poll)  
+1. CASH GlobalQuota → résa `CONFIRMED` + N tickets `ISSUED`  
+2. FlexPay MM → Confirmed (SignalR ou poll) + tickets  
 3. Hold expiré sans POST cancel → Failed  
 4. Mode B zones (`zoneId`)  
-5. Dashboard mois courant après une vente CASH  
+5. Entrée dans la fenêtre OK / hors fenêtre KO  
+6. Dashboard mois courant après une vente CASH  
 
 ---
 
-## 10. Référence routes rapide
+## 11. Référence routes rapide
 
 | Ressource | Préfixe |
 |-----------|---------|
@@ -454,8 +513,9 @@ Permission : `Restaurant.Dashboard.Read`.
 | Créneaux | `api/restaurants/creneaux` |
 | Planifications | `api/restaurants/planifications` |
 | Réservations | `api/restaurants/reservations` |
+| Tickets | `api/restaurants/tickets` |
 | FlexPay | `api/restaurants/flexpay` |
 | Dashboard | `api/restaurants/dashboard` |
 
 Scripts SQL : voir [`Scripts/README_DEPLOIEMENT_RESTAURANT_V1.md`](../../../Scripts/README_DEPLOIEMENT_RESTAURANT_V1.md)  
-(`production_restaurant_v1.sql`, `_phase2_reservations.sql`, `_phase4_zones.sql`, hold expiration, **`assign_restaurant_permissions_admin_gerant.sql`**).
+(+ `create_restaurant_photos_production.sql`, `create_restaurant_tickets_production.sql`, **`assign_restaurant_permissions_admin_gerant.sql`**).

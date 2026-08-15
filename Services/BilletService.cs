@@ -34,8 +34,11 @@ namespace CongoTravel.Services
 
         private IQueryable<Billet> QueryBilletsWithEmbarquementIncludes() =>
             _context.Billets
+                .Include(b => b.Societe)
+                .Include(b => b.Site)
                 .Include(b => b.ReservationPassenger)
-                .Include(b => b.Siege)
+                .Include(b => b.Siege!)
+                    .ThenInclude(s => s.CategorieSiege)
                 .Include(b => b.Reservation)
                     .ThenInclude(r => r!.Utilisateur)
                 .Include(b => b.Reservation)
@@ -45,7 +48,8 @@ namespace CongoTravel.Services
                         .ThenInclude(v => v.Destination)
                 .Include(b => b.Reservation)
                     .ThenInclude(r => r!.Voyage!)
-                        .ThenInclude(v => v.Vehicule);
+                        .ThenInclude(v => v.Vehicule!)
+                            .ThenInclude(veh => veh.TypeVehicule);
 
         // CRUD de base
         public async Task<IEnumerable<Billet>> GetAllAsync()

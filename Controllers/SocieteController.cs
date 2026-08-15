@@ -422,6 +422,7 @@ namespace CongoTravel.Controllers
                 HeuresOuvertureEmbarquementAvantDepart = config.HeuresOuvertureEmbarquementAvantDepart,
                 HeuresFermetureEmbarquementApresJourDepart = config.HeuresFermetureEmbarquementApresJourDepart,
                 HeuresOuvertureEntreeEvenementAvantDebut = config.HeuresOuvertureEntreeEvenementAvantDebut,
+                HeuresOuvertureEntreeRestaurantAvantDebut = config.HeuresOuvertureEntreeRestaurantAvantDebut,
                 DureeHoldFlexPayMinutes = config.DureeHoldFlexPayMinutes,
                 ReaffectationActive = config.ReaffectationActive,
                 AutoReversementPaiementElectronique = config.AutoReversementPaiementElectronique,

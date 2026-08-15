@@ -12,6 +12,8 @@
     <PackageReference Include="AutoMapper" Version="15.0.1" />
     <PackageReference Include="AWSSDK.S3" Version="4.0.13.1" />
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
+    <PackageReference Include="FastReport.OpenSource" Version="2026.2.3" />
+    <PackageReference Include="FastReport.OpenSource.Export.PdfSimple" Version="2026.2.3" />
     <PackageReference Include="FirebaseAdmin" Version="3.4.0" />
     <PackageReference Include="Google.Apis.Auth" Version="1.68.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="6.0.25" />
@@ -43,6 +45,9 @@
   <ItemGroup>
     <!-- ✨ Copier firebase-credentials.json vers le répertoire de sortie -->
     <None Update="firebase-credentials.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Reports\**\*.frx">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>

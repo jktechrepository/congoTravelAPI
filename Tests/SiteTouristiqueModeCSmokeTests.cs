@@ -37,6 +37,7 @@ namespace CongoTravel.Tests
             using var provider = services.BuildServiceProvider();
 
             Assert.NotNull(provider.GetService<ISiteTouristiqueLieuService>());
+            Assert.NotNull(provider.GetService<ISiteTouristiqueLieuPhotoService>());
             Assert.NotNull(provider.GetService<ISiteTouristiqueJourneeService>());
             Assert.NotNull(provider.GetService<ISiteTouristiqueHoldService>());
             Assert.NotNull(provider.GetService<ISiteTouristiqueAvailabilityService>());
@@ -65,7 +66,7 @@ namespace CongoTravel.Tests
             await using var ctx = BuildDb(nameof(ModeC_journey_publish_hold_confirm_check_use_availability));
             var (idSociete, idSite) = await SiteTouristiqueTestFactories.SeedSocieteWithSiteAsync(ctx);
 
-            var lieuService = new SiteTouristiqueLieuService(ctx, NullLogger<SiteTouristiqueLieuService>.Instance);
+            var lieuService = SiteTouristiqueTestFactories.CreateLieuService(ctx);
             var journeeService = new SiteTouristiqueJourneeService(ctx, NullLogger<SiteTouristiqueJourneeService>.Instance);
             var holdService = SiteTouristiqueTestFactories.CreateHoldService(ctx);
             var availabilityService = new SiteTouristiqueAvailabilityService(
@@ -147,7 +148,7 @@ namespace CongoTravel.Tests
             await using var ctx = BuildDb(nameof(ModeC_cancel_hold_restores_availability));
             var (idSociete, idSite) = await SiteTouristiqueTestFactories.SeedSocieteWithSiteAsync(ctx);
 
-            var lieuService = new SiteTouristiqueLieuService(ctx, NullLogger<SiteTouristiqueLieuService>.Instance);
+            var lieuService = SiteTouristiqueTestFactories.CreateLieuService(ctx);
             var journeeService = new SiteTouristiqueJourneeService(ctx, NullLogger<SiteTouristiqueJourneeService>.Instance);
             var holdService = SiteTouristiqueTestFactories.CreateHoldService(ctx);
             var cancelService = SiteTouristiqueTestFactories.CreateReservationService(ctx);

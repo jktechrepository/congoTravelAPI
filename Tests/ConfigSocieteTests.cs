@@ -30,6 +30,9 @@ namespace CongoTravel.Tests
             Assert.Equal(
                 ConfigSocieteDefaults.HeuresOuvertureEntreeEvenementAvantDebut,
                 config.HeuresOuvertureEntreeEvenementAvantDebut);
+            Assert.Equal(
+                ConfigSocieteDefaults.HeuresOuvertureEntreeRestaurantAvantDebut,
+                config.HeuresOuvertureEntreeRestaurantAvantDebut);
         }
 
         [Fact]
@@ -50,6 +53,7 @@ namespace CongoTravel.Tests
                 HeuresOuvertureEmbarquementAvantDepart = 2,
                 HeuresFermetureEmbarquementApresJourDepart = 12,
                 HeuresOuvertureEntreeEvenementAvantDebut = 1,
+                HeuresOuvertureEntreeRestaurantAvantDebut = 2,
                 DureeHoldFlexPayMinutes = 20,
                 ReaffectationActive = false,
                 PoidsBagageParKiloOffert = 25m
@@ -59,6 +63,7 @@ namespace CongoTravel.Tests
             Assert.Equal(10m, updated.PenaliteReaffectationPourcentage);
             Assert.Equal(60, updated.JoursAvanceMaxReservation);
             Assert.Equal(1, updated.HeuresOuvertureEntreeEvenementAvantDebut);
+            Assert.Equal(2, updated.HeuresOuvertureEntreeRestaurantAvantDebut);
             Assert.False(updated.ReaffectationActive);
             Assert.Equal(25m, updated.PoidsBagageParKiloOffert);
         }

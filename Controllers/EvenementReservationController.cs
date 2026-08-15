@@ -41,6 +41,8 @@ namespace CongoTravel.Controllers
             [FromQuery] string? status,
             [FromQuery] int? idEvenementSession,
             [FromQuery] string? customerRef,
+            [FromQuery] int? idUtilisateur,
+            [FromQuery] int? idClient,
             CancellationToken cancellationToken = default)
         {
             try
@@ -56,7 +58,9 @@ namespace CongoTravel.Controllers
                 {
                     Status = parsedStatus,
                     IdEvenementSession = idEvenementSession,
-                    CustomerRef = customerRef
+                    CustomerRef = customerRef,
+                    IdUtilisateur = idUtilisateur,
+                    IdClient = idClient
                 };
 
                 var reservations = await _reservationService.ListAsync(

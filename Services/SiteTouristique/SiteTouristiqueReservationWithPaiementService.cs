@@ -67,7 +67,7 @@ namespace CongoTravel.Services.SiteTouristique
                 ToHoldRequest(request, effectiveIdSite),
                 cancellationToken);
 
-            await AttachBuyerUserIdAsync(hold.IdSiteTouristiqueReservation, cancellationToken);
+            await AttachBuyerAsync(hold.IdSiteTouristiqueReservation, cancellationToken);
 
             try
             {
@@ -126,7 +126,7 @@ namespace CongoTravel.Services.SiteTouristique
                 ToHoldRequest(request, effectiveIdSite),
                 cancellationToken);
 
-            await AttachBuyerUserIdAsync(hold.IdSiteTouristiqueReservation, cancellationToken);
+            await AttachBuyerAsync(hold.IdSiteTouristiqueReservation, cancellationToken);
 
             try
             {
@@ -272,7 +272,7 @@ namespace CongoTravel.Services.SiteTouristique
                 throw new InvalidOperationException("Paiement.MethodePaiement est obligatoire.");
         }
 
-        private async Task AttachBuyerUserIdAsync(
+        private async Task AttachBuyerAsync(
             int idSiteTouristiqueReservation,
             CancellationToken cancellationToken)
         {
@@ -282,10 +282,35 @@ namespace CongoTravel.Services.SiteTouristique
 
             var reservation = await _context.SiteTouristiqueReservations
                 .FirstOrDefaultAsync(r => r.IdSiteTouristiqueReservation == idSiteTouristiqueReservation, cancellationToken);
-            if (reservation == null || reservation.IdUtilisateur == userId)
+            if (reservation == null)
                 return;
 
-            reservation.IdUtilisateur = userId;
+            var changed = false;
+            if (reservation.IdUtilisateur != userId)
+            {
+                reservation.IdUtilisateur = userId;
+                changed = true;
+            }
+
+            // Ne pas écraser un IdClient déjà posé via le body (hold).
+            if (reservation.IdClient is not > 0)
+            {
+                var idClient = await _context.Utilisateurs
+                    .AsNoTracking()
+                    .Where(u => u.IdUtilisateur == userId)
+                    .Select(u => u.IdClient)
+                    .FirstOrDefaultAsync(cancellationToken);
+
+                if (idClient is > 0)
+                {
+                    reservation.IdClient = idClient;
+                    changed = true;
+                }
+            }
+
+            if (!changed)
+                return;
+
             reservation.DateModification = DateTime.UtcNow;
             await _context.SaveChangesAsync(cancellationToken);
         }
@@ -298,6 +323,7 @@ namespace CongoTravel.Services.SiteTouristique
                 CustomerRef = request.CustomerRef,
                 IdempotencyKey = request.IdempotencyKey,
                 IdSite = effectiveIdSite,
+                IdClient = request.IdClient,
                 Items = request.Items
             };
 

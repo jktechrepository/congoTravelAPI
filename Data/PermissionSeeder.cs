@@ -479,6 +479,8 @@ namespace CongoTravel.Data
                 new Permission { Nom = "Restaurant.Hold.Create", Categorie = "Restaurant", Action = "Hold.Create", Description = "Créer un hold réservation restaurant", Statut = true },
                 new Permission { Nom = "Restaurant.Reservation.Confirm", Categorie = "Restaurant", Action = "Reservation.Confirm", Description = "Confirmer acompte ou annuler une réservation restaurant", Statut = true },
                 new Permission { Nom = "Restaurant.Dashboard.Read", Categorie = "Restaurant", Action = "Dashboard.Read", Description = "Consulter le dashboard réservation restaurant", Statut = true },
+                new Permission { Nom = "Restaurant.Ticket.Check", Categorie = "Restaurant", Action = "Ticket.Check", Description = "Vérifier un ticket restaurant (contrôle entrée)", Statut = true },
+                new Permission { Nom = "Restaurant.Ticket.Use", Categorie = "Restaurant", Action = "Ticket.Use", Description = "Marquer un ticket restaurant comme utilisé", Statut = true },
             };
         }
 
@@ -726,7 +728,9 @@ namespace CongoTravel.Data
                     p.Nom == "SiteTouristique.Ticket.Use" ||
                     p.Nom == "Restaurant.Etablissement.Read" ||
                     p.Nom == "Restaurant.Hold.Create" ||
-                    p.Nom == "Restaurant.Reservation.Confirm"
+                    p.Nom == "Restaurant.Reservation.Confirm" ||
+                    p.Nom == "Restaurant.Ticket.Check" ||
+                    p.Nom == "Restaurant.Ticket.Use"
                 ).ToList();
 
                 // Vérifier les permissions déjà assignées
@@ -815,6 +819,7 @@ namespace CongoTravel.Data
                     p.Nom == "SiteTouristique.Dashboard.Read" ||
                     p.Nom == "Restaurant.Etablissement.Read" ||
                     p.Nom == "Restaurant.Reservation.Confirm" ||
+                    p.Nom == "Restaurant.Ticket.Check" ||
                     p.Nom == "Restaurant.Dashboard.Read"
                 ).ToList();
 

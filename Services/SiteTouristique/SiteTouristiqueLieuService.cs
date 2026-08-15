@@ -11,13 +11,16 @@ namespace CongoTravel.Services.SiteTouristique
     public class SiteTouristiqueLieuService : ISiteTouristiqueLieuService
     {
         private readonly CongoTravelDbContext _context;
+        private readonly ISiteTouristiqueLieuPhotoService _photoService;
         private readonly ILogger<SiteTouristiqueLieuService> _logger;
 
         public SiteTouristiqueLieuService(
             CongoTravelDbContext context,
+            ISiteTouristiqueLieuPhotoService photoService,
             ILogger<SiteTouristiqueLieuService> logger)
         {
             _context = context;
+            _photoService = photoService;
             _logger = logger;
         }
 
@@ -32,6 +35,8 @@ namespace CongoTravel.Services.SiteTouristique
                 throw new InvalidOperationException("Nom est obligatoire.");
             if (request.IdSite <= 0)
                 throw new InvalidOperationException("IdSite est obligatoire pour créer un lieu touristique.");
+
+            EnsureHorairesValides(request.HeureOuverture, request.HeureFermeture);
 
             await SiteSocieteValidation.EnsureSiteBelongsToSocieteAsync(
                 _context, request.IdSite, idSociete, cancellationToken);
@@ -54,12 +59,25 @@ namespace CongoTravel.Services.SiteTouristique
                 CodeLieu = codeLieu,
                 Nom = request.Nom.Trim(),
                 Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
+                Province = string.IsNullOrWhiteSpace(request.Province) ? null : request.Province.Trim(),
+                Ville = string.IsNullOrWhiteSpace(request.Ville) ? null : request.Ville.Trim(),
+                Adresse = string.IsNullOrWhiteSpace(request.Adresse) ? null : request.Adresse.Trim(),
+                Telephone = string.IsNullOrWhiteSpace(request.Telephone) ? null : request.Telephone.Trim(),
+                HeureOuverture = request.HeureOuverture,
+                HeureFermeture = request.HeureFermeture,
+                JourOuverture = string.IsNullOrWhiteSpace(request.JourOuverture) ? null : request.JourOuverture.Trim(),
                 Status = SiteTouristiqueStatus.Draft,
                 DateCreation = DateTime.UtcNow
             };
 
             _context.SiteTouristiques.Add(lieu);
             await _context.SaveChangesAsync(cancellationToken);
+
+            await _photoService.AddPhotosOnCreateAsync(
+                lieu.IdSiteTouristique,
+                idSociete,
+                request.Photos,
+                cancellationToken);
 
             _logger.LogInformation(
                 "Lieu site touristique Draft créé — Id={Id}, Societe={IdSociete}, Code={Code}",
@@ -176,6 +194,8 @@ namespace CongoTravel.Services.SiteTouristique
             if (string.IsNullOrWhiteSpace(request.Nom))
                 throw new InvalidOperationException("Nom est obligatoire.");
 
+            EnsureHorairesValides(request.HeureOuverture, request.HeureFermeture);
+
             var lieu = await _context.SiteTouristiques
                 .FirstOrDefaultAsync(
                     l => l.IdSiteTouristique == idSiteTouristique && l.IdSociete == idSociete,
@@ -192,10 +212,28 @@ namespace CongoTravel.Services.SiteTouristique
 
             lieu.Nom = request.Nom.Trim();
             lieu.Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
+            lieu.Province = string.IsNullOrWhiteSpace(request.Province) ? null : request.Province.Trim();
+            lieu.Ville = string.IsNullOrWhiteSpace(request.Ville) ? null : request.Ville.Trim();
+            lieu.Adresse = string.IsNullOrWhiteSpace(request.Adresse) ? null : request.Adresse.Trim();
+            lieu.Telephone = string.IsNullOrWhiteSpace(request.Telephone) ? null : request.Telephone.Trim();
+            lieu.HeureOuverture = request.HeureOuverture;
+            lieu.HeureFermeture = request.HeureFermeture;
+            lieu.JourOuverture = string.IsNullOrWhiteSpace(request.JourOuverture) ? null : request.JourOuverture.Trim();
             lieu.DateModification = DateTime.UtcNow;
             await _context.SaveChangesAsync(cancellationToken);
 
             return await GetByIdAsync(idSiteTouristique, idSociete, cancellationToken);
+        }
+
+        private static void EnsureHorairesValides(TimeOnly? heureOuverture, TimeOnly? heureFermeture)
+        {
+            if (heureOuverture.HasValue
+                && heureFermeture.HasValue
+                && heureFermeture.Value <= heureOuverture.Value)
+            {
+                throw new InvalidOperationException(
+                    "HeureFermeture doit être strictement postérieure à HeureOuverture.");
+            }
         }
 
         public async Task<SiteTouristiqueLieuResponseDto> PublishAsync(
@@ -235,13 +273,15 @@ namespace CongoTravel.Services.SiteTouristique
             _context.SiteTouristiques
                 .AsNoTracking()
                 .Include(l => l.Societe)
-                .Include(l => l.Site);
+                .Include(l => l.Site)
+                .Include(l => l.Photos);
 
         private IQueryable<SiteTouristiqueLieu> LieuDetailQuery() =>
             _context.SiteTouristiques
                 .AsNoTracking()
                 .Include(l => l.Societe)
                 .Include(l => l.Site)
-                .Include(l => l.Journees);
+                .Include(l => l.Journees)
+                .Include(l => l.Photos);
     }
 }

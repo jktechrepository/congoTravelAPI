@@ -29,6 +29,7 @@ namespace CongoTravel.Extensions
             services.AddScoped<ISiteTouristiqueFlexPayCallbackService, SiteTouristiqueFlexPayCallbackService>();
             services.AddScoped<ISiteTouristiqueDashboardService, SiteTouristiqueDashboardService>();
             services.AddScoped<ISiteTouristiqueLieuService, SiteTouristiqueLieuService>();
+            services.AddScoped<ISiteTouristiqueLieuPhotoService, SiteTouristiqueLieuPhotoService>();
             services.AddScoped<ISiteTouristiqueJourneeService, SiteTouristiqueJourneeService>();
             services.AddScoped<ISiteTouristiquePlanificationService, SiteTouristiquePlanificationService>();
             services.AddScoped<ISiteTouristiqueJourneeGenerationService, SiteTouristiqueJourneeGenerationService>();

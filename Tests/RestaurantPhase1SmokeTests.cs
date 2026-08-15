@@ -26,12 +26,15 @@ namespace CongoTravel.Tests
             services.AddLogging();
             services.AddDbContext<CongoTravelDbContext>(options =>
                 options.UseInMemoryDatabase(nameof(AddRestaurantReservations_registers_services)));
+            services.AddScoped<CongoTravel.Services.Repositories.IConfigSocieteRepository, CongoTravel.Services.ConfigSocieteService>();
             services.AddRestaurantReservations();
 
             using var provider = services.BuildServiceProvider();
 
             Assert.NotNull(provider.GetService<IRestaurantEtablissementService>());
+            Assert.NotNull(provider.GetService<IRestaurantPhotoService>());
             Assert.NotNull(provider.GetService<IRestaurantCreneauService>());
+            Assert.NotNull(provider.GetService<IRestaurantTicketService>());
         }
 
         [Fact]
@@ -40,8 +43,7 @@ namespace CongoTravel.Tests
             await using var ctx = BuildDb(nameof(Create_and_publish_etablissement));
             var (idSociete, idSite) = await SiteTouristiqueTestFactories.SeedSocieteWithSiteAsync(ctx, "Resto Societe");
 
-            var service = new RestaurantEtablissementService(
-                ctx, NullLogger<RestaurantEtablissementService>.Instance);
+            var service = RestaurantTestFactories.CreateEtablissementService(ctx);
 
             var draft = await service.CreateDraftAsync(new RestaurantCreateEtablissementRequestDto
             {
@@ -65,8 +67,7 @@ namespace CongoTravel.Tests
             await using var ctx = BuildDb(nameof(Create_creneau_draft_with_global_quota));
             var (idSociete, idSite) = await SiteTouristiqueTestFactories.SeedSocieteWithSiteAsync(ctx, "Resto Creneau");
 
-            var etablissementService = new RestaurantEtablissementService(
-                ctx, NullLogger<RestaurantEtablissementService>.Instance);
+            var etablissementService = RestaurantTestFactories.CreateEtablissementService(ctx);
             var creneauService = new RestaurantCreneauService(
                 ctx, NullLogger<RestaurantCreneauService>.Instance);
 
@@ -107,8 +108,7 @@ namespace CongoTravel.Tests
             await using var ctx = BuildDb(nameof(Publish_creneau_rejects_overlapping_published));
             var (idSociete, idSite) = await SiteTouristiqueTestFactories.SeedSocieteWithSiteAsync(ctx, "Resto Overlap");
 
-            var etablissementService = new RestaurantEtablissementService(
-                ctx, NullLogger<RestaurantEtablissementService>.Instance);
+            var etablissementService = RestaurantTestFactories.CreateEtablissementService(ctx);
             var creneauService = new RestaurantCreneauService(
                 ctx, NullLogger<RestaurantCreneauService>.Instance);
 

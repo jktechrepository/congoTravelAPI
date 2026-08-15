@@ -2045,3 +2045,587 @@ VALUES ('20260801085131_AddConfigSocieteHeuresOuvertureEntreeEvenement', '6.0.25
 
 COMMIT;
 
+START TRANSACTION;
+
+ALTER TABLE `EvenementReservations` ADD `IdUtilisateur` int NULL;
+
+CREATE INDEX `IX_EvenementReservations_IdUtilisateur` ON `EvenementReservations` (`IdUtilisateur`);
+
+INSERT INTO `__EFMigrationsHistory` (`MigrationId`, `ProductVersion`)
+VALUES ('20260807101443_AddEvenementReservationIdUtilisateur', '6.0.25');
+
+COMMIT;
+
+START TRANSACTION;
+
+ALTER TABLE `EvenementReservations` ADD `IdClient` int NULL;
+
+CREATE INDEX `IX_EvenementReservations_IdClient` ON `EvenementReservations` (`IdClient`);
+
+ALTER TABLE `EvenementReservations` ADD CONSTRAINT `FK_EvenementReservations_Clients_IdClient` FOREIGN KEY (`IdClient`) REFERENCES `Clients` (`IdClient`) ON DELETE RESTRICT;
+
+INSERT INTO `__EFMigrationsHistory` (`MigrationId`, `ProductVersion`)
+VALUES ('20260811110100_AddEvenementReservationIdClient', '6.0.25');
+
+COMMIT;
+
+START TRANSACTION;
+
+ALTER TABLE `ConfigSocietes` ADD `DureeHoldRestaurantMinutes` int NOT NULL DEFAULT 15;
+
+ALTER TABLE `ConfigSocietes` ADD `DureeHoldSiteTouristiqueMinutes` int NOT NULL DEFAULT 15;
+
+CREATE TABLE `Restaurants` (
+    `IdRestaurant` int NOT NULL AUTO_INCREMENT,
+    `IdSociete` int NOT NULL,
+    `IdSite` int NULL,
+    `CodeRestaurant` varchar(64) CHARACTER SET utf8mb4 NOT NULL,
+    `Nom` varchar(255) CHARACTER SET utf8mb4 NOT NULL,
+    `Description` varchar(2000) CHARACTER SET utf8mb4 NULL,
+    `Adresse` varchar(500) CHARACTER SET utf8mb4 NULL,
+    `AcomptePourcentDefaut` decimal(5,2) NOT NULL DEFAULT 0.0,
+    `Status` enum('Draft','Published','Closed','Cancelled') CHARACTER SET utf8mb4 NOT NULL DEFAULT 'Draft',
+    `DateCreation` datetime(6) NOT NULL,
+    `DateModification` datetime(6) NULL,
+    CONSTRAINT `PK_Restaurants` PRIMARY KEY (`IdRestaurant`),
+    CONSTRAINT `FK_Restaurants_Sites_IdSite` FOREIGN KEY (`IdSite`) REFERENCES `Sites` (`IdSite`) ON DELETE RESTRICT,
+    CONSTRAINT `FK_Restaurants_Societes_IdSociete` FOREIGN KEY (`IdSociete`) REFERENCES `Societes` (`IdSociete`) ON DELETE RESTRICT
+) CHARACTER SET=utf8mb4;
+
+CREATE TABLE `SiteTouristiqueClasses` (
+    `IdSiteTouristiqueClasse` int NOT NULL AUTO_INCREMENT,
+    `IdSociete` int NOT NULL,
+    `Code` varchar(50) CHARACTER SET utf8mb4 NULL,
+    `Libelle` varchar(120) CHARACTER SET utf8mb4 NOT NULL,
+    `Description` varchar(500) CHARACTER SET utf8mb4 NULL,
+    `Actif` tinyint(1) NOT NULL DEFAULT TRUE,
+    `DateCreation` datetime(6) NOT NULL,
+    CONSTRAINT `PK_SiteTouristiqueClasses` PRIMARY KEY (`IdSiteTouristiqueClasse`),
+    CONSTRAINT `FK_SiteTouristiqueClasses_Societes_IdSociete` FOREIGN KEY (`IdSociete`) REFERENCES `Societes` (`IdSociete`) ON DELETE RESTRICT
+) CHARACTER SET=utf8mb4;
+
+CREATE TABLE `SiteTouristiques` (
+    `IdSiteTouristique` int NOT NULL AUTO_INCREMENT,
+    `IdSociete` int NOT NULL,
+    `IdSite` int NULL,
+    `CodeLieu` varchar(64) CHARACTER SET utf8mb4 NOT NULL,
+    `Nom` varchar(255) CHARACTER SET utf8mb4 NOT NULL,
+    `Description` varchar(2000) CHARACTER SET utf8mb4 NULL,
+    `Status` enum('Draft','Published','Closed','Cancelled') CHARACTER SET utf8mb4 NOT NULL DEFAULT 'Draft',
+    `DateCreation` datetime(6) NOT NULL,
+    `DateModification` datetime(6) NULL,
+    CONSTRAINT `PK_SiteTouristiques` PRIMARY KEY (`IdSiteTouristique`),
+    CONSTRAINT `FK_SiteTouristiques_Sites_IdSite` FOREIGN KEY (`IdSite`) REFERENCES `Sites` (`IdSite`) ON DELETE RESTRICT,
+    CONSTRAINT `FK_SiteTouristiques_Societes_IdSociete` FOREIGN KEY (`IdSociete`) REFERENCES `Societes` (`IdSociete`) ON DELETE RESTRICT
+) CHARACTER SET=utf8mb4;
+
+CREATE TABLE `RestaurantPlanifications` (
+    `IdRestaurantPlanification` int NOT NULL AUTO_INCREMENT,
+    `IdSociete` int NOT NULL,
+    `IdRestaurant` int NOT NULL,
+    `Libelle` varchar(200) CHARACTER SET utf8mb4 NOT NULL,
+    `JoursSemaine` longtext CHARACTER SET utf8mb4 NOT NULL,
+    `InventoryMode` enum('GlobalQuota','ClassQuota') CHARACTER SET utf8mb4 NOT NULL,
+    `CodeDevise` char(3) CHARACTER SET utf8mb4 NOT NULL DEFAULT 'CDF',
+    `MontantAcompte` decimal(18,2) NULL,
+    `Statut` tinyint(1) NOT NULL DEFAULT TRUE,
+    `DateCreation` datetime(6) NOT NULL,
+    `DateModification` datetime(6) NULL,
+    CONSTRAINT `PK_RestaurantPlanifications` PRIMARY KEY (`IdRestaurantPlanification`),
+    CONSTRAINT `FK_RestaurantPlanifications_Restaurants_IdRestaurant` FOREIGN KEY (`IdRestaurant`) REFERENCES `Restaurants` (`IdRestaurant`) ON DELETE RESTRICT,
+    CONSTRAINT `FK_RestaurantPlanifications_Societes_IdSociete` FOREIGN KEY (`IdSociete`) REFERENCES `Societes` (`IdSociete`) ON DELETE RESTRICT
+) CHARACTER SET=utf8mb4;
+
+CREATE TABLE `RestaurantZones` (
+    `IdRestaurantZone` int NOT NULL AUTO_INCREMENT,
+    `IdSociete` int NOT NULL,
+    `IdRestaurant` int NOT NULL,
+    `Code` varchar(64) CHARACTER SET utf8mb4 NULL,
+    `Libelle` varchar(120) CHARACTER SET utf8mb4 NOT NULL,
+    `Description` varchar(500) CHARACTER SET utf8mb4 NULL,
+    `Actif` tinyint(1) NOT NULL DEFAULT TRUE,
+    `DateCreation` datetime(6) NOT NULL,
+    `DateModification` datetime(6) NULL,
+    CONSTRAINT `PK_RestaurantZones` PRIMARY KEY (`IdRestaurantZone`),
+    CONSTRAINT `FK_RestaurantZones_Restaurants_IdRestaurant` FOREIGN KEY (`IdRestaurant`) REFERENCES `Restaurants` (`IdRestaurant`) ON DELETE RESTRICT,
+    CONSTRAINT `FK_RestaurantZones_Societes_IdSociete` FOREIGN KEY (`IdSociete`) REFERENCES `Societes` (`IdSociete`) ON DELETE RESTRICT
+) CHARACTER SET=utf8mb4;
+
+CREATE TABLE `SiteTouristiquePlanifications` (
+    `IdSiteTouristiquePlanification` int NOT NULL AUTO_INCREMENT,
+    `IdSociete` int NOT NULL,
+    `IdSiteTouristique` int NOT NULL,
+    `Libelle` varchar(200) CHARACTER SET utf8mb4 NOT NULL,
+    `JoursSemaine` longtext CHARACTER SET utf8mb4 NOT NULL,
+    `InventoryMode` enum('ClassQuota','GlobalQuota') CHARACTER SET utf8mb4 NOT NULL,
+    `CodeDevise` char(3) CHARACTER SET utf8mb4 NOT NULL DEFAULT 'CDF',
+    `SalesOpenOffsetHours` int NULL,
+    `SalesCloseOffsetHours` int NULL,
+    `Statut` tinyint(1) NOT NULL DEFAULT TRUE,
+    `DateCreation` datetime(6) NOT NULL,
+    `DateModification` datetime(6) NULL,
+    CONSTRAINT `PK_SiteTouristiquePlanifications` PRIMARY KEY (`IdSiteTouristiquePlanification`),
+    CONSTRAINT `FK_SiteTouristiquePlanifications_SiteTouristiques_IdSiteTourist~` FOREIGN KEY (`IdSiteTouristique`) REFERENCES `SiteTouristiques` (`IdSiteTouristique`) ON DELETE RESTRICT,
+    CONSTRAINT `FK_SiteTouristiquePlanifications_Societes_IdSociete` FOREIGN KEY (`IdSociete`) REFERENCES `Societes` (`IdSociete`) ON DELETE RESTRICT
+) CHARACTER SET=utf8mb4;
+
+CREATE TABLE `RestaurantPlanifGenerationLogs` (
+    `IdRestaurantPlanifGenerationLog` int NOT NULL AUTO_INCREMENT,
+    `IdRestaurantPlanification` int NOT NULL,
+    `DateDebut` datetime(6) NOT NULL,
+    `DateFin` datetime(6) NOT NULL,
+    `NombreCrees` int NOT NULL,
+    `NombreIgnores` int NOT NULL,
+    `NombreEchecs` int NOT NULL,
+    `NombrePublies` int NOT NULL DEFAULT 0,
+    `DetailsJson` longtext CHARACTER SET utf8mb4 NOT NULL,
+    `DeclencheParIdUtilisateur` int NULL,
+    `DateCreation` datetime(6) NOT NULL,
+    CONSTRAINT `PK_RestaurantPlanifGenerationLogs` PRIMARY KEY (`IdRestaurantPlanifGenerationLog`),
+    CONSTRAINT `FK_RestaurantPlanifGenerationLogs_RestaurantPlanifications_IdRe~` FOREIGN KEY (`IdRestaurantPlanification`) REFERENCES `RestaurantPlanifications` (`IdRestaurantPlanification`) ON DELETE CASCADE
+) CHARACTER SET=utf8mb4;
+
+CREATE TABLE `RestaurantPlanificationPlages` (
+    `IdRestaurantPlanificationPlage` int NOT NULL AUTO_INCREMENT,
+    `IdRestaurantPlanification` int NOT NULL,
+    `Ordre` int NOT NULL,
+    `Libelle` varchar(120) CHARACTER SET utf8mb4 NULL,
+    `StartTime` time NOT NULL,
+    `EndTime` time NOT NULL,
+    CONSTRAINT `PK_RestaurantPlanificationPlages` PRIMARY KEY (`IdRestaurantPlanificationPlage`),
+    CONSTRAINT `CK_RestaurantPlanificationPlages_StartEnd` CHECK (`EndTime` > `StartTime`),
+    CONSTRAINT `FK_RestaurantPlanificationPlages_RestaurantPlanifications_IdRes~` FOREIGN KEY (`IdRestaurantPlanification`) REFERENCES `RestaurantPlanifications` (`IdRestaurantPlanification`) ON DELETE CASCADE
+) CHARACTER SET=utf8mb4;
+
+CREATE TABLE `SiteTouristiqueJournees` (
+    `IdSiteTouristiqueJournee` int NOT NULL AUTO_INCREMENT,
+    `IdSociete` int NOT NULL,
+    `IdSiteTouristique` int NOT NULL,
+    `DateVisite` date NOT NULL,
+    `InventoryMode` enum('ClassQuota','GlobalQuota') CHARACTER SET utf8mb4 NOT NULL,
+    `Status` enum('Draft','Published','Closed','Cancelled') CHARACTER SET utf8mb4 NOT NULL DEFAULT 'Draft',
+    `CodeDevise` char(3) CHARACTER SET utf8mb4 NOT NULL DEFAULT 'CDF',
+    `SalesOpenAtUtc` datetime(6) NULL,
+    `SalesCloseAtUtc` datetime(6) NULL,
+    `IdSiteTouristiquePlanification` int NULL,
+    `DateCreation` datetime(6) NOT NULL,
+    `DateModification` datetime(6) NULL,
+    CONSTRAINT `PK_SiteTouristiqueJournees` PRIMARY KEY (`IdSiteTouristiqueJournee`),
+    CONSTRAINT `CK_SiteTouristiqueJournees_SalesWindow` CHECK (`SalesCloseAtUtc` IS NULL OR `SalesOpenAtUtc` IS NULL OR `SalesCloseAtUtc` >= `SalesOpenAtUtc`),
+    CONSTRAINT `FK_SiteTouristiqueJournees_SiteTouristiquePlanifications_IdSite~` FOREIGN KEY (`IdSiteTouristiquePlanification`) REFERENCES `SiteTouristiquePlanifications` (`IdSiteTouristiquePlanification`) ON DELETE SET NULL,
+    CONSTRAINT `FK_SiteTouristiqueJournees_SiteTouristiques_IdSiteTouristique` FOREIGN KEY (`IdSiteTouristique`) REFERENCES `SiteTouristiques` (`IdSiteTouristique`) ON DELETE RESTRICT,
+    CONSTRAINT `FK_SiteTouristiqueJournees_Societes_IdSociete` FOREIGN KEY (`IdSociete`) REFERENCES `Societes` (`IdSociete`) ON DELETE RESTRICT
+) CHARACTER SET=utf8mb4;
+
+CREATE TABLE `SiteTouristiquePlanifClassQuotas` (
+    `IdSiteTouristiquePlanifClassQuota` int NOT NULL AUTO_INCREMENT,
+    `IdSiteTouristiquePlanification` int NOT NULL,
+    `IdSiteTouristiqueClasse` int NOT NULL,
+    `CapaciteTotale` int NOT NULL,
+    `PrixUnitaire` decimal(18,2) NOT NULL,
+    CONSTRAINT `PK_SiteTouristiquePlanifClassQuotas` PRIMARY KEY (`IdSiteTouristiquePlanifClassQuota`),
+    CONSTRAINT `CK_SiteTouristiquePlanifClassQuotas_Capacite` CHECK (`CapaciteTotale` >= 0),
+    CONSTRAINT `FK_SiteTouristiquePlanifClassQuotas_SiteTouristiqueClasses_IdSi~` FOREIGN KEY (`IdSiteTouristiqueClasse`) REFERENCES `SiteTouristiqueClasses` (`IdSiteTouristiqueClasse`) ON DELETE RESTRICT,
+    CONSTRAINT `FK_SiteTouristiquePlanifClassQuotas_SiteTouristiquePlanificatio~` FOREIGN KEY (`IdSiteTouristiquePlanification`) REFERENCES `SiteTouristiquePlanifications` (`IdSiteTouristiquePlanification`) ON DELETE CASCADE
+) CHARACTER SET=utf8mb4;
+
+CREATE TABLE `SiteTouristiquePlanifGenerationLogs` (
+    `IdSiteTouristiquePlanifGenerationLog` int NOT NULL AUTO_INCREMENT,
+    `IdSiteTouristiquePlanification` int NOT NULL,
+    `DateDebut` datetime(6) NOT NULL,
+    `DateFin` datetime(6) NOT NULL,
+    `NombreCrees` int NOT NULL,
+    `NombreIgnores` int NOT NULL,
+    `NombreEchecs` int NOT NULL,
+    `DetailsJson` longtext CHARACTER SET utf8mb4 NOT NULL,
+    `DeclencheParIdUtilisateur` int NULL,
+    `DateCreation` datetime(6) NOT NULL,
+    CONSTRAINT `PK_SiteTouristiquePlanifGenerationLogs` PRIMARY KEY (`IdSiteTouristiquePlanifGenerationLog`),
+    CONSTRAINT `FK_SiteTouristiquePlanifGenerationLogs_SiteTouristiquePlanifica~` FOREIGN KEY (`IdSiteTouristiquePlanification`) REFERENCES `SiteTouristiquePlanifications` (`IdSiteTouristiquePlanification`) ON DELETE CASCADE
+) CHARACTER SET=utf8mb4;
+
+CREATE TABLE `SiteTouristiquePlanifGlobalQuotas` (
+    `IdSiteTouristiquePlanification` int NOT NULL,
+    `CapaciteTotale` int NOT NULL,
+    `PrixUnitaire` decimal(18,2) NOT NULL,
+    CONSTRAINT `PK_SiteTouristiquePlanifGlobalQuotas` PRIMARY KEY (`IdSiteTouristiquePlanification`),
+    CONSTRAINT `CK_SiteTouristiquePlanifGlobalQuotas_Capacite` CHECK (`CapaciteTotale` >= 0),
+    CONSTRAINT `FK_SiteTouristiquePlanifGlobalQuotas_SiteTouristiquePlanificati~` FOREIGN KEY (`IdSiteTouristiquePlanification`) REFERENCES `SiteTouristiquePlanifications` (`IdSiteTouristiquePlanification`) ON DELETE CASCADE
+) CHARACTER SET=utf8mb4;
+
+CREATE TABLE `RestaurantCreneaux` (
+    `IdRestaurantCreneau` int NOT NULL AUTO_INCREMENT,
+    `IdSociete` int NOT NULL,
+    `IdRestaurant` int NOT NULL,
+    `DateService` date NOT NULL,
+    `StartAtUtc` datetime(6) NOT NULL,
+    `EndAtUtc` datetime(6) NOT NULL,
+    `InventoryMode` enum('GlobalQuota','ClassQuota') CHARACTER SET utf8mb4 NOT NULL,
+    `Status` enum('Draft','Published','Closed','Cancelled') CHARACTER SET utf8mb4 NOT NULL DEFAULT 'Draft',
+    `CodeDevise` char(3) CHARACTER SET utf8mb4 NOT NULL DEFAULT 'CDF',
+    `MontantAcompte` decimal(18,2) NULL,
+    `IdRestaurantPlanification` int NULL,
+    `IdRestaurantPlanificationPlage` int NULL,
+    `DateCreation` datetime(6) NOT NULL,
+    `DateModification` datetime(6) NULL,
+    CONSTRAINT `PK_RestaurantCreneaux` PRIMARY KEY (`IdRestaurantCreneau`),
+    CONSTRAINT `CK_RestaurantCreneaux_StartEnd` CHECK (`EndAtUtc` > `StartAtUtc`),
+    CONSTRAINT `FK_RestaurantCreneaux_RestaurantPlanificationPlages_IdRestauran~` FOREIGN KEY (`IdRestaurantPlanificationPlage`) REFERENCES `RestaurantPlanificationPlages` (`IdRestaurantPlanificationPlage`) ON DELETE SET NULL,
+    CONSTRAINT `FK_RestaurantCreneaux_RestaurantPlanifications_IdRestaurantPlan~` FOREIGN KEY (`IdRestaurantPlanification`) REFERENCES `RestaurantPlanifications` (`IdRestaurantPlanification`) ON DELETE SET NULL,
+    CONSTRAINT `FK_RestaurantCreneaux_Restaurants_IdRestaurant` FOREIGN KEY (`IdRestaurant`) REFERENCES `Restaurants` (`IdRestaurant`) ON DELETE RESTRICT,
+    CONSTRAINT `FK_RestaurantCreneaux_Societes_IdSociete` FOREIGN KEY (`IdSociete`) REFERENCES `Societes` (`IdSociete`) ON DELETE RESTRICT
+) CHARACTER SET=utf8mb4;
+
+CREATE TABLE `RestaurantPlanifPlageGlobalQuotas` (
+    `IdRestaurantPlanificationPlage` int NOT NULL,
+    `CapaciteTotale` int NOT NULL,
+    `PrixUnitaire` decimal(18,2) NOT NULL,
+    CONSTRAINT `PK_RestaurantPlanifPlageGlobalQuotas` PRIMARY KEY (`IdRestaurantPlanificationPlage`),
+    CONSTRAINT `CK_RestaurantPlanifPlageGlobalQuotas_Capacite` CHECK (`CapaciteTotale` >= 0),
+    CONSTRAINT `FK_RestaurantPlanifPlageGlobalQuotas_RestaurantPlanificationPla~` FOREIGN KEY (`IdRestaurantPlanificationPlage`) REFERENCES `RestaurantPlanificationPlages` (`IdRestaurantPlanificationPlage`) ON DELETE CASCADE
+) CHARACTER SET=utf8mb4;
+
+CREATE TABLE `RestaurantPlanifPlageZoneQuotas` (
+    `IdRestaurantPlanifPlageZoneQuota` int NOT NULL AUTO_INCREMENT,
+    `IdRestaurantPlanificationPlage` int NOT NULL,
+    `IdRestaurantZone` int NOT NULL,
+    `CapaciteTotale` int NOT NULL,
+    `PrixUnitaire` decimal(18,2) NOT NULL,
+    CONSTRAINT `PK_RestaurantPlanifPlageZoneQuotas` PRIMARY KEY (`IdRestaurantPlanifPlageZoneQuota`),
+    CONSTRAINT `CK_RestaurantPlanifPlageZoneQuotas_Capacite` CHECK (`CapaciteTotale` >= 0),
+    CONSTRAINT `FK_RestaurantPlanifPlageZoneQuotas_RestaurantPlanificationPlage~` FOREIGN KEY (`IdRestaurantPlanificationPlage`) REFERENCES `RestaurantPlanificationPlages` (`IdRestaurantPlanificationPlage`) ON DELETE CASCADE,
+    CONSTRAINT `FK_RestaurantPlanifPlageZoneQuotas_RestaurantZones_IdRestaurant~` FOREIGN KEY (`IdRestaurantZone`) REFERENCES `RestaurantZones` (`IdRestaurantZone`) ON DELETE RESTRICT
+) CHARACTER SET=utf8mb4;
+
+CREATE TABLE `SiteTouristiqueClassQuotas` (
+    `IdSiteTouristiqueClassQuota` int NOT NULL AUTO_INCREMENT,
+    `IdSiteTouristiqueJournee` int NOT NULL,
+    `IdSiteTouristiqueClasse` int NOT NULL,
+    `CapaciteTotale` int NOT NULL,
+    `QuantiteHold` int NOT NULL DEFAULT 0,
+    `QuantiteVendue` int NOT NULL DEFAULT 0,
+    `PrixUnitaire` decimal(18,2) NOT NULL,
+    CONSTRAINT `PK_SiteTouristiqueClassQuotas` PRIMARY KEY (`IdSiteTouristiqueClassQuota`),
+    CONSTRAINT `CK_SiteTouristiqueClassQuotas_Capacite` CHECK (`CapaciteTotale` >= 0),
+    CONSTRAINT `CK_SiteTouristiqueClassQuotas_StockMax` CHECK (`QuantiteHold` + `QuantiteVendue` <= `CapaciteTotale`),
+    CONSTRAINT `CK_SiteTouristiqueClassQuotas_StockPositive` CHECK (`QuantiteHold` >= 0 AND `QuantiteVendue` >= 0),
+    CONSTRAINT `FK_SiteTouristiqueClassQuotas_SiteTouristiqueClasses_IdSiteTour~` FOREIGN KEY (`IdSiteTouristiqueClasse`) REFERENCES `SiteTouristiqueClasses` (`IdSiteTouristiqueClasse`) ON DELETE RESTRICT,
+    CONSTRAINT `FK_SiteTouristiqueClassQuotas_SiteTouristiqueJournees_IdSiteTou~` FOREIGN KEY (`IdSiteTouristiqueJournee`) REFERENCES `SiteTouristiqueJournees` (`IdSiteTouristiqueJournee`) ON DELETE CASCADE
+) CHARACTER SET=utf8mb4;
+
+CREATE TABLE `SiteTouristiqueGlobalQuotas` (
+    `IdSiteTouristiqueJournee` int NOT NULL,
+    `CapaciteTotale` int NOT NULL,
+    `QuantiteHold` int NOT NULL DEFAULT 0,
+    `QuantiteVendue` int NOT NULL DEFAULT 0,
+    `PrixUnitaire` decimal(18,2) NOT NULL,
+    CONSTRAINT `PK_SiteTouristiqueGlobalQuotas` PRIMARY KEY (`IdSiteTouristiqueJournee`),
+    CONSTRAINT `CK_SiteTouristiqueGlobalQuotas_Capacite` CHECK (`CapaciteTotale` >= 0),
+    CONSTRAINT `CK_SiteTouristiqueGlobalQuotas_StockMax` CHECK (`QuantiteHold` + `QuantiteVendue` <= `CapaciteTotale`),
+    CONSTRAINT `CK_SiteTouristiqueGlobalQuotas_StockPositive` CHECK (`QuantiteHold` >= 0 AND `QuantiteVendue` >= 0),
+    CONSTRAINT `FK_SiteTouristiqueGlobalQuotas_SiteTouristiqueJournees_IdSiteTo~` FOREIGN KEY (`IdSiteTouristiqueJournee`) REFERENCES `SiteTouristiqueJournees` (`IdSiteTouristiqueJournee`) ON DELETE CASCADE
+) CHARACTER SET=utf8mb4;
+
+CREATE TABLE `SiteTouristiqueReservations` (
+    `IdSiteTouristiqueReservation` int NOT NULL AUTO_INCREMENT,
+    `IdSociete` int NOT NULL,
+    `IdSiteTouristiqueJournee` int NOT NULL,
+    `IdSite` int NULL,
+    `ReferenceReservation` varchar(64) CHARACTER SET utf8mb4 NOT NULL,
+    `CustomerRef` varchar(100) CHARACTER SET utf8mb4 NULL,
+    `IdUtilisateur` int NULL,
+    `IdClient` int NULL,
+    `Status` enum('HOLD','CONFIRMED','CANCELLED','EXPIRED') CHARACTER SET utf8mb4 NOT NULL,
+    `ExpiresAtUtc` datetime(6) NULL,
+    `MontantSousTotal` decimal(18,2) NOT NULL DEFAULT 0.0,
+    `CodeDevise` char(3) CHARACTER SET utf8mb4 NOT NULL DEFAULT 'CDF',
+    `IdempotencyKey` varchar(120) CHARACTER SET utf8mb4 NULL,
+    `DateCreation` datetime(6) NOT NULL,
+    `DateModification` datetime(6) NULL,
+    CONSTRAINT `PK_SiteTouristiqueReservations` PRIMARY KEY (`IdSiteTouristiqueReservation`),
+    CONSTRAINT `FK_SiteTouristiqueReservations_Clients_IdClient` FOREIGN KEY (`IdClient`) REFERENCES `Clients` (`IdClient`) ON DELETE RESTRICT,
+    CONSTRAINT `FK_SiteTouristiqueReservations_Sites_IdSite` FOREIGN KEY (`IdSite`) REFERENCES `Sites` (`IdSite`) ON DELETE RESTRICT,
+    CONSTRAINT `FK_SiteTouristiqueReservations_SiteTouristiqueJournees_IdSiteTo~` FOREIGN KEY (`IdSiteTouristiqueJournee`) REFERENCES `SiteTouristiqueJournees` (`IdSiteTouristiqueJournee`) ON DELETE RESTRICT,
+    CONSTRAINT `FK_SiteTouristiqueReservations_Societes_IdSociete` FOREIGN KEY (`IdSociete`) REFERENCES `Societes` (`IdSociete`) ON DELETE RESTRICT
+) CHARACTER SET=utf8mb4;
+
+CREATE TABLE `RestaurantCreneauGlobalQuotas` (
+    `IdRestaurantCreneau` int NOT NULL,
+    `CapaciteTotale` int NOT NULL,
+    `QuantiteHold` int NOT NULL DEFAULT 0,
+    `QuantiteVendue` int NOT NULL DEFAULT 0,
+    `PrixUnitaire` decimal(18,2) NOT NULL,
+    CONSTRAINT `PK_RestaurantCreneauGlobalQuotas` PRIMARY KEY (`IdRestaurantCreneau`),
+    CONSTRAINT `CK_RestaurantCreneauGlobalQuotas_Capacite` CHECK (`CapaciteTotale` >= 0),
+    CONSTRAINT `CK_RestaurantCreneauGlobalQuotas_StockMax` CHECK (`QuantiteHold` + `QuantiteVendue` <= `CapaciteTotale`),
+    CONSTRAINT `CK_RestaurantCreneauGlobalQuotas_StockPositive` CHECK (`QuantiteHold` >= 0 AND `QuantiteVendue` >= 0),
+    CONSTRAINT `FK_RestaurantCreneauGlobalQuotas_RestaurantCreneaux_IdRestauran~` FOREIGN KEY (`IdRestaurantCreneau`) REFERENCES `RestaurantCreneaux` (`IdRestaurantCreneau`) ON DELETE CASCADE
+) CHARACTER SET=utf8mb4;
+
+CREATE TABLE `RestaurantCreneauZoneQuotas` (
+    `IdRestaurantCreneauZoneQuota` int NOT NULL AUTO_INCREMENT,
+    `IdRestaurantCreneau` int NOT NULL,
+    `IdRestaurantZone` int NOT NULL,
+    `CapaciteTotale` int NOT NULL,
+    `QuantiteHold` int NOT NULL DEFAULT 0,
+    `QuantiteVendue` int NOT NULL DEFAULT 0,
+    `PrixUnitaire` decimal(18,2) NOT NULL,
+    CONSTRAINT `PK_RestaurantCreneauZoneQuotas` PRIMARY KEY (`IdRestaurantCreneauZoneQuota`),
+    CONSTRAINT `CK_RestaurantCreneauZoneQuotas_Capacite` CHECK (`CapaciteTotale` >= 0),
+    CONSTRAINT `CK_RestaurantCreneauZoneQuotas_StockMax` CHECK (`QuantiteHold` + `QuantiteVendue` <= `CapaciteTotale`),
+    CONSTRAINT `CK_RestaurantCreneauZoneQuotas_StockPositive` CHECK (`QuantiteHold` >= 0 AND `QuantiteVendue` >= 0),
+    CONSTRAINT `FK_RestaurantCreneauZoneQuotas_RestaurantCreneaux_IdRestaurantC~` FOREIGN KEY (`IdRestaurantCreneau`) REFERENCES `RestaurantCreneaux` (`IdRestaurantCreneau`) ON DELETE CASCADE,
+    CONSTRAINT `FK_RestaurantCreneauZoneQuotas_RestaurantZones_IdRestaurantZone` FOREIGN KEY (`IdRestaurantZone`) REFERENCES `RestaurantZones` (`IdRestaurantZone`) ON DELETE RESTRICT
+) CHARACTER SET=utf8mb4;
+
+CREATE TABLE `RestaurantReservations` (
+    `IdRestaurantReservation` int NOT NULL AUTO_INCREMENT,
+    `IdSociete` int NOT NULL,
+    `IdRestaurant` int NOT NULL,
+    `IdRestaurantCreneau` int NOT NULL,
+    `IdSite` int NULL,
+    `IdUtilisateur` int NULL,
+    `IdClient` int NULL,
+    `ReferenceReservation` varchar(64) CHARACTER SET utf8mb4 NOT NULL,
+    `CustomerRef` varchar(100) CHARACTER SET utf8mb4 NULL,
+    `Status` enum('HOLD','CONFIRMED','CANCELLED','EXPIRED') CHARACTER SET utf8mb4 NOT NULL,
+    `ExpiresAtUtc` datetime(6) NULL,
+    `MontantSousTotal` decimal(18,2) NOT NULL DEFAULT 0.0,
+    `CodeDevise` char(3) CHARACTER SET utf8mb4 NOT NULL DEFAULT 'CDF',
+    `NombreCouverts` int NOT NULL,
+    `IdempotencyKey` varchar(120) CHARACTER SET utf8mb4 NULL,
+    `DateCreation` datetime(6) NOT NULL,
+    `DateModification` datetime(6) NULL,
+    CONSTRAINT `PK_RestaurantReservations` PRIMARY KEY (`IdRestaurantReservation`),
+    CONSTRAINT `FK_RestaurantReservations_Clients_IdClient` FOREIGN KEY (`IdClient`) REFERENCES `Clients` (`IdClient`) ON DELETE RESTRICT,
+    CONSTRAINT `FK_RestaurantReservations_RestaurantCreneaux_IdRestaurantCreneau` FOREIGN KEY (`IdRestaurantCreneau`) REFERENCES `RestaurantCreneaux` (`IdRestaurantCreneau`) ON DELETE RESTRICT,
+    CONSTRAINT `FK_RestaurantReservations_Restaurants_IdRestaurant` FOREIGN KEY (`IdRestaurant`) REFERENCES `Restaurants` (`IdRestaurant`) ON DELETE RESTRICT,
+    CONSTRAINT `FK_RestaurantReservations_Sites_IdSite` FOREIGN KEY (`IdSite`) REFERENCES `Sites` (`IdSite`) ON DELETE RESTRICT,
+    CONSTRAINT `FK_RestaurantReservations_Societes_IdSociete` FOREIGN KEY (`IdSociete`) REFERENCES `Societes` (`IdSociete`) ON DELETE RESTRICT
+) CHARACTER SET=utf8mb4;
+
+CREATE TABLE `SiteTouristiquePayments` (
+    `IdSiteTouristiquePayment` int NOT NULL AUTO_INCREMENT,
+    `IdSiteTouristiqueReservation` int NOT NULL,
+    `IdSite` int NULL,
+    `ReferencePaiement` varchar(100) CHARACTER SET utf8mb4 NOT NULL,
+    `Provider` varchar(40) CHARACTER SET utf8mb4 NOT NULL,
+    `ProviderTxRef` varchar(120) CHARACTER SET utf8mb4 NULL,
+    `Status` enum('PENDING','SUCCEEDED','FAILED','REFUNDED') CHARACTER SET utf8mb4 NOT NULL,
+    `Montant` decimal(18,2) NOT NULL,
+    `CodeDevise` char(3) CHARACTER SET utf8mb4 NOT NULL DEFAULT 'CDF',
+    `MontantTarif` decimal(18,2) NOT NULL,
+    `CodeDeviseTarif` char(3) CHARACTER SET utf8mb4 NOT NULL DEFAULT 'CDF',
+    `TauxVersDevisePaiement` decimal(18,8) NOT NULL DEFAULT 1.0,
+    `IdempotencyKey` varchar(120) CHARACTER SET utf8mb4 NULL,
+    `DateCreation` datetime(6) NOT NULL,
+    `DateModification` datetime(6) NULL,
+    CONSTRAINT `PK_SiteTouristiquePayments` PRIMARY KEY (`IdSiteTouristiquePayment`),
+    CONSTRAINT `FK_SiteTouristiquePayments_Sites_IdSite` FOREIGN KEY (`IdSite`) REFERENCES `Sites` (`IdSite`) ON DELETE RESTRICT,
+    CONSTRAINT `FK_SiteTouristiquePayments_SiteTouristiqueReservations_IdSiteTo~` FOREIGN KEY (`IdSiteTouristiqueReservation`) REFERENCES `SiteTouristiqueReservations` (`IdSiteTouristiqueReservation`) ON DELETE RESTRICT
+) CHARACTER SET=utf8mb4;
+
+CREATE TABLE `SiteTouristiqueReservationLines` (
+    `IdSiteTouristiqueReservationLine` int NOT NULL AUTO_INCREMENT,
+    `IdSiteTouristiqueReservation` int NOT NULL,
+    `LineType` enum('ClassQuota','GlobalQuota') CHARACTER SET utf8mb4 NOT NULL,
+    `Quantite` int NOT NULL,
+    `PrixUnitaire` decimal(18,2) NOT NULL,
+    `CodeDevise` char(3) CHARACTER SET utf8mb4 NOT NULL DEFAULT 'CDF',
+    `IdSiteTouristiqueClassQuota` int NULL,
+    CONSTRAINT `PK_SiteTouristiqueReservationLines` PRIMARY KEY (`IdSiteTouristiqueReservationLine`),
+    CONSTRAINT `CK_SiteTouristiqueReservationLines_Quantite` CHECK (`Quantite` > 0),
+    CONSTRAINT `FK_SiteTouristiqueReservationLines_SiteTouristiqueClassQuotas_I~` FOREIGN KEY (`IdSiteTouristiqueClassQuota`) REFERENCES `SiteTouristiqueClassQuotas` (`IdSiteTouristiqueClassQuota`) ON DELETE RESTRICT,
+    CONSTRAINT `FK_SiteTouristiqueReservationLines_SiteTouristiqueReservations_~` FOREIGN KEY (`IdSiteTouristiqueReservation`) REFERENCES `SiteTouristiqueReservations` (`IdSiteTouristiqueReservation`) ON DELETE CASCADE
+) CHARACTER SET=utf8mb4;
+
+CREATE TABLE `RestaurantPayments` (
+    `IdRestaurantPayment` int NOT NULL AUTO_INCREMENT,
+    `IdRestaurantReservation` int NOT NULL,
+    `IdSite` int NULL,
+    `ReferencePaiement` varchar(100) CHARACTER SET utf8mb4 NOT NULL,
+    `Provider` varchar(40) CHARACTER SET utf8mb4 NOT NULL,
+    `ProviderTxRef` varchar(120) CHARACTER SET utf8mb4 NULL,
+    `Status` enum('PENDING','SUCCEEDED','FAILED','REFUNDED') CHARACTER SET utf8mb4 NOT NULL,
+    `Montant` decimal(18,2) NOT NULL,
+    `CodeDevise` char(3) CHARACTER SET utf8mb4 NOT NULL DEFAULT 'CDF',
+    `MontantTarif` decimal(18,2) NOT NULL,
+    `CodeDeviseTarif` char(3) CHARACTER SET utf8mb4 NOT NULL DEFAULT 'CDF',
+    `TauxVersDevisePaiement` decimal(18,8) NOT NULL DEFAULT 1.0,
+    `IdempotencyKey` varchar(120) CHARACTER SET utf8mb4 NULL,
+    `DateCreation` datetime(6) NOT NULL,
+    `DateModification` datetime(6) NULL,
+    CONSTRAINT `PK_RestaurantPayments` PRIMARY KEY (`IdRestaurantPayment`),
+    CONSTRAINT `FK_RestaurantPayments_RestaurantReservations_IdRestaurantReserv~` FOREIGN KEY (`IdRestaurantReservation`) REFERENCES `RestaurantReservations` (`IdRestaurantReservation`) ON DELETE RESTRICT,
+    CONSTRAINT `FK_RestaurantPayments_Sites_IdSite` FOREIGN KEY (`IdSite`) REFERENCES `Sites` (`IdSite`) ON DELETE RESTRICT
+) CHARACTER SET=utf8mb4;
+
+CREATE TABLE `RestaurantReservationLines` (
+    `IdRestaurantReservationLine` int NOT NULL AUTO_INCREMENT,
+    `IdRestaurantReservation` int NOT NULL,
+    `LineType` enum('GlobalQuota','ClassQuota') CHARACTER SET utf8mb4 NOT NULL,
+    `Quantite` int NOT NULL,
+    `PrixUnitaire` decimal(18,2) NOT NULL,
+    `MontantLigne` decimal(18,2) NOT NULL,
+    `CodeDevise` char(3) CHARACTER SET utf8mb4 NOT NULL DEFAULT 'CDF',
+    `IdRestaurantCreneauGlobalQuota` int NULL,
+    `IdRestaurantCreneauZoneQuota` int NULL,
+    CONSTRAINT `PK_RestaurantReservationLines` PRIMARY KEY (`IdRestaurantReservationLine`),
+    CONSTRAINT `CK_RestaurantReservationLines_Quantite` CHECK (`Quantite` > 0),
+    CONSTRAINT `FK_RestaurantReservationLines_RestaurantCreneauGlobalQuotas_IdR~` FOREIGN KEY (`IdRestaurantCreneauGlobalQuota`) REFERENCES `RestaurantCreneauGlobalQuotas` (`IdRestaurantCreneau`) ON DELETE RESTRICT,
+    CONSTRAINT `FK_RestaurantReservationLines_RestaurantCreneauZoneQuotas_IdRes~` FOREIGN KEY (`IdRestaurantCreneauZoneQuota`) REFERENCES `RestaurantCreneauZoneQuotas` (`IdRestaurantCreneauZoneQuota`) ON DELETE RESTRICT,
+    CONSTRAINT `FK_RestaurantReservationLines_RestaurantReservations_IdRestaura~` FOREIGN KEY (`IdRestaurantReservation`) REFERENCES `RestaurantReservations` (`IdRestaurantReservation`) ON DELETE CASCADE
+) CHARACTER SET=utf8mb4;
+
+CREATE TABLE `SiteTouristiqueTickets` (
+    `IdSiteTouristiqueTicket` int NOT NULL AUTO_INCREMENT,
+    `IdSiteTouristiqueReservationLine` int NOT NULL,
+    `TicketCode` varchar(100) CHARACTER SET utf8mb4 NOT NULL,
+    `Status` enum('ISSUED','USED','VOID') CHARACTER SET utf8mb4 NOT NULL DEFAULT 'ISSUED',
+    `IssuedAtUtc` datetime(6) NOT NULL,
+    `UsedAtUtc` datetime(6) NULL,
+    CONSTRAINT `PK_SiteTouristiqueTickets` PRIMARY KEY (`IdSiteTouristiqueTicket`),
+    CONSTRAINT `FK_SiteTouristiqueTickets_SiteTouristiqueReservationLines_IdSit~` FOREIGN KEY (`IdSiteTouristiqueReservationLine`) REFERENCES `SiteTouristiqueReservationLines` (`IdSiteTouristiqueReservationLine`) ON DELETE RESTRICT
+) CHARACTER SET=utf8mb4;
+
+CREATE INDEX `IX_RestaurantCreneaux_IdRestaurant` ON `RestaurantCreneaux` (`IdRestaurant`);
+
+CREATE INDEX `IX_RestaurantCreneaux_IdRestaurant_StartAtUtc` ON `RestaurantCreneaux` (`IdRestaurant`, `StartAtUtc`);
+
+CREATE INDEX `IX_RestaurantCreneaux_IdRestaurantPlanification` ON `RestaurantCreneaux` (`IdRestaurantPlanification`);
+
+CREATE INDEX `IX_RestaurantCreneaux_IdRestaurantPlanificationPlage` ON `RestaurantCreneaux` (`IdRestaurantPlanificationPlage`);
+
+CREATE INDEX `IX_RestaurantCreneaux_IdSociete_DateService` ON `RestaurantCreneaux` (`IdSociete`, `DateService`);
+
+CREATE UNIQUE INDEX `IX_RestaurantCreneauZoneQuotas_Creneau_Zone_UQ` ON `RestaurantCreneauZoneQuotas` (`IdRestaurantCreneau`, `IdRestaurantZone`);
+
+CREATE INDEX `IX_RestaurantCreneauZoneQuotas_IdRestaurantCreneau` ON `RestaurantCreneauZoneQuotas` (`IdRestaurantCreneau`);
+
+CREATE INDEX `IX_RestaurantCreneauZoneQuotas_IdRestaurantZone` ON `RestaurantCreneauZoneQuotas` (`IdRestaurantZone`);
+
+CREATE UNIQUE INDEX `IX_RestaurantPayments_Idempotency_UQ` ON `RestaurantPayments` (`IdempotencyKey`);
+
+CREATE INDEX `IX_RestaurantPayments_IdSite` ON `RestaurantPayments` (`IdSite`);
+
+CREATE UNIQUE INDEX `IX_RestaurantPayments_ReferencePaiement_UQ` ON `RestaurantPayments` (`ReferencePaiement`);
+
+CREATE INDEX `IX_RestaurantPayments_Reservation_Status` ON `RestaurantPayments` (`IdRestaurantReservation`, `Status`);
+
+CREATE INDEX `IX_RestaurantPlanifGenerationLogs_IdPlanification` ON `RestaurantPlanifGenerationLogs` (`IdRestaurantPlanification`);
+
+CREATE INDEX `IX_RestaurantPlanificationPlages_IdPlanification` ON `RestaurantPlanificationPlages` (`IdRestaurantPlanification`);
+
+CREATE INDEX `IX_RestaurantPlanifications_IdRestaurant` ON `RestaurantPlanifications` (`IdRestaurant`);
+
+CREATE INDEX `IX_RestaurantPlanifications_IdSociete` ON `RestaurantPlanifications` (`IdSociete`);
+
+CREATE INDEX `IX_RestaurantPlanifPlageZoneQuotas_IdPlage` ON `RestaurantPlanifPlageZoneQuotas` (`IdRestaurantPlanificationPlage`);
+
+CREATE INDEX `IX_RestaurantPlanifPlageZoneQuotas_IdRestaurantZone` ON `RestaurantPlanifPlageZoneQuotas` (`IdRestaurantZone`);
+
+CREATE UNIQUE INDEX `IX_RestaurantPlanifPlageZoneQuotas_Plage_Zone_UQ` ON `RestaurantPlanifPlageZoneQuotas` (`IdRestaurantPlanificationPlage`, `IdRestaurantZone`);
+
+CREATE INDEX `IX_RestaurantReservationLines_IdReservation` ON `RestaurantReservationLines` (`IdRestaurantReservation`);
+
+CREATE INDEX `IX_RestaurantReservationLines_IdRestaurantCreneauGlobalQuota` ON `RestaurantReservationLines` (`IdRestaurantCreneauGlobalQuota`);
+
+CREATE INDEX `IX_RestaurantReservationLines_IdZoneQuota` ON `RestaurantReservationLines` (`IdRestaurantCreneauZoneQuota`);
+
+CREATE INDEX `IX_RestaurantReservations_Creneau_Status` ON `RestaurantReservations` (`IdRestaurantCreneau`, `Status`);
+
+CREATE INDEX `IX_RestaurantReservations_IdClient` ON `RestaurantReservations` (`IdClient`);
+
+CREATE INDEX `IX_RestaurantReservations_IdRestaurant` ON `RestaurantReservations` (`IdRestaurant`);
+
+CREATE INDEX `IX_RestaurantReservations_IdSite` ON `RestaurantReservations` (`IdSite`);
+
+CREATE INDEX `IX_RestaurantReservations_IdUtilisateur` ON `RestaurantReservations` (`IdUtilisateur`);
+
+CREATE UNIQUE INDEX `IX_RestaurantReservations_Societe_Idempotency_UQ` ON `RestaurantReservations` (`IdSociete`, `IdempotencyKey`);
+
+CREATE UNIQUE INDEX `IX_RestaurantReservations_Societe_Reference_UQ` ON `RestaurantReservations` (`IdSociete`, `ReferenceReservation`);
+
+CREATE INDEX `IX_RestaurantReservations_Status_ExpiresAtUtc` ON `RestaurantReservations` (`Status`, `ExpiresAtUtc`);
+
+CREATE INDEX `IX_Restaurants_IdSite` ON `Restaurants` (`IdSite`);
+
+CREATE UNIQUE INDEX `IX_Restaurants_Societe_CodeRestaurant_UQ` ON `Restaurants` (`IdSociete`, `CodeRestaurant`);
+
+CREATE INDEX `IX_RestaurantZones_IdRestaurant` ON `RestaurantZones` (`IdRestaurant`);
+
+CREATE INDEX `IX_RestaurantZones_IdSociete` ON `RestaurantZones` (`IdSociete`);
+
+CREATE UNIQUE INDEX `IX_RestaurantZones_Restaurant_Code_UQ` ON `RestaurantZones` (`IdRestaurant`, `Code`);
+
+CREATE INDEX `IX_SiteTouristiqueClasses_IdSociete` ON `SiteTouristiqueClasses` (`IdSociete`);
+
+CREATE UNIQUE INDEX `IX_SiteTouristiqueClasses_Societe_Code_UQ` ON `SiteTouristiqueClasses` (`IdSociete`, `Code`);
+
+CREATE INDEX `IX_SiteTouristiqueClassQuotas_IdSiteTouristiqueClasse` ON `SiteTouristiqueClassQuotas` (`IdSiteTouristiqueClasse`);
+
+CREATE INDEX `IX_SiteTouristiqueClassQuotas_IdSiteTouristiqueJournee` ON `SiteTouristiqueClassQuotas` (`IdSiteTouristiqueJournee`);
+
+CREATE UNIQUE INDEX `IX_SiteTouristiqueClassQuotas_Journee_Classe_UQ` ON `SiteTouristiqueClassQuotas` (`IdSiteTouristiqueJournee`, `IdSiteTouristiqueClasse`);
+
+CREATE INDEX `IX_SiteTouristiqueJournees_IdSiteTouristique` ON `SiteTouristiqueJournees` (`IdSiteTouristique`);
+
+CREATE INDEX `IX_SiteTouristiqueJournees_IdSiteTouristiquePlanification` ON `SiteTouristiqueJournees` (`IdSiteTouristiquePlanification`);
+
+CREATE INDEX `IX_SiteTouristiqueJournees_IdSociete_DateVisite` ON `SiteTouristiqueJournees` (`IdSociete`, `DateVisite`);
+
+CREATE UNIQUE INDEX `IX_SiteTouristiqueJournees_Lieu_DateVisite_UQ` ON `SiteTouristiqueJournees` (`IdSiteTouristique`, `DateVisite`);
+
+CREATE UNIQUE INDEX `IX_SiteTouristiquePayments_Idempotency_UQ` ON `SiteTouristiquePayments` (`IdempotencyKey`);
+
+CREATE INDEX `IX_SiteTouristiquePayments_IdSite` ON `SiteTouristiquePayments` (`IdSite`);
+
+CREATE UNIQUE INDEX `IX_SiteTouristiquePayments_ReferencePaiement_UQ` ON `SiteTouristiquePayments` (`ReferencePaiement`);
+
+CREATE INDEX `IX_SiteTouristiquePayments_Reservation_Status` ON `SiteTouristiquePayments` (`IdSiteTouristiqueReservation`, `Status`);
+
+CREATE INDEX `IX_SiteTouristiquePlanifClassQuotas_IdPlanification` ON `SiteTouristiquePlanifClassQuotas` (`IdSiteTouristiquePlanification`);
+
+CREATE INDEX `IX_SiteTouristiquePlanifClassQuotas_IdSiteTouristiqueClasse` ON `SiteTouristiquePlanifClassQuotas` (`IdSiteTouristiqueClasse`);
+
+CREATE UNIQUE INDEX `IX_SiteTouristiquePlanifClassQuotas_Planif_Classe_UQ` ON `SiteTouristiquePlanifClassQuotas` (`IdSiteTouristiquePlanification`, `IdSiteTouristiqueClasse`);
+
+CREATE INDEX `IX_SiteTouristiquePlanifGenerationLogs_IdPlanification` ON `SiteTouristiquePlanifGenerationLogs` (`IdSiteTouristiquePlanification`);
+
+CREATE INDEX `IX_SiteTouristiquePlanifications_IdSiteTouristique` ON `SiteTouristiquePlanifications` (`IdSiteTouristique`);
+
+CREATE INDEX `IX_SiteTouristiquePlanifications_IdSociete` ON `SiteTouristiquePlanifications` (`IdSociete`);
+
+CREATE INDEX `IX_SiteTouristiqueReservationLines_IdReservation` ON `SiteTouristiqueReservationLines` (`IdSiteTouristiqueReservation`);
+
+CREATE INDEX `IX_SiteTouristiqueReservationLines_IdSiteTouristiqueClassQuota` ON `SiteTouristiqueReservationLines` (`IdSiteTouristiqueClassQuota`);
+
+CREATE INDEX `IX_SiteTouristiqueReservations_IdClient` ON `SiteTouristiqueReservations` (`IdClient`);
+
+CREATE INDEX `IX_SiteTouristiqueReservations_IdSite` ON `SiteTouristiqueReservations` (`IdSite`);
+
+CREATE INDEX `IX_SiteTouristiqueReservations_IdUtilisateur` ON `SiteTouristiqueReservations` (`IdUtilisateur`);
+
+CREATE INDEX `IX_SiteTouristiqueReservations_Journee_Status` ON `SiteTouristiqueReservations` (`IdSiteTouristiqueJournee`, `Status`);
+
+CREATE UNIQUE INDEX `IX_SiteTouristiqueReservations_Societe_Idempotency_UQ` ON `SiteTouristiqueReservations` (`IdSociete`, `IdempotencyKey`);
+
+CREATE UNIQUE INDEX `IX_SiteTouristiqueReservations_Societe_Reference_UQ` ON `SiteTouristiqueReservations` (`IdSociete`, `ReferenceReservation`);
+
+CREATE INDEX `IX_SiteTouristiqueReservations_Status_ExpiresAtUtc` ON `SiteTouristiqueReservations` (`Status`, `ExpiresAtUtc`);
+
+CREATE INDEX `IX_SiteTouristiques_IdSite` ON `SiteTouristiques` (`IdSite`);
+
+CREATE UNIQUE INDEX `IX_SiteTouristiques_Societe_CodeLieu_UQ` ON `SiteTouristiques` (`IdSociete`, `CodeLieu`);
+
+CREATE INDEX `IX_SiteTouristiqueTickets_IdSiteTouristiqueReservationLine` ON `SiteTouristiqueTickets` (`IdSiteTouristiqueReservationLine`);
+
+CREATE INDEX `IX_SiteTouristiqueTickets_Status` ON `SiteTouristiqueTickets` (`Status`);
+
+CREATE UNIQUE INDEX `IX_SiteTouristiqueTickets_TicketCode_UQ` ON `SiteTouristiqueTickets` (`TicketCode`);
+
+INSERT INTO `__EFMigrationsHistory` (`MigrationId`, `ProductVersion`)
+VALUES ('20260811142803_AddSiteTouristiqueAndRestaurantSchema', '6.0.25');
+
+COMMIT;
+

@@ -10,5 +10,9 @@ namespace CongoTravel.Models.DTOs.SiteTouristique
         public int? IdSiteTouristiqueJournee { get; set; }
 
         public string? CustomerRef { get; set; }
+
+        public int? IdUtilisateur { get; set; }
+
+        public int? IdClient { get; set; }
     }
 }

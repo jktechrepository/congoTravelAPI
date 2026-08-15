@@ -740,6 +740,16 @@ namespace CongoTravel.Migrations
                         .HasColumnType("int")
                         .HasDefaultValue(15);
 
+                    b.Property<int>("DureeHoldRestaurantMinutes")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(15);
+
+                    b.Property<int>("DureeHoldSiteTouristiqueMinutes")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(15);
+
                     b.Property<int>("DureeValiditeBilletJours")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int")
@@ -769,6 +779,11 @@ namespace CongoTravel.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasDefaultValue(3);
+
+                    b.Property<int>("HeuresOuvertureEntreeRestaurantAvantDebut")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
 
                     b.Property<int>("IdSociete")
                         .HasColumnType("int");
@@ -1119,6 +1134,9 @@ namespace CongoTravel.Migrations
                     b.Property<DateTime?>("ExpiresAtUtc")
                         .HasColumnType("datetime(6)");
 
+                    b.Property<int?>("IdClient")
+                        .HasColumnType("int");
+
                     b.Property<int>("IdEvenementSession")
                         .HasColumnType("int");
 
@@ -1150,6 +1168,9 @@ namespace CongoTravel.Migrations
                         .HasColumnType("enum('HOLD','CONFIRMED','CANCELLED','EXPIRED')");
 
                     b.HasKey("IdEvenementReservation");
+
+                    b.HasIndex("IdClient")
+                        .HasDatabaseName("IX_EvenementReservations_IdClient");
 
                     b.HasIndex("IdSite")
                         .HasDatabaseName("IX_EvenementReservations_IdSite");
@@ -2617,6 +2638,785 @@ namespace CongoTravel.Migrations
                     b.ToTable("ReservationPassengers");
                 });
 
+            modelBuilder.Entity("CongoTravel.Models.Restaurant.Restaurant", b =>
+                {
+                    b.Property<int>("IdRestaurant")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("AcomptePourcentDefaut")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("decimal(5,2)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<string>("Adresse")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<string>("CodeRestaurant")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<DateTime>("DateCreation")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("DateModification")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("varchar(2000)");
+
+                    b.Property<int?>("IdSite")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IdSociete")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Nom")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("enum('Draft','Published','Closed','Cancelled')")
+                        .HasDefaultValue("Draft");
+
+                    b.HasKey("IdRestaurant");
+
+                    b.HasIndex("IdSite")
+                        .HasDatabaseName("IX_Restaurants_IdSite");
+
+                    b.HasIndex("IdSociete", "CodeRestaurant")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Restaurants_Societe_CodeRestaurant_UQ");
+
+                    b.ToTable("Restaurants", (string)null);
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.Restaurant.RestaurantCreneau", b =>
+                {
+                    b.Property<int>("IdRestaurantCreneau")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<string>("CodeDevise")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(3)
+                        .HasColumnType("char(3)")
+                        .HasDefaultValue("CDF")
+                        .IsFixedLength();
+
+                    b.Property<DateTime>("DateCreation")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("DateModification")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateOnly>("DateService")
+                        .HasColumnType("date");
+
+                    b.Property<DateTime>("EndAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("IdRestaurant")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("IdRestaurantPlanification")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("IdRestaurantPlanificationPlage")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IdSociete")
+                        .HasColumnType("int");
+
+                    b.Property<string>("InventoryMode")
+                        .IsRequired()
+                        .HasColumnType("enum('GlobalQuota','ClassQuota')");
+
+                    b.Property<decimal?>("MontantAcompte")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("StartAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("enum('Draft','Published','Closed','Cancelled')")
+                        .HasDefaultValue("Draft");
+
+                    b.HasKey("IdRestaurantCreneau");
+
+                    b.HasIndex("IdRestaurant")
+                        .HasDatabaseName("IX_RestaurantCreneaux_IdRestaurant");
+
+                    b.HasIndex("IdRestaurantPlanification")
+                        .HasDatabaseName("IX_RestaurantCreneaux_IdRestaurantPlanification");
+
+                    b.HasIndex("IdRestaurantPlanificationPlage")
+                        .HasDatabaseName("IX_RestaurantCreneaux_IdRestaurantPlanificationPlage");
+
+                    b.HasIndex("IdRestaurant", "StartAtUtc")
+                        .HasDatabaseName("IX_RestaurantCreneaux_IdRestaurant_StartAtUtc");
+
+                    b.HasIndex("IdSociete", "DateService")
+                        .HasDatabaseName("IX_RestaurantCreneaux_IdSociete_DateService");
+
+                    b.ToTable("RestaurantCreneaux", (string)null);
+
+                    b.HasCheckConstraint("CK_RestaurantCreneaux_StartEnd", "`EndAtUtc` > `StartAtUtc`");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.Restaurant.RestaurantCreneauGlobalQuota", b =>
+                {
+                    b.Property<int>("IdRestaurantCreneau")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CapaciteTotale")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("PrixUnitaire")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("QuantiteHold")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.Property<int>("QuantiteVendue")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.HasKey("IdRestaurantCreneau");
+
+                    b.ToTable("RestaurantCreneauGlobalQuotas", (string)null);
+
+                    b.HasCheckConstraint("CK_RestaurantCreneauGlobalQuotas_Capacite", "`CapaciteTotale` >= 0");
+
+                    b.HasCheckConstraint("CK_RestaurantCreneauGlobalQuotas_StockMax", "`QuantiteHold` + `QuantiteVendue` <= `CapaciteTotale`");
+
+                    b.HasCheckConstraint("CK_RestaurantCreneauGlobalQuotas_StockPositive", "`QuantiteHold` >= 0 AND `QuantiteVendue` >= 0");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.Restaurant.RestaurantCreneauZoneQuota", b =>
+                {
+                    b.Property<int>("IdRestaurantCreneauZoneQuota")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<int>("CapaciteTotale")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IdRestaurantCreneau")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IdRestaurantZone")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("PrixUnitaire")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("QuantiteHold")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.Property<int>("QuantiteVendue")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.HasKey("IdRestaurantCreneauZoneQuota");
+
+                    b.HasIndex("IdRestaurantCreneau")
+                        .HasDatabaseName("IX_RestaurantCreneauZoneQuotas_IdRestaurantCreneau");
+
+                    b.HasIndex("IdRestaurantZone");
+
+                    b.HasIndex("IdRestaurantCreneau", "IdRestaurantZone")
+                        .IsUnique()
+                        .HasDatabaseName("IX_RestaurantCreneauZoneQuotas_Creneau_Zone_UQ");
+
+                    b.ToTable("RestaurantCreneauZoneQuotas", (string)null);
+
+                    b.HasCheckConstraint("CK_RestaurantCreneauZoneQuotas_Capacite", "`CapaciteTotale` >= 0");
+
+                    b.HasCheckConstraint("CK_RestaurantCreneauZoneQuotas_StockMax", "`QuantiteHold` + `QuantiteVendue` <= `CapaciteTotale`");
+
+                    b.HasCheckConstraint("CK_RestaurantCreneauZoneQuotas_StockPositive", "`QuantiteHold` >= 0 AND `QuantiteVendue` >= 0");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.Restaurant.RestaurantPayment", b =>
+                {
+                    b.Property<int>("IdRestaurantPayment")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<string>("CodeDevise")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(3)
+                        .HasColumnType("char(3)")
+                        .HasDefaultValue("CDF")
+                        .IsFixedLength();
+
+                    b.Property<string>("CodeDeviseTarif")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(3)
+                        .HasColumnType("char(3)")
+                        .HasDefaultValue("CDF")
+                        .IsFixedLength();
+
+                    b.Property<DateTime>("DateCreation")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("DateModification")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("IdRestaurantReservation")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("IdSite")
+                        .HasColumnType("int");
+
+                    b.Property<string>("IdempotencyKey")
+                        .HasMaxLength(120)
+                        .HasColumnType("varchar(120)");
+
+                    b.Property<decimal>("Montant")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("MontantTarif")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("varchar(40)");
+
+                    b.Property<string>("ProviderTxRef")
+                        .HasMaxLength(120)
+                        .HasColumnType("varchar(120)");
+
+                    b.Property<string>("ReferencePaiement")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("enum('PENDING','SUCCEEDED','FAILED','REFUNDED')");
+
+                    b.Property<decimal>("TauxVersDevisePaiement")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("decimal(18,8)")
+                        .HasDefaultValue(1m);
+
+                    b.HasKey("IdRestaurantPayment");
+
+                    b.HasIndex("IdSite")
+                        .HasDatabaseName("IX_RestaurantPayments_IdSite");
+
+                    b.HasIndex("IdempotencyKey")
+                        .IsUnique()
+                        .HasDatabaseName("IX_RestaurantPayments_Idempotency_UQ");
+
+                    b.HasIndex("ReferencePaiement")
+                        .IsUnique()
+                        .HasDatabaseName("IX_RestaurantPayments_ReferencePaiement_UQ");
+
+                    b.HasIndex("IdRestaurantReservation", "Status")
+                        .HasDatabaseName("IX_RestaurantPayments_Reservation_Status");
+
+                    b.ToTable("RestaurantPayments", (string)null);
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.Restaurant.RestaurantPhoto", b =>
+                {
+                    b.Property<int>("IdRestaurantPhoto")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("DateCreation")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("DateModification")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<long?>("FileSize")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("IdRestaurant")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Ordre")
+                        .HasColumnType("int");
+
+                    b.Property<string>("OriginalFileName")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<byte[]>("PhotoData")
+                        .IsRequired()
+                        .HasColumnType("mediumblob");
+
+                    b.Property<bool>("Statut")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint(1)")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("TypeMIME")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.HasKey("IdRestaurantPhoto");
+
+                    b.HasIndex("IdRestaurant")
+                        .HasDatabaseName("IX_RestaurantPhotos_IdRestaurant");
+
+                    b.HasIndex("IdRestaurant", "Ordre")
+                        .IsUnique()
+                        .HasDatabaseName("IX_RestaurantPhotos_Restaurant_Ordre_UQ");
+
+                    b.ToTable("RestaurantPhotos", (string)null);
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.Restaurant.RestaurantPlanifGenerationLog", b =>
+                {
+                    b.Property<int>("IdRestaurantPlanifGenerationLog")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("DateCreation")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime>("DateDebut")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime>("DateFin")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("DeclencheParIdUtilisateur")
+                        .HasColumnType("int");
+
+                    b.Property<string>("DetailsJson")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<int>("IdRestaurantPlanification")
+                        .HasColumnType("int");
+
+                    b.Property<int>("NombreCrees")
+                        .HasColumnType("int");
+
+                    b.Property<int>("NombreEchecs")
+                        .HasColumnType("int");
+
+                    b.Property<int>("NombreIgnores")
+                        .HasColumnType("int");
+
+                    b.Property<int>("NombrePublies")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.HasKey("IdRestaurantPlanifGenerationLog");
+
+                    b.HasIndex("IdRestaurantPlanification")
+                        .HasDatabaseName("IX_RestaurantPlanifGenerationLogs_IdPlanification");
+
+                    b.ToTable("RestaurantPlanifGenerationLogs", (string)null);
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.Restaurant.RestaurantPlanification", b =>
+                {
+                    b.Property<int>("IdRestaurantPlanification")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<string>("CodeDevise")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(3)
+                        .HasColumnType("char(3)")
+                        .HasDefaultValue("CDF")
+                        .IsFixedLength();
+
+                    b.Property<DateTime>("DateCreation")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("DateModification")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("IdRestaurant")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IdSociete")
+                        .HasColumnType("int");
+
+                    b.Property<string>("InventoryMode")
+                        .IsRequired()
+                        .HasColumnType("enum('GlobalQuota','ClassQuota')");
+
+                    b.Property<string>("JoursSemaine")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("Libelle")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<decimal?>("MontantAcompte")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<bool>("Statut")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint(1)")
+                        .HasDefaultValue(true);
+
+                    b.HasKey("IdRestaurantPlanification");
+
+                    b.HasIndex("IdRestaurant")
+                        .HasDatabaseName("IX_RestaurantPlanifications_IdRestaurant");
+
+                    b.HasIndex("IdSociete")
+                        .HasDatabaseName("IX_RestaurantPlanifications_IdSociete");
+
+                    b.ToTable("RestaurantPlanifications", (string)null);
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.Restaurant.RestaurantPlanificationPlage", b =>
+                {
+                    b.Property<int>("IdRestaurantPlanificationPlage")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<TimeOnly>("EndTime")
+                        .HasColumnType("time");
+
+                    b.Property<int>("IdRestaurantPlanification")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Libelle")
+                        .HasMaxLength(120)
+                        .HasColumnType("varchar(120)");
+
+                    b.Property<int>("Ordre")
+                        .HasColumnType("int");
+
+                    b.Property<TimeOnly>("StartTime")
+                        .HasColumnType("time");
+
+                    b.HasKey("IdRestaurantPlanificationPlage");
+
+                    b.HasIndex("IdRestaurantPlanification")
+                        .HasDatabaseName("IX_RestaurantPlanificationPlages_IdPlanification");
+
+                    b.ToTable("RestaurantPlanificationPlages", (string)null);
+
+                    b.HasCheckConstraint("CK_RestaurantPlanificationPlages_StartEnd", "`EndTime` > `StartTime`");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.Restaurant.RestaurantPlanifPlageGlobalQuota", b =>
+                {
+                    b.Property<int>("IdRestaurantPlanificationPlage")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CapaciteTotale")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("PrixUnitaire")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("IdRestaurantPlanificationPlage");
+
+                    b.ToTable("RestaurantPlanifPlageGlobalQuotas", (string)null);
+
+                    b.HasCheckConstraint("CK_RestaurantPlanifPlageGlobalQuotas_Capacite", "`CapaciteTotale` >= 0");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.Restaurant.RestaurantPlanifPlageZoneQuota", b =>
+                {
+                    b.Property<int>("IdRestaurantPlanifPlageZoneQuota")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<int>("CapaciteTotale")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IdRestaurantPlanificationPlage")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IdRestaurantZone")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("PrixUnitaire")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("IdRestaurantPlanifPlageZoneQuota");
+
+                    b.HasIndex("IdRestaurantPlanificationPlage")
+                        .HasDatabaseName("IX_RestaurantPlanifPlageZoneQuotas_IdPlage");
+
+                    b.HasIndex("IdRestaurantZone");
+
+                    b.HasIndex("IdRestaurantPlanificationPlage", "IdRestaurantZone")
+                        .IsUnique()
+                        .HasDatabaseName("IX_RestaurantPlanifPlageZoneQuotas_Plage_Zone_UQ");
+
+                    b.ToTable("RestaurantPlanifPlageZoneQuotas", (string)null);
+
+                    b.HasCheckConstraint("CK_RestaurantPlanifPlageZoneQuotas_Capacite", "`CapaciteTotale` >= 0");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.Restaurant.RestaurantReservation", b =>
+                {
+                    b.Property<int>("IdRestaurantReservation")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<string>("CodeDevise")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(3)
+                        .HasColumnType("char(3)")
+                        .HasDefaultValue("CDF")
+                        .IsFixedLength();
+
+                    b.Property<string>("CustomerRef")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<DateTime>("DateCreation")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("DateModification")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("ExpiresAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("IdClient")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IdRestaurant")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IdRestaurantCreneau")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("IdSite")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IdSociete")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("IdUtilisateur")
+                        .HasColumnType("int");
+
+                    b.Property<string>("IdempotencyKey")
+                        .HasMaxLength(120)
+                        .HasColumnType("varchar(120)");
+
+                    b.Property<decimal>("MontantSousTotal")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("decimal(18,2)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<int>("NombreCouverts")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ReferenceReservation")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("enum('HOLD','CONFIRMED','CANCELLED','EXPIRED')");
+
+                    b.HasKey("IdRestaurantReservation");
+
+                    b.HasIndex("IdClient")
+                        .HasDatabaseName("IX_RestaurantReservations_IdClient");
+
+                    b.HasIndex("IdRestaurant")
+                        .HasDatabaseName("IX_RestaurantReservations_IdRestaurant");
+
+                    b.HasIndex("IdSite")
+                        .HasDatabaseName("IX_RestaurantReservations_IdSite");
+
+                    b.HasIndex("IdUtilisateur")
+                        .HasDatabaseName("IX_RestaurantReservations_IdUtilisateur");
+
+                    b.HasIndex("IdRestaurantCreneau", "Status")
+                        .HasDatabaseName("IX_RestaurantReservations_Creneau_Status");
+
+                    b.HasIndex("IdSociete", "IdempotencyKey")
+                        .IsUnique()
+                        .HasDatabaseName("IX_RestaurantReservations_Societe_Idempotency_UQ");
+
+                    b.HasIndex("IdSociete", "ReferenceReservation")
+                        .IsUnique()
+                        .HasDatabaseName("IX_RestaurantReservations_Societe_Reference_UQ");
+
+                    b.HasIndex("Status", "ExpiresAtUtc")
+                        .HasDatabaseName("IX_RestaurantReservations_Status_ExpiresAtUtc");
+
+                    b.ToTable("RestaurantReservations", (string)null);
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.Restaurant.RestaurantReservationLine", b =>
+                {
+                    b.Property<int>("IdRestaurantReservationLine")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<string>("CodeDevise")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(3)
+                        .HasColumnType("char(3)")
+                        .HasDefaultValue("CDF")
+                        .IsFixedLength();
+
+                    b.Property<int?>("IdRestaurantCreneauGlobalQuota")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("IdRestaurantCreneauZoneQuota")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IdRestaurantReservation")
+                        .HasColumnType("int");
+
+                    b.Property<string>("LineType")
+                        .IsRequired()
+                        .HasColumnType("enum('GlobalQuota','ClassQuota')");
+
+                    b.Property<decimal>("MontantLigne")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("PrixUnitaire")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("Quantite")
+                        .HasColumnType("int");
+
+                    b.HasKey("IdRestaurantReservationLine");
+
+                    b.HasIndex("IdRestaurantCreneauGlobalQuota");
+
+                    b.HasIndex("IdRestaurantCreneauZoneQuota")
+                        .HasDatabaseName("IX_RestaurantReservationLines_IdZoneQuota");
+
+                    b.HasIndex("IdRestaurantReservation")
+                        .HasDatabaseName("IX_RestaurantReservationLines_IdReservation");
+
+                    b.ToTable("RestaurantReservationLines", (string)null);
+
+                    b.HasCheckConstraint("CK_RestaurantReservationLines_Quantite", "`Quantite` > 0");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.Restaurant.RestaurantTicket", b =>
+                {
+                    b.Property<int>("IdRestaurantTicket")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<int>("IdRestaurantReservationLine")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("IssuedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("enum('ISSUED','USED','VOID')")
+                        .HasDefaultValue("ISSUED");
+
+                    b.Property<string>("TicketCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<DateTime?>("UsedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("IdRestaurantTicket");
+
+                    b.HasIndex("IdRestaurantReservationLine");
+
+                    b.HasIndex("Status")
+                        .HasDatabaseName("IX_RestaurantTickets_Status");
+
+                    b.HasIndex("TicketCode")
+                        .IsUnique()
+                        .HasDatabaseName("IX_RestaurantTickets_TicketCode_UQ");
+
+                    b.ToTable("RestaurantTickets", (string)null);
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.Restaurant.RestaurantZone", b =>
+                {
+                    b.Property<int>("IdRestaurantZone")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<bool>("Actif")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint(1)")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("Code")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<DateTime>("DateCreation")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("DateModification")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<int>("IdRestaurant")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IdSociete")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Libelle")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("varchar(120)");
+
+                    b.HasKey("IdRestaurantZone");
+
+                    b.HasIndex("IdRestaurant")
+                        .HasDatabaseName("IX_RestaurantZones_IdRestaurant");
+
+                    b.HasIndex("IdSociete")
+                        .HasDatabaseName("IX_RestaurantZones_IdSociete");
+
+                    b.HasIndex("IdRestaurant", "Code")
+                        .IsUnique()
+                        .HasDatabaseName("IX_RestaurantZones_Restaurant_Code_UQ");
+
+                    b.ToTable("RestaurantZones", (string)null);
+                });
+
             modelBuilder.Entity("CongoTravel.Models.ReversementSite", b =>
                 {
                     b.Property<int>("IdReversementSite")
@@ -2951,6 +3751,733 @@ namespace CongoTravel.Migrations
                         .HasDatabaseName("IX_Sites_IdSociete_IsSitePrincipal");
 
                     b.ToTable("Sites");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.SiteTouristique.SiteTouristiqueClasse", b =>
+                {
+                    b.Property<int>("IdSiteTouristiqueClasse")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<bool>("Actif")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint(1)")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("Code")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<DateTime>("DateCreation")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<int>("IdSociete")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Libelle")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("varchar(120)");
+
+                    b.HasKey("IdSiteTouristiqueClasse");
+
+                    b.HasIndex("IdSociete")
+                        .HasDatabaseName("IX_SiteTouristiqueClasses_IdSociete");
+
+                    b.HasIndex("IdSociete", "Code")
+                        .IsUnique()
+                        .HasDatabaseName("IX_SiteTouristiqueClasses_Societe_Code_UQ");
+
+                    b.ToTable("SiteTouristiqueClasses", (string)null);
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.SiteTouristique.SiteTouristiqueClassQuota", b =>
+                {
+                    b.Property<int>("IdSiteTouristiqueClassQuota")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<int>("CapaciteTotale")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IdSiteTouristiqueClasse")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IdSiteTouristiqueJournee")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("PrixUnitaire")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("QuantiteHold")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.Property<int>("QuantiteVendue")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.HasKey("IdSiteTouristiqueClassQuota");
+
+                    b.HasIndex("IdSiteTouristiqueClasse");
+
+                    b.HasIndex("IdSiteTouristiqueJournee")
+                        .HasDatabaseName("IX_SiteTouristiqueClassQuotas_IdSiteTouristiqueJournee");
+
+                    b.HasIndex("IdSiteTouristiqueJournee", "IdSiteTouristiqueClasse")
+                        .IsUnique()
+                        .HasDatabaseName("IX_SiteTouristiqueClassQuotas_Journee_Classe_UQ");
+
+                    b.ToTable("SiteTouristiqueClassQuotas", (string)null);
+
+                    b.HasCheckConstraint("CK_SiteTouristiqueClassQuotas_Capacite", "`CapaciteTotale` >= 0");
+
+                    b.HasCheckConstraint("CK_SiteTouristiqueClassQuotas_StockMax", "`QuantiteHold` + `QuantiteVendue` <= `CapaciteTotale`");
+
+                    b.HasCheckConstraint("CK_SiteTouristiqueClassQuotas_StockPositive", "`QuantiteHold` >= 0 AND `QuantiteVendue` >= 0");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.SiteTouristique.SiteTouristiqueGlobalQuota", b =>
+                {
+                    b.Property<int>("IdSiteTouristiqueJournee")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CapaciteTotale")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("PrixUnitaire")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("QuantiteHold")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.Property<int>("QuantiteVendue")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.HasKey("IdSiteTouristiqueJournee");
+
+                    b.ToTable("SiteTouristiqueGlobalQuotas", (string)null);
+
+                    b.HasCheckConstraint("CK_SiteTouristiqueGlobalQuotas_Capacite", "`CapaciteTotale` >= 0");
+
+                    b.HasCheckConstraint("CK_SiteTouristiqueGlobalQuotas_StockMax", "`QuantiteHold` + `QuantiteVendue` <= `CapaciteTotale`");
+
+                    b.HasCheckConstraint("CK_SiteTouristiqueGlobalQuotas_StockPositive", "`QuantiteHold` >= 0 AND `QuantiteVendue` >= 0");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.SiteTouristique.SiteTouristiqueJournee", b =>
+                {
+                    b.Property<int>("IdSiteTouristiqueJournee")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<string>("CodeDevise")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(3)
+                        .HasColumnType("char(3)")
+                        .HasDefaultValue("CDF")
+                        .IsFixedLength();
+
+                    b.Property<DateTime>("DateCreation")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("DateModification")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateOnly>("DateVisite")
+                        .HasColumnType("date");
+
+                    b.Property<int>("IdSiteTouristique")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("IdSiteTouristiquePlanification")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IdSociete")
+                        .HasColumnType("int");
+
+                    b.Property<string>("InventoryMode")
+                        .IsRequired()
+                        .HasColumnType("enum('ClassQuota','GlobalQuota')");
+
+                    b.Property<DateTime?>("SalesCloseAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("SalesOpenAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("enum('Draft','Published','Closed','Cancelled')")
+                        .HasDefaultValue("Draft");
+
+                    b.HasKey("IdSiteTouristiqueJournee");
+
+                    b.HasIndex("IdSiteTouristique")
+                        .HasDatabaseName("IX_SiteTouristiqueJournees_IdSiteTouristique");
+
+                    b.HasIndex("IdSiteTouristiquePlanification")
+                        .HasDatabaseName("IX_SiteTouristiqueJournees_IdSiteTouristiquePlanification");
+
+                    b.HasIndex("IdSiteTouristique", "DateVisite")
+                        .IsUnique()
+                        .HasDatabaseName("IX_SiteTouristiqueJournees_Lieu_DateVisite_UQ");
+
+                    b.HasIndex("IdSociete", "DateVisite")
+                        .HasDatabaseName("IX_SiteTouristiqueJournees_IdSociete_DateVisite");
+
+                    b.ToTable("SiteTouristiqueJournees", (string)null);
+
+                    b.HasCheckConstraint("CK_SiteTouristiqueJournees_SalesWindow", "`SalesCloseAtUtc` IS NULL OR `SalesOpenAtUtc` IS NULL OR `SalesCloseAtUtc` >= `SalesOpenAtUtc`");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.SiteTouristique.SiteTouristiqueLieu", b =>
+                {
+                    b.Property<int>("IdSiteTouristique")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<string>("Adresse")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<string>("CodeLieu")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<DateTime>("DateCreation")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("DateModification")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("varchar(2000)");
+
+                    b.Property<TimeOnly?>("HeureFermeture")
+                        .HasColumnType("time");
+
+                    b.Property<TimeOnly?>("HeureOuverture")
+                        .HasColumnType("time");
+
+                    b.Property<int?>("IdSite")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IdSociete")
+                        .HasColumnType("int");
+
+                    b.Property<string>("JourOuverture")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<string>("Nom")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<string>("Province")
+                        .HasMaxLength(120)
+                        .HasColumnType("varchar(120)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("enum('Draft','Published','Closed','Cancelled')")
+                        .HasDefaultValue("Draft");
+
+                    b.Property<string>("Telephone")
+                        .HasMaxLength(30)
+                        .HasColumnType("varchar(30)");
+
+                    b.Property<string>("Ville")
+                        .HasMaxLength(120)
+                        .HasColumnType("varchar(120)");
+
+                    b.HasKey("IdSiteTouristique");
+
+                    b.HasIndex("IdSite")
+                        .HasDatabaseName("IX_SiteTouristiques_IdSite");
+
+                    b.HasIndex("IdSociete", "CodeLieu")
+                        .IsUnique()
+                        .HasDatabaseName("IX_SiteTouristiques_Societe_CodeLieu_UQ");
+
+                    b.ToTable("SiteTouristiques", (string)null);
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.SiteTouristique.SiteTouristiqueLieuPhoto", b =>
+                {
+                    b.Property<int>("IdSiteTouristiqueLieuPhoto")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("DateCreation")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("DateModification")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<long?>("FileSize")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("IdSiteTouristique")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Ordre")
+                        .HasColumnType("int");
+
+                    b.Property<string>("OriginalFileName")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<byte[]>("PhotoData")
+                        .IsRequired()
+                        .HasColumnType("mediumblob");
+
+                    b.Property<bool>("Statut")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint(1)")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("TypeMIME")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.HasKey("IdSiteTouristiqueLieuPhoto");
+
+                    b.HasIndex("IdSiteTouristique")
+                        .HasDatabaseName("IX_SiteTouristiqueLieuPhotos_IdSiteTouristique");
+
+                    b.HasIndex("IdSiteTouristique", "Ordre")
+                        .IsUnique()
+                        .HasDatabaseName("IX_SiteTouristiqueLieuPhotos_Lieu_Ordre_UQ");
+
+                    b.ToTable("SiteTouristiqueLieuPhotos", (string)null);
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.SiteTouristique.SiteTouristiquePayment", b =>
+                {
+                    b.Property<int>("IdSiteTouristiquePayment")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<string>("CodeDevise")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(3)
+                        .HasColumnType("char(3)")
+                        .HasDefaultValue("CDF")
+                        .IsFixedLength();
+
+                    b.Property<string>("CodeDeviseTarif")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(3)
+                        .HasColumnType("char(3)")
+                        .HasDefaultValue("CDF")
+                        .IsFixedLength();
+
+                    b.Property<DateTime>("DateCreation")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("DateModification")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("IdSite")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IdSiteTouristiqueReservation")
+                        .HasColumnType("int");
+
+                    b.Property<string>("IdempotencyKey")
+                        .HasMaxLength(120)
+                        .HasColumnType("varchar(120)");
+
+                    b.Property<decimal>("Montant")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("MontantTarif")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("varchar(40)");
+
+                    b.Property<string>("ProviderTxRef")
+                        .HasMaxLength(120)
+                        .HasColumnType("varchar(120)");
+
+                    b.Property<string>("ReferencePaiement")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("enum('PENDING','SUCCEEDED','FAILED','REFUNDED')");
+
+                    b.Property<decimal>("TauxVersDevisePaiement")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("decimal(18,8)")
+                        .HasDefaultValue(1m);
+
+                    b.HasKey("IdSiteTouristiquePayment");
+
+                    b.HasIndex("IdSite")
+                        .HasDatabaseName("IX_SiteTouristiquePayments_IdSite");
+
+                    b.HasIndex("IdempotencyKey")
+                        .IsUnique()
+                        .HasDatabaseName("IX_SiteTouristiquePayments_Idempotency_UQ");
+
+                    b.HasIndex("ReferencePaiement")
+                        .IsUnique()
+                        .HasDatabaseName("IX_SiteTouristiquePayments_ReferencePaiement_UQ");
+
+                    b.HasIndex("IdSiteTouristiqueReservation", "Status")
+                        .HasDatabaseName("IX_SiteTouristiquePayments_Reservation_Status");
+
+                    b.ToTable("SiteTouristiquePayments", (string)null);
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.SiteTouristique.SiteTouristiquePlanifClassQuota", b =>
+                {
+                    b.Property<int>("IdSiteTouristiquePlanifClassQuota")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<int>("CapaciteTotale")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IdSiteTouristiqueClasse")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IdSiteTouristiquePlanification")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("PrixUnitaire")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("IdSiteTouristiquePlanifClassQuota");
+
+                    b.HasIndex("IdSiteTouristiqueClasse");
+
+                    b.HasIndex("IdSiteTouristiquePlanification")
+                        .HasDatabaseName("IX_SiteTouristiquePlanifClassQuotas_IdPlanification");
+
+                    b.HasIndex("IdSiteTouristiquePlanification", "IdSiteTouristiqueClasse")
+                        .IsUnique()
+                        .HasDatabaseName("IX_SiteTouristiquePlanifClassQuotas_Planif_Classe_UQ");
+
+                    b.ToTable("SiteTouristiquePlanifClassQuotas", (string)null);
+
+                    b.HasCheckConstraint("CK_SiteTouristiquePlanifClassQuotas_Capacite", "`CapaciteTotale` >= 0");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.SiteTouristique.SiteTouristiquePlanifGenerationLog", b =>
+                {
+                    b.Property<int>("IdSiteTouristiquePlanifGenerationLog")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("DateCreation")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime>("DateDebut")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime>("DateFin")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("DeclencheParIdUtilisateur")
+                        .HasColumnType("int");
+
+                    b.Property<string>("DetailsJson")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<int>("IdSiteTouristiquePlanification")
+                        .HasColumnType("int");
+
+                    b.Property<int>("NombreCrees")
+                        .HasColumnType("int");
+
+                    b.Property<int>("NombreEchecs")
+                        .HasColumnType("int");
+
+                    b.Property<int>("NombreIgnores")
+                        .HasColumnType("int");
+
+                    b.HasKey("IdSiteTouristiquePlanifGenerationLog");
+
+                    b.HasIndex("IdSiteTouristiquePlanification")
+                        .HasDatabaseName("IX_SiteTouristiquePlanifGenerationLogs_IdPlanification");
+
+                    b.ToTable("SiteTouristiquePlanifGenerationLogs", (string)null);
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.SiteTouristique.SiteTouristiquePlanifGlobalQuota", b =>
+                {
+                    b.Property<int>("IdSiteTouristiquePlanification")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CapaciteTotale")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("PrixUnitaire")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("IdSiteTouristiquePlanification");
+
+                    b.ToTable("SiteTouristiquePlanifGlobalQuotas", (string)null);
+
+                    b.HasCheckConstraint("CK_SiteTouristiquePlanifGlobalQuotas_Capacite", "`CapaciteTotale` >= 0");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.SiteTouristique.SiteTouristiquePlanification", b =>
+                {
+                    b.Property<int>("IdSiteTouristiquePlanification")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<string>("CodeDevise")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(3)
+                        .HasColumnType("char(3)")
+                        .HasDefaultValue("CDF")
+                        .IsFixedLength();
+
+                    b.Property<DateTime>("DateCreation")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("DateModification")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("IdSiteTouristique")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IdSociete")
+                        .HasColumnType("int");
+
+                    b.Property<string>("InventoryMode")
+                        .IsRequired()
+                        .HasColumnType("enum('ClassQuota','GlobalQuota')");
+
+                    b.Property<string>("JoursSemaine")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("Libelle")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<int?>("SalesCloseOffsetHours")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("SalesOpenOffsetHours")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("Statut")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint(1)")
+                        .HasDefaultValue(true);
+
+                    b.HasKey("IdSiteTouristiquePlanification");
+
+                    b.HasIndex("IdSiteTouristique")
+                        .HasDatabaseName("IX_SiteTouristiquePlanifications_IdSiteTouristique");
+
+                    b.HasIndex("IdSociete")
+                        .HasDatabaseName("IX_SiteTouristiquePlanifications_IdSociete");
+
+                    b.ToTable("SiteTouristiquePlanifications", (string)null);
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.SiteTouristique.SiteTouristiqueReservation", b =>
+                {
+                    b.Property<int>("IdSiteTouristiqueReservation")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<string>("CodeDevise")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(3)
+                        .HasColumnType("char(3)")
+                        .HasDefaultValue("CDF")
+                        .IsFixedLength();
+
+                    b.Property<string>("CustomerRef")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<DateTime>("DateCreation")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("DateModification")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("ExpiresAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("IdClient")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("IdSite")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IdSiteTouristiqueJournee")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IdSociete")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("IdUtilisateur")
+                        .HasColumnType("int");
+
+                    b.Property<string>("IdempotencyKey")
+                        .HasMaxLength(120)
+                        .HasColumnType("varchar(120)");
+
+                    b.Property<decimal>("MontantSousTotal")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("decimal(18,2)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<string>("ReferenceReservation")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("enum('HOLD','CONFIRMED','CANCELLED','EXPIRED')");
+
+                    b.HasKey("IdSiteTouristiqueReservation");
+
+                    b.HasIndex("IdClient")
+                        .HasDatabaseName("IX_SiteTouristiqueReservations_IdClient");
+
+                    b.HasIndex("IdSite")
+                        .HasDatabaseName("IX_SiteTouristiqueReservations_IdSite");
+
+                    b.HasIndex("IdUtilisateur")
+                        .HasDatabaseName("IX_SiteTouristiqueReservations_IdUtilisateur");
+
+                    b.HasIndex("IdSiteTouristiqueJournee", "Status")
+                        .HasDatabaseName("IX_SiteTouristiqueReservations_Journee_Status");
+
+                    b.HasIndex("IdSociete", "IdempotencyKey")
+                        .IsUnique()
+                        .HasDatabaseName("IX_SiteTouristiqueReservations_Societe_Idempotency_UQ");
+
+                    b.HasIndex("IdSociete", "ReferenceReservation")
+                        .IsUnique()
+                        .HasDatabaseName("IX_SiteTouristiqueReservations_Societe_Reference_UQ");
+
+                    b.HasIndex("Status", "ExpiresAtUtc")
+                        .HasDatabaseName("IX_SiteTouristiqueReservations_Status_ExpiresAtUtc");
+
+                    b.ToTable("SiteTouristiqueReservations", (string)null);
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.SiteTouristique.SiteTouristiqueReservationLine", b =>
+                {
+                    b.Property<int>("IdSiteTouristiqueReservationLine")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<string>("CodeDevise")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(3)
+                        .HasColumnType("char(3)")
+                        .HasDefaultValue("CDF")
+                        .IsFixedLength();
+
+                    b.Property<int?>("IdSiteTouristiqueClassQuota")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IdSiteTouristiqueReservation")
+                        .HasColumnType("int");
+
+                    b.Property<string>("LineType")
+                        .IsRequired()
+                        .HasColumnType("enum('ClassQuota','GlobalQuota')");
+
+                    b.Property<decimal>("PrixUnitaire")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("Quantite")
+                        .HasColumnType("int");
+
+                    b.HasKey("IdSiteTouristiqueReservationLine");
+
+                    b.HasIndex("IdSiteTouristiqueClassQuota");
+
+                    b.HasIndex("IdSiteTouristiqueReservation")
+                        .HasDatabaseName("IX_SiteTouristiqueReservationLines_IdReservation");
+
+                    b.ToTable("SiteTouristiqueReservationLines", (string)null);
+
+                    b.HasCheckConstraint("CK_SiteTouristiqueReservationLines_Quantite", "`Quantite` > 0");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.SiteTouristique.SiteTouristiqueTicket", b =>
+                {
+                    b.Property<int>("IdSiteTouristiqueTicket")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<int>("IdSiteTouristiqueReservationLine")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("IssuedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("enum('ISSUED','USED','VOID')")
+                        .HasDefaultValue("ISSUED");
+
+                    b.Property<string>("TicketCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<DateTime?>("UsedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("IdSiteTouristiqueTicket");
+
+                    b.HasIndex("IdSiteTouristiqueReservationLine");
+
+                    b.HasIndex("Status")
+                        .HasDatabaseName("IX_SiteTouristiqueTickets_Status");
+
+                    b.HasIndex("TicketCode")
+                        .IsUnique()
+                        .HasDatabaseName("IX_SiteTouristiqueTickets_TicketCode_UQ");
+
+                    b.ToTable("SiteTouristiqueTickets", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.SmsLog", b =>
@@ -3994,6 +5521,11 @@ namespace CongoTravel.Migrations
 
             modelBuilder.Entity("CongoTravel.Models.Evenement.EvenementReservation", b =>
                 {
+                    b.HasOne("CongoTravel.Models.Client", "Client")
+                        .WithMany()
+                        .HasForeignKey("IdClient")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("CongoTravel.Models.Evenement.EvenementSession", "Session")
                         .WithMany("Reservations")
                         .HasForeignKey("IdEvenementSession")
@@ -4010,6 +5542,8 @@ namespace CongoTravel.Migrations
                         .HasForeignKey("IdSociete")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("Client");
 
                     b.Navigation("Session");
 
@@ -4506,6 +6040,283 @@ namespace CongoTravel.Migrations
                     b.Navigation("Societe");
                 });
 
+            modelBuilder.Entity("CongoTravel.Models.Restaurant.Restaurant", b =>
+                {
+                    b.HasOne("CongoTravel.Models.Site", "Site")
+                        .WithMany()
+                        .HasForeignKey("IdSite")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("CongoTravel.Models.Societe", "Societe")
+                        .WithMany()
+                        .HasForeignKey("IdSociete")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Site");
+
+                    b.Navigation("Societe");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.Restaurant.RestaurantCreneau", b =>
+                {
+                    b.HasOne("CongoTravel.Models.Restaurant.Restaurant", "Restaurant")
+                        .WithMany("Creneaux")
+                        .HasForeignKey("IdRestaurant")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CongoTravel.Models.Restaurant.RestaurantPlanification", "Planification")
+                        .WithMany("CreneauxGeneres")
+                        .HasForeignKey("IdRestaurantPlanification")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("CongoTravel.Models.Restaurant.RestaurantPlanificationPlage", "PlanificationPlage")
+                        .WithMany("CreneauxGeneres")
+                        .HasForeignKey("IdRestaurantPlanificationPlage")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("CongoTravel.Models.Societe", "Societe")
+                        .WithMany()
+                        .HasForeignKey("IdSociete")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Planification");
+
+                    b.Navigation("PlanificationPlage");
+
+                    b.Navigation("Restaurant");
+
+                    b.Navigation("Societe");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.Restaurant.RestaurantCreneauGlobalQuota", b =>
+                {
+                    b.HasOne("CongoTravel.Models.Restaurant.RestaurantCreneau", "Creneau")
+                        .WithOne("GlobalQuota")
+                        .HasForeignKey("CongoTravel.Models.Restaurant.RestaurantCreneauGlobalQuota", "IdRestaurantCreneau")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Creneau");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.Restaurant.RestaurantCreneauZoneQuota", b =>
+                {
+                    b.HasOne("CongoTravel.Models.Restaurant.RestaurantCreneau", "Creneau")
+                        .WithMany("ZoneQuotas")
+                        .HasForeignKey("IdRestaurantCreneau")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("CongoTravel.Models.Restaurant.RestaurantZone", "Zone")
+                        .WithMany("ZoneQuotas")
+                        .HasForeignKey("IdRestaurantZone")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Creneau");
+
+                    b.Navigation("Zone");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.Restaurant.RestaurantPayment", b =>
+                {
+                    b.HasOne("CongoTravel.Models.Restaurant.RestaurantReservation", "Reservation")
+                        .WithMany("Payments")
+                        .HasForeignKey("IdRestaurantReservation")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CongoTravel.Models.Site", "Site")
+                        .WithMany()
+                        .HasForeignKey("IdSite")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Reservation");
+
+                    b.Navigation("Site");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.Restaurant.RestaurantPhoto", b =>
+                {
+                    b.HasOne("CongoTravel.Models.Restaurant.Restaurant", "Restaurant")
+                        .WithMany("Photos")
+                        .HasForeignKey("IdRestaurant")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Restaurant");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.Restaurant.RestaurantPlanifGenerationLog", b =>
+                {
+                    b.HasOne("CongoTravel.Models.Restaurant.RestaurantPlanification", "Planification")
+                        .WithMany("GenerationLogs")
+                        .HasForeignKey("IdRestaurantPlanification")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Planification");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.Restaurant.RestaurantPlanification", b =>
+                {
+                    b.HasOne("CongoTravel.Models.Restaurant.Restaurant", "Restaurant")
+                        .WithMany("Planifications")
+                        .HasForeignKey("IdRestaurant")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CongoTravel.Models.Societe", "Societe")
+                        .WithMany()
+                        .HasForeignKey("IdSociete")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Restaurant");
+
+                    b.Navigation("Societe");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.Restaurant.RestaurantPlanificationPlage", b =>
+                {
+                    b.HasOne("CongoTravel.Models.Restaurant.RestaurantPlanification", "Planification")
+                        .WithMany("Plages")
+                        .HasForeignKey("IdRestaurantPlanification")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Planification");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.Restaurant.RestaurantPlanifPlageGlobalQuota", b =>
+                {
+                    b.HasOne("CongoTravel.Models.Restaurant.RestaurantPlanificationPlage", "Plage")
+                        .WithOne("GlobalQuota")
+                        .HasForeignKey("CongoTravel.Models.Restaurant.RestaurantPlanifPlageGlobalQuota", "IdRestaurantPlanificationPlage")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Plage");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.Restaurant.RestaurantPlanifPlageZoneQuota", b =>
+                {
+                    b.HasOne("CongoTravel.Models.Restaurant.RestaurantPlanificationPlage", "Plage")
+                        .WithMany("ZoneQuotas")
+                        .HasForeignKey("IdRestaurantPlanificationPlage")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("CongoTravel.Models.Restaurant.RestaurantZone", "Zone")
+                        .WithMany()
+                        .HasForeignKey("IdRestaurantZone")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Plage");
+
+                    b.Navigation("Zone");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.Restaurant.RestaurantReservation", b =>
+                {
+                    b.HasOne("CongoTravel.Models.Client", "Client")
+                        .WithMany()
+                        .HasForeignKey("IdClient")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("CongoTravel.Models.Restaurant.Restaurant", "Restaurant")
+                        .WithMany("Reservations")
+                        .HasForeignKey("IdRestaurant")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CongoTravel.Models.Restaurant.RestaurantCreneau", "Creneau")
+                        .WithMany("Reservations")
+                        .HasForeignKey("IdRestaurantCreneau")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CongoTravel.Models.Site", "Site")
+                        .WithMany()
+                        .HasForeignKey("IdSite")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("CongoTravel.Models.Societe", "Societe")
+                        .WithMany()
+                        .HasForeignKey("IdSociete")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Client");
+
+                    b.Navigation("Creneau");
+
+                    b.Navigation("Restaurant");
+
+                    b.Navigation("Site");
+
+                    b.Navigation("Societe");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.Restaurant.RestaurantReservationLine", b =>
+                {
+                    b.HasOne("CongoTravel.Models.Restaurant.RestaurantCreneauGlobalQuota", "GlobalQuota")
+                        .WithMany("ReservationLines")
+                        .HasForeignKey("IdRestaurantCreneauGlobalQuota")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("CongoTravel.Models.Restaurant.RestaurantCreneauZoneQuota", "ZoneQuota")
+                        .WithMany("ReservationLines")
+                        .HasForeignKey("IdRestaurantCreneauZoneQuota")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("CongoTravel.Models.Restaurant.RestaurantReservation", "Reservation")
+                        .WithMany("Lines")
+                        .HasForeignKey("IdRestaurantReservation")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("GlobalQuota");
+
+                    b.Navigation("Reservation");
+
+                    b.Navigation("ZoneQuota");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.Restaurant.RestaurantTicket", b =>
+                {
+                    b.HasOne("CongoTravel.Models.Restaurant.RestaurantReservationLine", "ReservationLine")
+                        .WithMany("Tickets")
+                        .HasForeignKey("IdRestaurantReservationLine")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ReservationLine");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.Restaurant.RestaurantZone", b =>
+                {
+                    b.HasOne("CongoTravel.Models.Restaurant.Restaurant", "Restaurant")
+                        .WithMany("Zones")
+                        .HasForeignKey("IdRestaurant")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CongoTravel.Models.Societe", "Societe")
+                        .WithMany()
+                        .HasForeignKey("IdSociete")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Restaurant");
+
+                    b.Navigation("Societe");
+                });
+
             modelBuilder.Entity("CongoTravel.Models.ReversementSite", b =>
                 {
                     b.HasOne("CongoTravel.Models.Site", null)
@@ -4576,6 +6387,242 @@ namespace CongoTravel.Migrations
                         .IsRequired();
 
                     b.Navigation("Societe");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.SiteTouristique.SiteTouristiqueClasse", b =>
+                {
+                    b.HasOne("CongoTravel.Models.Societe", "Societe")
+                        .WithMany()
+                        .HasForeignKey("IdSociete")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Societe");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.SiteTouristique.SiteTouristiqueClassQuota", b =>
+                {
+                    b.HasOne("CongoTravel.Models.SiteTouristique.SiteTouristiqueClasse", "Classe")
+                        .WithMany("ClassQuotas")
+                        .HasForeignKey("IdSiteTouristiqueClasse")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CongoTravel.Models.SiteTouristique.SiteTouristiqueJournee", "Journee")
+                        .WithMany("ClassQuotas")
+                        .HasForeignKey("IdSiteTouristiqueJournee")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Classe");
+
+                    b.Navigation("Journee");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.SiteTouristique.SiteTouristiqueGlobalQuota", b =>
+                {
+                    b.HasOne("CongoTravel.Models.SiteTouristique.SiteTouristiqueJournee", "Journee")
+                        .WithOne("GlobalQuota")
+                        .HasForeignKey("CongoTravel.Models.SiteTouristique.SiteTouristiqueGlobalQuota", "IdSiteTouristiqueJournee")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Journee");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.SiteTouristique.SiteTouristiqueJournee", b =>
+                {
+                    b.HasOne("CongoTravel.Models.SiteTouristique.SiteTouristiqueLieu", "Lieu")
+                        .WithMany("Journees")
+                        .HasForeignKey("IdSiteTouristique")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CongoTravel.Models.SiteTouristique.SiteTouristiquePlanification", "Planification")
+                        .WithMany("JourneesGenerees")
+                        .HasForeignKey("IdSiteTouristiquePlanification")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("CongoTravel.Models.Societe", "Societe")
+                        .WithMany()
+                        .HasForeignKey("IdSociete")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Lieu");
+
+                    b.Navigation("Planification");
+
+                    b.Navigation("Societe");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.SiteTouristique.SiteTouristiqueLieu", b =>
+                {
+                    b.HasOne("CongoTravel.Models.Site", "Site")
+                        .WithMany()
+                        .HasForeignKey("IdSite")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("CongoTravel.Models.Societe", "Societe")
+                        .WithMany()
+                        .HasForeignKey("IdSociete")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Site");
+
+                    b.Navigation("Societe");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.SiteTouristique.SiteTouristiqueLieuPhoto", b =>
+                {
+                    b.HasOne("CongoTravel.Models.SiteTouristique.SiteTouristiqueLieu", "Lieu")
+                        .WithMany("Photos")
+                        .HasForeignKey("IdSiteTouristique")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Lieu");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.SiteTouristique.SiteTouristiquePayment", b =>
+                {
+                    b.HasOne("CongoTravel.Models.Site", "Site")
+                        .WithMany()
+                        .HasForeignKey("IdSite")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("CongoTravel.Models.SiteTouristique.SiteTouristiqueReservation", "Reservation")
+                        .WithMany("Payments")
+                        .HasForeignKey("IdSiteTouristiqueReservation")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Reservation");
+
+                    b.Navigation("Site");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.SiteTouristique.SiteTouristiquePlanifClassQuota", b =>
+                {
+                    b.HasOne("CongoTravel.Models.SiteTouristique.SiteTouristiqueClasse", "Classe")
+                        .WithMany()
+                        .HasForeignKey("IdSiteTouristiqueClasse")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CongoTravel.Models.SiteTouristique.SiteTouristiquePlanification", "Planification")
+                        .WithMany("ClassQuotas")
+                        .HasForeignKey("IdSiteTouristiquePlanification")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Classe");
+
+                    b.Navigation("Planification");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.SiteTouristique.SiteTouristiquePlanifGenerationLog", b =>
+                {
+                    b.HasOne("CongoTravel.Models.SiteTouristique.SiteTouristiquePlanification", "Planification")
+                        .WithMany("GenerationLogs")
+                        .HasForeignKey("IdSiteTouristiquePlanification")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Planification");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.SiteTouristique.SiteTouristiquePlanifGlobalQuota", b =>
+                {
+                    b.HasOne("CongoTravel.Models.SiteTouristique.SiteTouristiquePlanification", "Planification")
+                        .WithOne("GlobalQuota")
+                        .HasForeignKey("CongoTravel.Models.SiteTouristique.SiteTouristiquePlanifGlobalQuota", "IdSiteTouristiquePlanification")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Planification");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.SiteTouristique.SiteTouristiquePlanification", b =>
+                {
+                    b.HasOne("CongoTravel.Models.SiteTouristique.SiteTouristiqueLieu", "Lieu")
+                        .WithMany("Planifications")
+                        .HasForeignKey("IdSiteTouristique")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CongoTravel.Models.Societe", "Societe")
+                        .WithMany()
+                        .HasForeignKey("IdSociete")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Lieu");
+
+                    b.Navigation("Societe");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.SiteTouristique.SiteTouristiqueReservation", b =>
+                {
+                    b.HasOne("CongoTravel.Models.Client", "Client")
+                        .WithMany()
+                        .HasForeignKey("IdClient")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("CongoTravel.Models.Site", "Site")
+                        .WithMany()
+                        .HasForeignKey("IdSite")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("CongoTravel.Models.SiteTouristique.SiteTouristiqueJournee", "Journee")
+                        .WithMany("Reservations")
+                        .HasForeignKey("IdSiteTouristiqueJournee")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CongoTravel.Models.Societe", "Societe")
+                        .WithMany()
+                        .HasForeignKey("IdSociete")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Client");
+
+                    b.Navigation("Journee");
+
+                    b.Navigation("Site");
+
+                    b.Navigation("Societe");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.SiteTouristique.SiteTouristiqueReservationLine", b =>
+                {
+                    b.HasOne("CongoTravel.Models.SiteTouristique.SiteTouristiqueClassQuota", "ClassQuota")
+                        .WithMany("ReservationLines")
+                        .HasForeignKey("IdSiteTouristiqueClassQuota")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("CongoTravel.Models.SiteTouristique.SiteTouristiqueReservation", "Reservation")
+                        .WithMany("Lines")
+                        .HasForeignKey("IdSiteTouristiqueReservation")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ClassQuota");
+
+                    b.Navigation("Reservation");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.SiteTouristique.SiteTouristiqueTicket", b =>
+                {
+                    b.HasOne("CongoTravel.Models.SiteTouristique.SiteTouristiqueReservationLine", "ReservationLine")
+                        .WithMany("Tickets")
+                        .HasForeignKey("IdSiteTouristiqueReservationLine")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ReservationLine");
                 });
 
             modelBuilder.Entity("CongoTravel.Models.SmsLog", b =>
@@ -4942,6 +6989,73 @@ namespace CongoTravel.Migrations
                     b.Navigation("VoyageSeatAllocations");
                 });
 
+            modelBuilder.Entity("CongoTravel.Models.Restaurant.Restaurant", b =>
+                {
+                    b.Navigation("Creneaux");
+
+                    b.Navigation("Photos");
+
+                    b.Navigation("Planifications");
+
+                    b.Navigation("Reservations");
+
+                    b.Navigation("Zones");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.Restaurant.RestaurantCreneau", b =>
+                {
+                    b.Navigation("GlobalQuota");
+
+                    b.Navigation("Reservations");
+
+                    b.Navigation("ZoneQuotas");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.Restaurant.RestaurantCreneauGlobalQuota", b =>
+                {
+                    b.Navigation("ReservationLines");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.Restaurant.RestaurantCreneauZoneQuota", b =>
+                {
+                    b.Navigation("ReservationLines");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.Restaurant.RestaurantPlanification", b =>
+                {
+                    b.Navigation("CreneauxGeneres");
+
+                    b.Navigation("GenerationLogs");
+
+                    b.Navigation("Plages");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.Restaurant.RestaurantPlanificationPlage", b =>
+                {
+                    b.Navigation("CreneauxGeneres");
+
+                    b.Navigation("GlobalQuota");
+
+                    b.Navigation("ZoneQuotas");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.Restaurant.RestaurantReservation", b =>
+                {
+                    b.Navigation("Lines");
+
+                    b.Navigation("Payments");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.Restaurant.RestaurantReservationLine", b =>
+                {
+                    b.Navigation("Tickets");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.Restaurant.RestaurantZone", b =>
+                {
+                    b.Navigation("ZoneQuotas");
+                });
+
             modelBuilder.Entity("CongoTravel.Models.Role", b =>
                 {
                     b.Navigation("RolePermissions");
@@ -4952,6 +7066,57 @@ namespace CongoTravel.Migrations
             modelBuilder.Entity("CongoTravel.Models.Siege", b =>
                 {
                     b.Navigation("VoyageSeatAllocations");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.SiteTouristique.SiteTouristiqueClasse", b =>
+                {
+                    b.Navigation("ClassQuotas");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.SiteTouristique.SiteTouristiqueClassQuota", b =>
+                {
+                    b.Navigation("ReservationLines");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.SiteTouristique.SiteTouristiqueJournee", b =>
+                {
+                    b.Navigation("ClassQuotas");
+
+                    b.Navigation("GlobalQuota");
+
+                    b.Navigation("Reservations");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.SiteTouristique.SiteTouristiqueLieu", b =>
+                {
+                    b.Navigation("Journees");
+
+                    b.Navigation("Photos");
+
+                    b.Navigation("Planifications");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.SiteTouristique.SiteTouristiquePlanification", b =>
+                {
+                    b.Navigation("ClassQuotas");
+
+                    b.Navigation("GenerationLogs");
+
+                    b.Navigation("GlobalQuota");
+
+                    b.Navigation("JourneesGenerees");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.SiteTouristique.SiteTouristiqueReservation", b =>
+                {
+                    b.Navigation("Lines");
+
+                    b.Navigation("Payments");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.SiteTouristique.SiteTouristiqueReservationLine", b =>
+                {
+                    b.Navigation("Tickets");
                 });
 
             modelBuilder.Entity("CongoTravel.Models.Societe", b =>

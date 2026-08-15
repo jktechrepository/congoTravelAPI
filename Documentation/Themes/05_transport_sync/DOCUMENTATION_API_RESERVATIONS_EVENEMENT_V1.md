@@ -19,12 +19,14 @@ Tenancy : société du JWT ; Super-Admin peut passer `?idSociete=` sur la liste.
 ### Liste (société JWT ou query Super-Admin)
 
 ```
-GET /api/events/reservations?idSociete={optional}&status={optional}&idEvenementSession={optional}&customerRef={optional}
+GET /api/events/reservations?idSociete={optional}&status={optional}&idEvenementSession={optional}&customerRef={optional}&idUtilisateur={optional}&idClient={optional}
 ```
 
 Retourne `EvenementReservationListItemDto[]` triés par `dateCreation` desc.
 
 `status` : `HOLD`, `CONFIRMED`, `CANCELLED`, `EXPIRED` (insensible à la casse).
+
+Filtres optionnels `idUtilisateur` / `idClient` : correspondance exacte sur les colonnes acheteur.
 
 ### Liste par société (alias explicite)
 
@@ -128,12 +130,18 @@ Le site effectif est stocké sur `EvenementReservation.IdSite` et `EvenementPaym
 | `POST .../reservation_with_paiement_electronique` | `POST /with-paiement-electronique` |
 | — | `GET /reference/{reference}` |
 
-Hors périmètre V1 : filtres `utilisateur`, `client`, compteurs `/count`, pagination `POST .../paged` (pas de `IdUtilisateur` / `IdClient` sur `EvenementReservation`).
+Hors périmètre V1 : compteurs `/count`, pagination `POST .../paged`.
+
+`IdUtilisateur` / `IdClient` à l’achat (hold ou with-paiement) :
+
+- `IdUtilisateur` = JWT `UserId` si `> 0` (jamais dans le body).
+- `IdClient` = `idClient` du body s’il est fourni (client doit exister) ; sinon fallback `Utilisateur.IdClient` du JWT ; sinon null (guichet).
 
 ## DTOs
 
-- **Liste** : `EvenementReservationListItemDto` — en-tête sans collections imbriquées.
-- **Détail** : `EvenementReservationResponseDto` — lignes, tickets, paiements.
+- **Liste** : `EvenementReservationListItemDto` — en-tête sans collections imbriquées (`idUtilisateur`, `idClient` inclus).
+- **Détail** : `EvenementReservationResponseDto` — lignes, tickets, paiements (`idUtilisateur`, `idClient` inclus).
+- **Achat** : `EvenementReservationWithPaiementRequestDto` / hold — `idClient` optionnel dans le body.
 
 ## Exemple
 

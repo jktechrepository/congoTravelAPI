@@ -20,6 +20,12 @@ namespace CongoTravel.Tests
 {
     internal static class RestaurantTestFactories
     {
+        public static RestaurantPhotoService CreatePhotoService(CongoTravelDbContext ctx) =>
+            new(ctx, NullLogger<RestaurantPhotoService>.Instance);
+
+        public static RestaurantEtablissementService CreateEtablissementService(CongoTravelDbContext ctx) =>
+            new(ctx, CreatePhotoService(ctx), NullLogger<RestaurantEtablissementService>.Instance);
+
         public static RestaurantInventoryConfirmStrategyFactory CreateConfirmStrategyFactory(CongoTravelDbContext ctx) =>
             new(
                 new RestaurantGlobalQuotaConfirmStrategy(ctx),
@@ -59,6 +65,12 @@ namespace CongoTravel.Tests
                 ctx,
                 CreateCancelStrategyFactory(ctx),
                 NullLogger<RestaurantReservationService>.Instance);
+
+        public static RestaurantTicketService CreateTicketService(CongoTravelDbContext ctx) =>
+            new(
+                ctx,
+                new ConfigSocieteService(ctx),
+                NullLogger<RestaurantTicketService>.Instance);
 
         public static RestaurantFlexPayCallbackService CreateCallbackService(
             CongoTravelDbContext ctx,
@@ -134,8 +146,7 @@ namespace CongoTravel.Tests
             var (idSociete, idSite) = await SiteTouristiqueTestFactories.SeedSocieteWithSiteAsync(
                 ctx, $"Resto FlexPay {suffix}");
 
-            var etablissementService = new RestaurantEtablissementService(
-                ctx, NullLogger<RestaurantEtablissementService>.Instance);
+            var etablissementService = RestaurantTestFactories.CreateEtablissementService(ctx);
             var creneauService = new RestaurantCreneauService(
                 ctx, NullLogger<RestaurantCreneauService>.Instance);
 

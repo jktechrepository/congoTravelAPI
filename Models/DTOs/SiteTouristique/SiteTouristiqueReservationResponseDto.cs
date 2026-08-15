@@ -15,6 +15,10 @@ namespace CongoTravel.Models.DTOs.SiteTouristique
 
         public string? CustomerRef { get; set; }
 
+        public int? IdUtilisateur { get; set; }
+
+        public int? IdClient { get; set; }
+
         public string Status { get; set; } = string.Empty;
 
         public DateTime? ExpiresAtUtc { get; set; }
