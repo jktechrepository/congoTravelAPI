@@ -33,6 +33,8 @@ namespace CongoTravel.Tests
             Assert.Equal(
                 ConfigSocieteDefaults.HeuresOuvertureEntreeRestaurantAvantDebut,
                 config.HeuresOuvertureEntreeRestaurantAvantDebut);
+            Assert.True(config.ReservationIsActif);
+            Assert.True(config.ReaffectationActive);
         }
 
         [Fact]
@@ -56,6 +58,7 @@ namespace CongoTravel.Tests
                 HeuresOuvertureEntreeRestaurantAvantDebut = 2,
                 DureeHoldFlexPayMinutes = 20,
                 ReaffectationActive = false,
+                ReservationIsActif = false,
                 PoidsBagageParKiloOffert = 25m
             });
 
@@ -65,13 +68,45 @@ namespace CongoTravel.Tests
             Assert.Equal(1, updated.HeuresOuvertureEntreeEvenementAvantDebut);
             Assert.Equal(2, updated.HeuresOuvertureEntreeRestaurantAvantDebut);
             Assert.False(updated.ReaffectationActive);
+            Assert.False(updated.ReservationIsActif);
             Assert.Equal(25m, updated.PoidsBagageParKiloOffert);
+        }
+
+        [Fact]
+        public async Task EnsureReservationsActivesAsync_throws_when_disabled()
+        {
+            await using var ctx = BuildDb(nameof(EnsureReservationsActivesAsync_throws_when_disabled));
+            var s = new Societe { Nom = "Test", DateCreation = DateTime.UtcNow };
+            ctx.Societes.Add(s);
+            await ctx.SaveChangesAsync();
+
+            var svc = new ConfigSocieteService(ctx);
+            var config = await svc.GetOrCreateAsync(s.IdSociete);
+            config.ReservationIsActif = false;
+            await ctx.SaveChangesAsync();
+
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                svc.EnsureReservationsActivesAsync(s.IdSociete));
+            Assert.Equal("La reservation n'est pas Activée pour cette société", ex.Message);
+        }
+
+        [Fact]
+        public async Task EnsureReservationsActivesAsync_allows_when_active()
+        {
+            await using var ctx = BuildDb(nameof(EnsureReservationsActivesAsync_allows_when_active));
+            var s = new Societe { Nom = "Test", DateCreation = DateTime.UtcNow };
+            ctx.Societes.Add(s);
+            await ctx.SaveChangesAsync();
+
+            var svc = new ConfigSocieteService(ctx);
+            await svc.EnsureReservationsActivesAsync(s.IdSociete);
         }
 
         [Fact]
         public void Normalize_clamps_poids_bagage_to_non_negative()
         {
             var config = ConfigSocieteDefaults.CreateForSociete(1);
+            Assert.True(config.ReservationIsActif);
             config.PoidsBagageParKiloOffert = -5m;
             ConfigSocieteDefaults.Normalize(config);
             Assert.Equal(0m, config.PoidsBagageParKiloOffert);

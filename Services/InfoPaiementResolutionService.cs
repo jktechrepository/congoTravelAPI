@@ -56,20 +56,8 @@ namespace CongoTravel.Services
                 return societeWide;
             }
 
-            if (principalSite == null)
-            {
-                throw new InvalidOperationException(
-                    $"Aucune configuration FlexPay active pour le site {idSite} et aucun site principal actif configuré pour la société {idSociete}.");
-            }
-
-            if (principalSite.IdSite == idSite)
-            {
-                throw new InvalidOperationException(
-                    $"Le site {idSite} est le site principal mais n'a pas de configuration FlexPay active, et aucun autre site de la société {idSociete} n'a d'InfoPaiement active. Transférez le statut principal vers un site configuré ou créez une InfoPaiement sur ce site.");
-            }
-
             throw new InvalidOperationException(
-                $"Aucune configuration FlexPay active pour le site {idSite} ni pour le site principal {principalSite.IdSite} ({principalSite.NomSite}), et aucun autre site de la société {idSociete} n'a d'InfoPaiement active.");
+                "Paiement electronique non configurer pour cette société. Veuillez contacter l'Administrateur");
         }
 
         private Task<InfoPaiementSociete?> FindActiveInfoPaiementOnSiteAsync(

@@ -104,6 +104,7 @@ namespace CongoTravel.Services
                 ?? throw new InvalidOperationException($"Voyage {dto.Reservation.IdVoyage} introuvable.");
 
             var config = await _configSocieteRepository.GetOrCreateAsync(voyage.IdSociete, cancellationToken);
+            await _configSocieteRepository.EnsureReservationsActivesAsync(voyage.IdSociete, cancellationToken);
             ConfigSocieteDefaults.EnsureReservationHorizon(voyage, config);
 
             var codeDeviseVoyage = string.IsNullOrWhiteSpace(voyage.CodeDevisePrix)

@@ -681,6 +681,7 @@ namespace CongoTravel.Data
                 entity.Property(e => e.DureeHoldSiteTouristiqueMinutes).HasDefaultValue(15);
                 entity.Property(e => e.DureeHoldRestaurantMinutes).HasDefaultValue(15);
                 entity.Property(e => e.ReaffectationActive).HasDefaultValue(true);
+                entity.Property(e => e.ReservationIsActif).HasDefaultValue(true);
                 entity.Property(e => e.AutoReversementPaiementElectronique).HasDefaultValue(false);
                 entity.Property(e => e.PourcentageReversementSite).HasColumnType("decimal(18,2)").HasDefaultValue(100m);
                 entity.Property(e => e.FraisPlateforme).HasColumnType("decimal(18,2)").HasDefaultValue(0m);

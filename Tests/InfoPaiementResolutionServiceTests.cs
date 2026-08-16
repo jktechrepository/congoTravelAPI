@@ -249,8 +249,9 @@ namespace CongoTravel.Tests
             var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
                 svc.ResolveActiveForSiteAsync(principal.IdSite, societe.IdSociete));
 
-            Assert.Contains("site principal", ex.Message, StringComparison.OrdinalIgnoreCase);
-            Assert.Contains("aucun autre site", ex.Message, StringComparison.OrdinalIgnoreCase);
+            Assert.Equal(
+                "Paiement electronique non configurer pour cette société. Veuillez contacter l'Administrateur",
+                ex.Message);
         }
 
         [Fact]
@@ -278,7 +279,9 @@ namespace CongoTravel.Tests
             var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
                 svc.ResolveActiveForSiteAsync(orphan.IdSite, societe.IdSociete));
 
-            Assert.Contains("site principal", ex.Message, StringComparison.OrdinalIgnoreCase);
+            Assert.Equal(
+                "Paiement electronique non configurer pour cette société. Veuillez contacter l'Administrateur",
+                ex.Message);
         }
 
         [Fact]
@@ -296,7 +299,9 @@ namespace CongoTravel.Tests
             var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
                 svc.ResolveActiveForSiteAsync(idSatellite, idSociete));
 
-            Assert.Contains("FlexPay", ex.Message, StringComparison.OrdinalIgnoreCase);
+            Assert.Equal(
+                "Paiement electronique non configurer pour cette société. Veuillez contacter l'Administrateur",
+                ex.Message);
         }
     }
 }

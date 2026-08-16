@@ -9,6 +9,7 @@ namespace CongoTravel.Models.DTOs.Sync
         public int? JoursAvanceMaxReservation { get; set; }
         public int DureeValiditeBilletJours { get; set; }
         public bool ReaffectationActive { get; set; }
+        public bool ReservationIsActif { get; set; }
         public int HeuresLimiteReaffectation { get; set; }
         public decimal PenaliteReaffectationPourcentage { get; set; }
         public int DureeHoldFlexPayMinutes { get; set; }

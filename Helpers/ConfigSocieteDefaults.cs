@@ -33,6 +33,7 @@ namespace CongoTravel.Helpers
             DureeHoldSiteTouristiqueMinutes = DureeHoldSiteTouristiqueMinutes,
             DureeHoldRestaurantMinutes = DureeHoldRestaurantMinutes,
             ReaffectationActive = true,
+            ReservationIsActif = true,
             PourcentageReversementSite = 100m,
             DateCreation = DateTime.UtcNow
         };

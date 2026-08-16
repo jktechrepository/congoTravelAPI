@@ -50,6 +50,9 @@ namespace CongoTravel.Models
 
         public bool ReaffectationActive { get; set; } = true;
 
+        /// <summary>Si false, bloque les créations de réservation (hold / with-paiement) pour cette société.</summary>
+        public bool ReservationIsActif { get; set; } = true;
+
         /// <summary>Déclenche un PayOut automatique vers NumeroMobileMoney après confirmation paiement électronique FlexPay.</summary>
         public bool AutoReversementPaiementElectronique { get; set; }
 

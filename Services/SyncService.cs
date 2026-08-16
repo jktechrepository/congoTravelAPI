@@ -81,6 +81,7 @@ namespace CongoTravel.Services
                     JoursAvanceMaxReservation = configEntity.JoursAvanceMaxReservation,
                     DureeValiditeBilletJours = configEntity.DureeValiditeBilletJours,
                     ReaffectationActive = configEntity.ReaffectationActive,
+                    ReservationIsActif = configEntity.ReservationIsActif,
                     HeuresLimiteReaffectation = configEntity.HeuresLimiteReaffectation,
                     DureeHoldFlexPayMinutes = configEntity.DureeHoldFlexPayMinutes,
                     PenaliteReaffectationPourcentage = configEntity.PenaliteReaffectationPourcentage,

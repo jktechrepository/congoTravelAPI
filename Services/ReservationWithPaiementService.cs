@@ -230,6 +230,7 @@ namespace CongoTravel.Services
                 throw new InvalidOperationException($"Voyage {dto.Reservation.IdVoyage} introuvable.");
 
             var config = await _configSocieteRepository.GetOrCreateAsync(voyage.IdSociete);
+            await _configSocieteRepository.EnsureReservationsActivesAsync(voyage.IdSociete);
             ConfigSocieteDefaults.EnsureReservationHorizon(voyage, config);
 
             if (voyage.Vehicule == null)

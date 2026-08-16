@@ -59,6 +59,8 @@ namespace CongoTravel.Services.SiteTouristique
                 }
             }
 
+            await _configSocieteRepository.EnsureReservationsActivesAsync(idSociete, cancellationToken);
+
             var dbStrategy = _context.Database.CreateExecutionStrategy();
             return await dbStrategy.ExecuteAsync(async () =>
             {

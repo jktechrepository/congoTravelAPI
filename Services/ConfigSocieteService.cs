@@ -55,6 +55,7 @@ namespace CongoTravel.Services
             config.HeuresOuvertureEntreeRestaurantAvantDebut = dto.HeuresOuvertureEntreeRestaurantAvantDebut;
             config.DureeHoldFlexPayMinutes = dto.DureeHoldFlexPayMinutes;
             config.ReaffectationActive = dto.ReaffectationActive;
+            config.ReservationIsActif = dto.ReservationIsActif;
             config.AutoReversementPaiementElectronique = dto.AutoReversementPaiementElectronique;
             config.PourcentageReversementSite = dto.PourcentageReversementSite;
             config.FraisPlateforme = dto.FraisPlateforme;
@@ -67,6 +68,16 @@ namespace CongoTravel.Services
 
             await _context.SaveChangesAsync(cancellationToken);
             return config;
+        }
+
+        public async Task EnsureReservationsActivesAsync(int idSociete, CancellationToken cancellationToken = default)
+        {
+            var config = await GetOrCreateAsync(idSociete, cancellationToken);
+            if (!config.ReservationIsActif)
+            {
+                throw new InvalidOperationException(
+                    "La reservation n'est pas Activée pour cette société");
+            }
         }
     }
 }

@@ -116,6 +116,7 @@ namespace CongoTravel.Services
                 }
 
                 var config = await _configSocieteRepository.GetOrCreateAsync(voyage.IdSociete);
+                await _configSocieteRepository.EnsureReservationsActivesAsync(voyage.IdSociete);
                 ConfigSocieteDefaults.EnsureReservationHorizon(voyage, config);
 
                 // Validation du statut de réservation

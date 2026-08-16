@@ -207,6 +207,28 @@ namespace CongoTravel.Tests
         }
 
         [Fact]
+        public async Task CreateHoldAsync_throws_when_reservation_not_actif()
+        {
+            await using var ctx = BuildDb(nameof(CreateHoldAsync_throws_when_reservation_not_actif));
+            var (idSociete, idSession) = await SeedPublishedSessionAsync(ctx, capacity: 10, hold: 0, sold: 0);
+
+            var configSvc = new ConfigSocieteService(ctx);
+            var config = await configSvc.GetOrCreateAsync(idSociete);
+            config.ReservationIsActif = false;
+            await ctx.SaveChangesAsync();
+
+            var service = CreateService(ctx);
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                service.CreateHoldAsync(idSession, idSociete, new EvenementHoldRequestDto
+                {
+                    Items = new List<EvenementHoldItemRequestDto> { new() { Quantity = 1 } }
+                }));
+
+            Assert.Equal("La reservation n'est pas Activée pour cette société", ex.Message);
+            Assert.Empty(ctx.EvenementReservations);
+        }
+
+        [Fact]
         public async Task CreateHoldAsync_throws_when_session_not_found_for_societe()
         {
             await using var ctx = BuildDb(nameof(CreateHoldAsync_throws_when_session_not_found_for_societe));
