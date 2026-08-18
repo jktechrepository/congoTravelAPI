@@ -37,6 +37,11 @@ namespace CongoTravel.Models.DTOs.ConfigSociete
 
         public bool ReservationIsActif { get; set; } = true;
 
+        public bool ActiviteTransport { get; set; } = true;
+        public bool ActiviteEvenement { get; set; } = true;
+        public bool ActiviteSiteTouristique { get; set; } = true;
+        public bool ActiviteRestaurant { get; set; } = true;
+
         public bool AutoReversementPaiementElectronique { get; set; }
 
         [Range(0, 100)]

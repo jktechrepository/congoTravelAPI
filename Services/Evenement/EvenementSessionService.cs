@@ -30,6 +30,7 @@ namespace CongoTravel.Services.Evenement
             CancellationToken cancellationToken = default)
         {
             var inventoryMode = ParseInventoryMode(request.InventoryMode);
+            var typeEvenement = ParseTypeEvenement(request.TypeEvenement);
             request.StartAtUtc = EvenementDateTimeUtcHelper.NormalizeToUtc(request.StartAtUtc);
             request.EndAtUtc = EvenementDateTimeUtcHelper.NormalizeToUtc(request.EndAtUtc);
             ValidateCreateRequest(request, inventoryMode);
@@ -62,9 +63,19 @@ namespace CongoTravel.Services.Evenement
                 IdSite = request.IdSite,
                 CodeSession = codeSession,
                 Libelle = request.Libelle.Trim(),
+                Description = NormalizeOptionalText(request.Description),
                 StartAtUtc = request.StartAtUtc,
                 EndAtUtc = request.EndAtUtc,
                 InventoryMode = inventoryMode,
+                TypeEvenement = typeEvenement,
+                NomOrganisateur = NormalizeOptionalText(request.NomOrganisateur),
+                TelephoneOrganisateur = NormalizeOptionalText(request.TelephoneOrganisateur),
+                MailOrganisateur = NormalizeOptionalEmail(request.MailOrganisateur),
+                Ville = NormalizeOptionalText(request.Ville),
+                Commune = NormalizeOptionalText(request.Commune),
+                Quartier = NormalizeOptionalText(request.Quartier),
+                Avenue = NormalizeOptionalText(request.Avenue),
+                Numero = NormalizeOptionalText(request.Numero),
                 Status = EvenementSessionStatus.Draft,
                 DateCreation = utcNow
             };
@@ -213,6 +224,9 @@ namespace CongoTravel.Services.Evenement
             if (filter?.InventoryMode.HasValue == true)
                 query = query.Where(s => s.InventoryMode == filter.InventoryMode.Value);
 
+            if (filter?.TypeEvenement.HasValue == true)
+                query = query.Where(s => s.TypeEvenement == filter.TypeEvenement.Value);
+
             var sessions = await query
                 .OrderByDescending(s => s.StartAtUtc)
                 .ToListAsync(cancellationToken);
@@ -325,6 +339,9 @@ namespace CongoTravel.Services.Evenement
 
             if (filter?.InventoryMode.HasValue == true)
                 query = query.Where(s => s.InventoryMode == filter.InventoryMode.Value);
+
+            if (filter?.TypeEvenement.HasValue == true)
+                query = query.Where(s => s.TypeEvenement == filter.TypeEvenement.Value);
 
             return query.OrderByDescending(s => s.StartAtUtc);
         }
@@ -604,6 +621,24 @@ namespace CongoTravel.Services.Evenement
             if (global.PrixUnitaire < 0)
                 throw new InvalidOperationException("PrixUnitaire ne peut pas être négatif.");
         }
+
+        private static EvenementSessionType ParseTypeEvenement(string? typeEvenement)
+        {
+            if (string.IsNullOrWhiteSpace(typeEvenement))
+                return EvenementSessionType.Autres;
+
+            if (Enum.TryParse<EvenementSessionType>(typeEvenement.Trim(), ignoreCase: true, out var value))
+                return value;
+
+            throw new InvalidOperationException(
+                $"TypeEvenement invalide '{typeEvenement}'. Valeurs acceptées : Sport, Music, Art, Cinema, Formation, Conference, Spectacle, Festival, Autres.");
+        }
+
+        private static string? NormalizeOptionalText(string? value) =>
+            string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+        private static string? NormalizeOptionalEmail(string? value) =>
+            string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
         private static void ValidateSeatPlanCreate(
             List<EvenementCreateSessionSectionDto>? sections,

@@ -28,6 +28,7 @@ namespace CongoTravel.Data
             {
                 entity.Property(e => e.CodeSession).IsRequired().HasMaxLength(64);
                 entity.Property(e => e.Libelle).IsRequired().HasMaxLength(255);
+                entity.Property(e => e.Description).HasMaxLength(2000);
                 entity.Property(e => e.InventoryMode)
                     .HasConversion<string>()
                     .HasColumnType("enum('SeatNumbered','ClassQuota','GlobalQuota')");
@@ -35,6 +36,19 @@ namespace CongoTravel.Data
                     .HasConversion<string>()
                     .HasColumnType("enum('Draft','Published','Closed','Cancelled')")
                     .HasDefaultValue(EvenementSessionStatus.Draft);
+                entity.Property(e => e.TypeEvenement)
+                    .HasConversion<string>()
+                    .HasColumnType("enum('Sport','Music','Art','Cinema','Formation','Conference','Spectacle','Festival','Autres')")
+                    .HasDefaultValue(EvenementSessionType.Autres);
+                entity.Property(e => e.NomOrganisateur).HasMaxLength(255);
+                entity.Property(e => e.TelephoneOrganisateur).HasMaxLength(50);
+                entity.Property(e => e.MailOrganisateur).HasMaxLength(255);
+
+                entity.Property(e => e.Ville).HasMaxLength(100);
+                entity.Property(e => e.Commune).HasMaxLength(100);
+                entity.Property(e => e.Quartier).HasMaxLength(100);
+                entity.Property(e => e.Avenue).HasMaxLength(200);
+                entity.Property(e => e.Numero).HasMaxLength(50);
 
                 entity.HasCheckConstraint(
                     "CK_EvenementSessions_StartEnd",

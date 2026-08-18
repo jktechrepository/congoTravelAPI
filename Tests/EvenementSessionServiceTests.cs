@@ -33,8 +33,18 @@ namespace CongoTravel.Tests
                 CodeSession = "GALA-2026",
                 IdSite = idSite,
                 Libelle = "Gala annuel",
+                Description = " Grande soiree culturelle annuelle ",
                 StartAtUtc = DateTime.UtcNow.AddDays(10),
                 InventoryMode = "GlobalQuota",
+                TypeEvenement = "Music",
+                NomOrganisateur = " Kansa Events ",
+                TelephoneOrganisateur = " +243900000001 ",
+                MailOrganisateur = " orga@kansa.cd ",
+                Ville = " Kinshasa ",
+                Commune = " Lingwala ",
+                Quartier = " Quartier Test ",
+                Avenue = " Avenue exemple ",
+                Numero = " 12A ",
                 GlobalQuota = new EvenementCreateSessionGlobalQuotaDto
                 {
                     CapaciteTotale = 200,
@@ -45,12 +55,56 @@ namespace CongoTravel.Tests
 
             Assert.Equal("Draft", result.Status);
             Assert.Equal("GlobalQuota", result.InventoryMode);
+            Assert.Equal("Music", result.TypeEvenement);
+            Assert.Equal("Kansa Events", result.NomOrganisateur);
+            Assert.Equal("+243900000001", result.TelephoneOrganisateur);
+            Assert.Equal("orga@kansa.cd", result.MailOrganisateur);
+            Assert.Equal("Grande soiree culturelle annuelle", result.Description);
+            Assert.Equal("Kinshasa", result.Ville);
+            Assert.Equal("Lingwala", result.Commune);
+            Assert.Equal("Quartier Test", result.Quartier);
+            Assert.Equal("Avenue exemple", result.Avenue);
+            Assert.Equal("12A", result.Numero);
             Assert.Equal(idSite, result.IdSite);
             Assert.NotNull(result.NomSite);
             Assert.NotNull(result.GlobalQuota);
             Assert.Equal(200, result.GlobalQuota!.CapaciteTotale);
             Assert.Equal(50m, result.GlobalQuota.PrixUnitaire);
             Assert.Equal("USD", result.GlobalQuota.CodeDevise);
+        }
+
+        [Fact]
+        public async Task CreateDraftAsync_defaults_type_evenement_to_Autres()
+        {
+            await using var ctx = BuildDb(nameof(CreateDraftAsync_defaults_type_evenement_to_Autres));
+            var (idSociete, idSite) = await SeedSocieteAsync(ctx);
+            var service = CreateService(ctx);
+
+            var result = await service.CreateDraftAsync(BuildValidCreateRequest("DEFAULT-TYPE", idSite), idSociete);
+
+            Assert.Equal("Autres", result.TypeEvenement);
+            Assert.Null(result.Description);
+            Assert.Null(result.NomOrganisateur);
+            Assert.Null(result.Ville);
+            Assert.Null(result.Commune);
+            Assert.Null(result.Quartier);
+            Assert.Null(result.Avenue);
+            Assert.Null(result.Numero);
+        }
+
+        [Fact]
+        public async Task CreateDraftAsync_throws_when_type_evenement_invalid()
+        {
+            await using var ctx = BuildDb(nameof(CreateDraftAsync_throws_when_type_evenement_invalid));
+            var (idSociete, idSite) = await SeedSocieteAsync(ctx);
+            var service = CreateService(ctx);
+            var request = BuildValidCreateRequest("BAD-TYPE", idSite);
+            request.TypeEvenement = "InvalidType";
+
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                service.CreateDraftAsync(request, idSociete));
+
+            Assert.Contains("TypeEvenement invalide", ex.Message);
         }
 
         [Fact]

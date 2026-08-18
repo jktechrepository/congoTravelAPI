@@ -51,7 +51,9 @@ namespace CongoTravel.Tests
                 .Build();
 
             var responseBuilder = new AuthentificationResponseBuilder(
-                ctx, jwt.Object, refresh.Object, permissions.Object, config,
+                ctx, jwt.Object, refresh.Object, permissions.Object,
+                new ConfigSocieteService(ctx),
+                config,
                 NullLogger<AuthentificationResponseBuilder>.Instance);
 
             var accounts = new ExternalAuthAccountService(ctx, NullLogger<ExternalAuthAccountService>.Instance);

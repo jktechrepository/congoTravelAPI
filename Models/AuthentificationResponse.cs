@@ -102,6 +102,12 @@ namespace CongoTravel.Models
         /// </summary>
         public AgentInfoDto? Agent { get; set; }
 
+        /// <summary>
+        /// Activités organisées par la société de l'utilisateur
+        /// (Transport, Evenement, SiteTouristique, Restaurant). Vide si pas de société.
+        /// </summary>
+        public List<string> ActivitesSociete { get; set; } = new();
+
     }
 
     /// <summary>

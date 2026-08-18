@@ -56,6 +56,10 @@ namespace CongoTravel.Services
             config.DureeHoldFlexPayMinutes = dto.DureeHoldFlexPayMinutes;
             config.ReaffectationActive = dto.ReaffectationActive;
             config.ReservationIsActif = dto.ReservationIsActif;
+            config.ActiviteTransport = dto.ActiviteTransport;
+            config.ActiviteEvenement = dto.ActiviteEvenement;
+            config.ActiviteSiteTouristique = dto.ActiviteSiteTouristique;
+            config.ActiviteRestaurant = dto.ActiviteRestaurant;
             config.AutoReversementPaiementElectronique = dto.AutoReversementPaiementElectronique;
             config.PourcentageReversementSite = dto.PourcentageReversementSite;
             config.FraisPlateforme = dto.FraisPlateforme;

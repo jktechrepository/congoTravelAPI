@@ -1,4 +1,5 @@
 using CongoTravel.Models;
+using CongoTravel.Models.Enums;
 
 namespace CongoTravel.Helpers
 {
@@ -34,6 +35,10 @@ namespace CongoTravel.Helpers
             DureeHoldRestaurantMinutes = DureeHoldRestaurantMinutes,
             ReaffectationActive = true,
             ReservationIsActif = true,
+            ActiviteTransport = true,
+            ActiviteEvenement = true,
+            ActiviteSiteTouristique = true,
+            ActiviteRestaurant = true,
             PourcentageReversementSite = 100m,
             DateCreation = DateTime.UtcNow
         };
@@ -84,6 +89,21 @@ namespace CongoTravel.Helpers
             }
 
             config.PoidsBagageParKiloOffert = Math.Max(0m, config.PoidsBagageParKiloOffert);
+        }
+
+        /// <summary>Noms des activités actives (<see cref="SocieteActiviteType"/>).</summary>
+        public static IReadOnlyList<string> GetActivitesActives(ConfigSociete config)
+        {
+            var list = new List<string>(4);
+            if (config.ActiviteTransport)
+                list.Add(nameof(SocieteActiviteType.Transport));
+            if (config.ActiviteEvenement)
+                list.Add(nameof(SocieteActiviteType.Evenement));
+            if (config.ActiviteSiteTouristique)
+                list.Add(nameof(SocieteActiviteType.SiteTouristique));
+            if (config.ActiviteRestaurant)
+                list.Add(nameof(SocieteActiviteType.Restaurant));
+            return list;
         }
 
         public static void EnsureReservationHorizon(Voyage voyage, ConfigSociete config)

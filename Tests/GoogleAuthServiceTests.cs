@@ -60,6 +60,7 @@ namespace CongoTravel.Tests
                 jwt.Object,
                 refresh.Object,
                 permissions.Object,
+                new ConfigSocieteService(ctx),
                 config,
                 NullLogger<AuthentificationResponseBuilder>.Instance);
 

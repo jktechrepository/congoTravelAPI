@@ -20,11 +20,31 @@ namespace CongoTravel.Models.DTOs.Evenement
 
         public string Libelle { get; set; } = string.Empty;
 
+        public string? Description { get; set; }
+
         public DateTime StartAtUtc { get; set; }
 
         public DateTime? EndAtUtc { get; set; }
 
         public string InventoryMode { get; set; } = string.Empty;
+
+        public string TypeEvenement { get; set; } = string.Empty;
+
+        public string? NomOrganisateur { get; set; }
+
+        public string? TelephoneOrganisateur { get; set; }
+
+        public string? MailOrganisateur { get; set; }
+
+        public string? Ville { get; set; }
+
+        public string? Commune { get; set; }
+
+        public string? Quartier { get; set; }
+
+        public string? Avenue { get; set; }
+
+        public string? Numero { get; set; }
 
         public string Status { get; set; } = string.Empty;
 

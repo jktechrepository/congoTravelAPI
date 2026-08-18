@@ -29,6 +29,9 @@ namespace CongoTravel.Models.Evenement
         [MaxLength(255)]
         public string Libelle { get; set; } = string.Empty;
 
+        [MaxLength(2000)]
+        public string? Description { get; set; }
+
         [Required]
         public DateTime StartAtUtc { get; set; }
 
@@ -39,6 +42,33 @@ namespace CongoTravel.Models.Evenement
 
         [Required]
         public EvenementSessionStatus Status { get; set; } = EvenementSessionStatus.Draft;
+
+        [Required]
+        public EvenementSessionType TypeEvenement { get; set; } = EvenementSessionType.Autres;
+
+        [MaxLength(255)]
+        public string? NomOrganisateur { get; set; }
+
+        [MaxLength(50)]
+        public string? TelephoneOrganisateur { get; set; }
+
+        [MaxLength(255)]
+        public string? MailOrganisateur { get; set; }
+
+        [MaxLength(100)]
+        public string? Ville { get; set; }
+
+        [MaxLength(100)]
+        public string? Commune { get; set; }
+
+        [MaxLength(100)]
+        public string? Quartier { get; set; }
+
+        [MaxLength(200)]
+        public string? Avenue { get; set; }
+
+        [MaxLength(50)]
+        public string? Numero { get; set; }
 
         [JsonIgnore]
         public DateTime DateCreation { get; set; } = DateTime.UtcNow;

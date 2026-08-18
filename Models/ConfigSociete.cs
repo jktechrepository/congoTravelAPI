@@ -53,6 +53,18 @@ namespace CongoTravel.Models
         /// <summary>Si false, bloque les créations de réservation (hold / with-paiement) pour cette société.</summary>
         public bool ReservationIsActif { get; set; } = true;
 
+        /// <summary>Module Transport actif pour cette société.</summary>
+        public bool ActiviteTransport { get; set; } = true;
+
+        /// <summary>Module Événement actif pour cette société.</summary>
+        public bool ActiviteEvenement { get; set; } = true;
+
+        /// <summary>Module Site touristique actif pour cette société.</summary>
+        public bool ActiviteSiteTouristique { get; set; } = true;
+
+        /// <summary>Module Restaurant actif pour cette société.</summary>
+        public bool ActiviteRestaurant { get; set; } = true;
+
         /// <summary>Déclenche un PayOut automatique vers NumeroMobileMoney après confirmation paiement électronique FlexPay.</summary>
         public bool AutoReversementPaiementElectronique { get; set; }
 

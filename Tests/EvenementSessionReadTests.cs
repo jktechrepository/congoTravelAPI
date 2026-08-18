@@ -256,6 +256,75 @@ namespace CongoTravel.Tests
         }
 
         [Fact]
+        public async Task ListPublishedGlobalAsync_respects_type_evenement_filter()
+        {
+            await using var ctx = BuildDb(nameof(ListPublishedGlobalAsync_respects_type_evenement_filter));
+            var (idSociete, idSite) = await SeedSocieteAsync(ctx);
+            var service = CreateService(ctx);
+
+            var musicDraft = await service.CreateDraftAsync(new EvenementCreateSessionRequestDto
+            {
+                CodeSession = "MUSIC-PUB",
+                IdSite = idSite,
+                Libelle = "Music published",
+                Description = " Un grand concert live ",
+                StartAtUtc = DateTime.UtcNow.AddDays(6),
+                InventoryMode = "GlobalQuota",
+                TypeEvenement = "Music",
+                NomOrganisateur = "Live Nation",
+                TelephoneOrganisateur = "+243811111111",
+                MailOrganisateur = "music@orga.cd",
+                Ville = " Kinshasa ",
+                Commune = " Lingwala ",
+                Quartier = " Quartier Test ",
+                Avenue = " Avenue exemple ",
+                Numero = " 12A ",
+                GlobalQuota = new EvenementCreateSessionGlobalQuotaDto
+                {
+                    CapaciteTotale = 20,
+                    PrixUnitaire = 15m,
+                    CodeDevise = "CDF"
+                }
+            }, idSociete);
+            await service.PublishAsync(musicDraft.IdEvenementSession, idSociete);
+
+            var sportDraft = await service.CreateDraftAsync(new EvenementCreateSessionRequestDto
+            {
+                CodeSession = "SPORT-PUB",
+                IdSite = idSite,
+                Libelle = "Sport published",
+                StartAtUtc = DateTime.UtcNow.AddDays(7),
+                InventoryMode = "GlobalQuota",
+                TypeEvenement = "Sport",
+                GlobalQuota = new EvenementCreateSessionGlobalQuotaDto
+                {
+                    CapaciteTotale = 20,
+                    PrixUnitaire = 15m,
+                    CodeDevise = "CDF"
+                }
+            }, idSociete);
+            await service.PublishAsync(sportDraft.IdEvenementSession, idSociete);
+
+            var filtered = await service.ListPublishedGlobalAsync(new EvenementSessionListFilter
+            {
+                TypeEvenement = EvenementSessionType.Music
+            });
+
+            Assert.Single(filtered);
+            Assert.Equal("MUSIC-PUB", filtered[0].CodeSession);
+            Assert.Equal("Music", filtered[0].TypeEvenement);
+            Assert.Equal("Un grand concert live", filtered[0].Description);
+            Assert.Equal("Live Nation", filtered[0].NomOrganisateur);
+            Assert.Equal("+243811111111", filtered[0].TelephoneOrganisateur);
+            Assert.Equal("music@orga.cd", filtered[0].MailOrganisateur);
+            Assert.Equal("Kinshasa", filtered[0].Ville);
+            Assert.Equal("Lingwala", filtered[0].Commune);
+            Assert.Equal("Quartier Test", filtered[0].Quartier);
+            Assert.Equal("Avenue exemple", filtered[0].Avenue);
+            Assert.Equal("12A", filtered[0].Numero);
+        }
+
+        [Fact]
         public async Task ListPublishedGlobalAsync_filters_by_optional_idSociete()
         {
             await using var ctx = BuildDb(nameof(ListPublishedGlobalAsync_filters_by_optional_idSociete));

@@ -35,6 +35,13 @@ namespace CongoTravel.Tests
                 config.HeuresOuvertureEntreeRestaurantAvantDebut);
             Assert.True(config.ReservationIsActif);
             Assert.True(config.ReaffectationActive);
+            Assert.True(config.ActiviteTransport);
+            Assert.True(config.ActiviteEvenement);
+            Assert.True(config.ActiviteSiteTouristique);
+            Assert.True(config.ActiviteRestaurant);
+            Assert.Equal(
+                new[] { "Transport", "Evenement", "SiteTouristique", "Restaurant" },
+                ConfigSocieteDefaults.GetActivitesActives(config));
         }
 
         [Fact]
@@ -59,6 +66,10 @@ namespace CongoTravel.Tests
                 DureeHoldFlexPayMinutes = 20,
                 ReaffectationActive = false,
                 ReservationIsActif = false,
+                ActiviteTransport = true,
+                ActiviteEvenement = false,
+                ActiviteSiteTouristique = false,
+                ActiviteRestaurant = true,
                 PoidsBagageParKiloOffert = 25m
             });
 
@@ -69,7 +80,14 @@ namespace CongoTravel.Tests
             Assert.Equal(2, updated.HeuresOuvertureEntreeRestaurantAvantDebut);
             Assert.False(updated.ReaffectationActive);
             Assert.False(updated.ReservationIsActif);
+            Assert.True(updated.ActiviteTransport);
+            Assert.False(updated.ActiviteEvenement);
+            Assert.False(updated.ActiviteSiteTouristique);
+            Assert.True(updated.ActiviteRestaurant);
             Assert.Equal(25m, updated.PoidsBagageParKiloOffert);
+            Assert.Equal(
+                new[] { "Transport", "Restaurant" },
+                ConfigSocieteDefaults.GetActivitesActives(updated));
         }
 
         [Fact]

@@ -39,6 +39,7 @@ namespace CongoTravel.Controllers
         /// Liste les sessions événement.
         /// Anonyme / Client / non-staff : catalogue Published global (filtre optionnel idSociete libre).
         /// Personnel société (IsStaff) : sessions de sa société ; mismatch idSociete → 403.
+        /// <paramref name="status"/> : défaut <c>Published</c> ; valeurs Draft, Published, Closed, Cancelled.
         /// </summary>
         [HttpGet]
         [AllowAnonymous]
@@ -47,12 +48,22 @@ namespace CongoTravel.Controllers
             [FromQuery] int? idSociete,
             [FromQuery] string? status,
             [FromQuery] string? inventoryMode,
+            [FromQuery] string? typeEvenement = null,
             CancellationToken cancellationToken = default)
         {
             try
             {
                 if (!TryParseOptionalInventoryMode(inventoryMode, out var parsedMode, out var modeError))
                     return BadRequest(new { message = modeError });
+
+                if (!TryParseOptionalStatus(status, out var parsedStatus, out var statusError))
+                    return BadRequest(new { message = statusError });
+
+                if (!TryParseOptionalTypeEvenement(typeEvenement, out var parsedTypeEvenement, out var typeError))
+                    return BadRequest(new { message = typeError });
+
+                // Défaut catalogue : uniquement les sessions publiées
+                parsedStatus ??= EvenementSessionStatus.Published;
 
                 var isStaffTenant = EvenementTenancyGuard.TryResolveStaffTenantForCatalogList(
                     _currentUserService,
@@ -61,10 +72,21 @@ namespace CongoTravel.Controllers
 
                 if (!isStaffTenant || !effectiveSocieteId.HasValue)
                 {
-                    // Catalogue public / Client : Published + filtre idSociete optionnel
+                    // Catalogue public / Client : Published uniquement
+                    if (parsedStatus != EvenementSessionStatus.Published)
+                    {
+                        return BadRequest(new
+                        {
+                            message =
+                                "Le catalogue public n'expose que les sessions Published. " +
+                                "Connectez-vous en tant que personnel société pour filtrer Draft, Closed ou Cancelled."
+                        });
+                    }
+
                     var publicFilter = new EvenementSessionListFilter
                     {
                         InventoryMode = parsedMode,
+                        TypeEvenement = parsedTypeEvenement,
                         IdSociete = idSociete is > 0 ? idSociete : null
                     };
                     var published = await _sessionService.ListPublishedGlobalAsync(
@@ -73,13 +95,11 @@ namespace CongoTravel.Controllers
                     return Ok(published);
                 }
 
-                if (!TryParseOptionalStatus(status, out var parsedStatus, out var statusError))
-                    return BadRequest(new { message = statusError });
-
                 var filter = new EvenementSessionListFilter
                 {
                     Status = parsedStatus,
-                    InventoryMode = parsedMode
+                    InventoryMode = parsedMode,
+                    TypeEvenement = parsedTypeEvenement
                 };
 
                 var sessions = await _sessionService.ListAsync(
@@ -659,7 +679,16 @@ namespace CongoTravel.Controllers
             if (string.IsNullOrWhiteSpace(status))
                 return true;
 
-            if (Enum.TryParse<EvenementSessionStatus>(status, ignoreCase: true, out var value))
+            var normalized = status.Trim();
+            // Alias FR courants (Swagger / front)
+            if (normalized.Equals("Publié", StringComparison.OrdinalIgnoreCase)
+                || normalized.Equals("Publie", StringComparison.OrdinalIgnoreCase))
+            {
+                parsedStatus = EvenementSessionStatus.Published;
+                return true;
+            }
+
+            if (Enum.TryParse<EvenementSessionStatus>(normalized, ignoreCase: true, out var value))
             {
                 parsedStatus = value;
                 return true;
@@ -687,6 +716,28 @@ namespace CongoTravel.Controllers
             }
 
             errorMessage = $"InventoryMode invalide '{inventoryMode}'. Valeurs acceptées : GlobalQuota, ClassQuota, SeatNumbered.";
+            return false;
+        }
+
+        private static bool TryParseOptionalTypeEvenement(
+            string? typeEvenement,
+            out EvenementSessionType? parsedType,
+            out string? errorMessage)
+        {
+            parsedType = null;
+            errorMessage = null;
+
+            if (string.IsNullOrWhiteSpace(typeEvenement))
+                return true;
+
+            if (Enum.TryParse<EvenementSessionType>(typeEvenement.Trim(), ignoreCase: true, out var value))
+            {
+                parsedType = value;
+                return true;
+            }
+
+            errorMessage =
+                $"TypeEvenement invalide '{typeEvenement}'. Valeurs acceptées : Sport, Music, Art, Cinema, Formation, Conference, Spectacle, Festival, Autres.";
             return false;
         }
     }

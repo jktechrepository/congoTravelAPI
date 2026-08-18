@@ -17,6 +17,7 @@ namespace CongoTravel.Services
         private readonly ISimpleJwtService _jwtService;
         private readonly IRefreshTokenService _refreshTokenService;
         private readonly IPermissionService _permissionService;
+        private readonly IConfigSocieteRepository _configSocieteRepository;
         private readonly IConfiguration _configuration;
         private readonly ILogger<AuthentificationResponseBuilder> _logger;
 
@@ -25,6 +26,7 @@ namespace CongoTravel.Services
             ISimpleJwtService jwtService,
             IRefreshTokenService refreshTokenService,
             IPermissionService permissionService,
+            IConfigSocieteRepository configSocieteRepository,
             IConfiguration configuration,
             ILogger<AuthentificationResponseBuilder> logger)
         {
@@ -32,6 +34,7 @@ namespace CongoTravel.Services
             _jwtService = jwtService;
             _refreshTokenService = refreshTokenService;
             _permissionService = permissionService;
+            _configSocieteRepository = configSocieteRepository;
             _configuration = configuration;
             _logger = logger;
         }
@@ -101,6 +104,15 @@ namespace CongoTravel.Services
                 "AuthentificationResponse construite pour utilisateur {UserId}",
                 loaded.IdUtilisateur);
 
+            var activitesSociete = new List<string>();
+            if (loaded.IdSociete is > 0)
+            {
+                var config = await _configSocieteRepository.GetOrCreateAsync(
+                    loaded.IdSociete.Value,
+                    cancellationToken);
+                activitesSociete = ConfigSocieteDefaults.GetActivitesActives(config).ToList();
+            }
+
             return new AuthentificationResponse
             {
                 Success = true,
@@ -143,7 +155,8 @@ namespace CongoTravel.Services
                 Roles = userRolesList,
                 PrimaryRole = primaryRole,
                 Client = clientInfo,
-                Agent = agentInfo
+                Agent = agentInfo,
+                ActivitesSociete = activitesSociete
             };
         }
 

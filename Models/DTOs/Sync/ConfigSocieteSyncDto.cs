@@ -10,6 +10,10 @@ namespace CongoTravel.Models.DTOs.Sync
         public int DureeValiditeBilletJours { get; set; }
         public bool ReaffectationActive { get; set; }
         public bool ReservationIsActif { get; set; }
+        public bool ActiviteTransport { get; set; }
+        public bool ActiviteEvenement { get; set; }
+        public bool ActiviteSiteTouristique { get; set; }
+        public bool ActiviteRestaurant { get; set; }
         public int HeuresLimiteReaffectation { get; set; }
         public decimal PenaliteReaffectationPourcentage { get; set; }
         public int DureeHoldFlexPayMinutes { get; set; }

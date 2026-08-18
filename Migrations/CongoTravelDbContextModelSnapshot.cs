@@ -711,6 +711,26 @@ namespace CongoTravel.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
+                    b.Property<bool>("ActiviteEvenement")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint(1)")
+                        .HasDefaultValue(true);
+
+                    b.Property<bool>("ActiviteRestaurant")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint(1)")
+                        .HasDefaultValue(true);
+
+                    b.Property<bool>("ActiviteSiteTouristique")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint(1)")
+                        .HasDefaultValue(true);
+
+                    b.Property<bool>("ActiviteTransport")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint(1)")
+                        .HasDefaultValue(true);
+
                     b.Property<bool>("AutoReversementPaiementElectronique")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("tinyint(1)")
@@ -1257,16 +1277,28 @@ namespace CongoTravel.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
+                    b.Property<string>("Avenue")
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
                     b.Property<string>("CodeSession")
                         .IsRequired()
                         .HasMaxLength(64)
                         .HasColumnType("varchar(64)");
+
+                    b.Property<string>("Commune")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
 
                     b.Property<DateTime>("DateCreation")
                         .HasColumnType("datetime(6)");
 
                     b.Property<DateTime?>("DateModification")
                         .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("varchar(2000)");
 
                     b.Property<DateTime?>("EndAtUtc")
                         .HasColumnType("datetime(6)");
@@ -1286,6 +1318,22 @@ namespace CongoTravel.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("varchar(255)");
 
+                    b.Property<string>("MailOrganisateur")
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<string>("NomOrganisateur")
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<string>("Numero")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<string>("Quartier")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
                     b.Property<DateTime>("StartAtUtc")
                         .HasColumnType("datetime(6)");
 
@@ -1294,6 +1342,20 @@ namespace CongoTravel.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("enum('Draft','Published','Closed','Cancelled')")
                         .HasDefaultValue("Draft");
+
+                    b.Property<string>("TelephoneOrganisateur")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<string>("TypeEvenement")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("enum('Sport','Music','Art','Cinema','Formation','Conference','Spectacle','Festival','Autres')")
+                        .HasDefaultValue("Autres");
+
+                    b.Property<string>("Ville")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
 
                     b.HasKey("IdEvenementSession");
 

@@ -15,6 +15,10 @@ namespace CongoTravel.Models.DTOs.ConfigSociete
         public int DureeHoldFlexPayMinutes { get; set; }
         public bool ReaffectationActive { get; set; }
         public bool ReservationIsActif { get; set; }
+        public bool ActiviteTransport { get; set; }
+        public bool ActiviteEvenement { get; set; }
+        public bool ActiviteSiteTouristique { get; set; }
+        public bool ActiviteRestaurant { get; set; }
         public bool AutoReversementPaiementElectronique { get; set; }
         public decimal PourcentageReversementSite { get; set; }
         public decimal FraisPlateforme { get; set; }
