@@ -32,6 +32,8 @@ namespace CongoTravel.Models.DTOs
         public TimeSpan? HeureVoyage { get; set; }
         /// <summary>Prix unitaire du billet (tarif de la catégorie du siège attribué à ce passager), pas le total de la réservation.</summary>
         public int? PrixVoyage { get; set; }
+        public decimal KiloBagageOffert { get; set; }
+        public string? LogoSociete { get; set; }
         public string? AliasVehicule { get; set; }
         public string? VilleDepart { get; set; }
         public string? VilleArrivee { get; set; }

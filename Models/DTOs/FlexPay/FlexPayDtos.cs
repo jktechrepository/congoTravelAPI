@@ -83,6 +83,12 @@ namespace CongoTravel.Models.DTOs.FlexPay
 
         [JsonPropertyName("orderNumber")]
         public string? OrderNumber { get; set; }
+
+        [JsonPropertyName("amount")]
+        public string? Amount { get; set; }
+
+        [JsonPropertyName("currency")]
+        public string? Currency { get; set; }
     }
 
     public class FlexPayCallbackProcessResultDto

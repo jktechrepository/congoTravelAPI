@@ -20,5 +20,7 @@ namespace CongoTravel.Models.DTOs.Evenement
         public string ReferenceReservation { get; set; } = string.Empty;
 
         public int IdEvenementSession { get; set; }
+
+        public string? LogoOrganisateur { get; set; }
     }
 }

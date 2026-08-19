@@ -35,6 +35,7 @@ namespace CongoTravel.Tests
             Assert.Equal("EVT-RES-READ", result.ReferenceReservation);
             Assert.Equal("GALA-READ", result.CodeSession);
             Assert.Equal("CUST-READ", result.CustomerRef);
+            Assert.Equal("https://cdn.example/ticket-read.png", result.LogoOrganisateur);
         }
 
         [Fact]
@@ -61,6 +62,7 @@ namespace CongoTravel.Tests
 
             Assert.NotNull(result);
             Assert.Equal(ticketCode, result!.TicketCode);
+            Assert.Equal("https://cdn.example/ticket-read.png", result.LogoOrganisateur);
         }
 
         [Fact]
@@ -95,6 +97,7 @@ namespace CongoTravel.Tests
 
             Assert.Single(issued);
             Assert.Equal(ticketId, issued[0].IdEvenementTicket);
+            Assert.Equal("https://cdn.example/ticket-read.png", issued[0].LogoOrganisateur);
         }
 
         [Fact]
@@ -125,8 +128,10 @@ namespace CongoTravel.Tests
 
             Assert.Single(recent);
             Assert.Equal("ISSUED", recent[0].Status);
+            Assert.Equal("https://cdn.example/ticket-read.png", recent[0].LogoOrganisateur);
             Assert.Single(oldOnly);
             Assert.Equal("EVT-TKT-OLD", oldOnly[0].TicketCode);
+            Assert.Equal("https://cdn.example/ticket-read.png", oldOnly[0].LogoOrganisateur);
         }
 
         [Fact]
@@ -144,11 +149,26 @@ namespace CongoTravel.Tests
             Assert.Null(invalid);
             Assert.NotNull(valid);
             Assert.Single(valid!);
+            Assert.Equal("https://cdn.example/ticket-read.png", valid[0].LogoOrganisateur);
+        }
+
+        [Fact]
+        public async Task GetByIdAsync_returns_null_logo_organisateur_when_session_has_none()
+        {
+            await using var ctx = BuildDb(nameof(GetByIdAsync_returns_null_logo_organisateur_when_session_has_none));
+            var (idSociete, ticketId, _) = await SeedConfirmedTicketAsync(ctx, used: false, logoOrganisateur: null);
+            var service = CreateService(ctx);
+
+            var result = await service.GetByIdAsync(ticketId, idSociete);
+
+            Assert.NotNull(result);
+            Assert.Null(result!.LogoOrganisateur);
         }
 
         private static async Task<(int IdSociete, int IdTicket, string TicketCode)> SeedConfirmedTicketAsync(
             CongoTravelDbContext ctx,
-            bool used)
+            bool used,
+            string? logoOrganisateur = "https://cdn.example/ticket-read.png")
         {
             var idSociete = await SeedSocieteAsync(ctx);
             var utcNow = DateTime.UtcNow;
@@ -158,6 +178,7 @@ namespace CongoTravel.Tests
                 IdSociete = idSociete,
                 CodeSession = "GALA-READ",
                 Libelle = "Gala read test",
+                LogoOrganisateur = logoOrganisateur,
                 StartAtUtc = utcNow.AddHours(-2),
                 EndAtUtc = utcNow.AddHours(4),
                 InventoryMode = EvenementInventoryMode.GlobalQuota,

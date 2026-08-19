@@ -217,6 +217,70 @@ namespace CongoTravel.Tests
         }
 
         [Fact]
+        public async Task ListPublishedGlobalAsync_orders_by_StartAtUtc_ascending()
+        {
+            await using var ctx = BuildDb(nameof(ListPublishedGlobalAsync_orders_by_StartAtUtc_ascending));
+            var (idSociete, idSite) = await SeedSocieteAsync(ctx);
+            var service = CreateService(ctx);
+
+            var inSevenDays = await service.CreateDraftAsync(new EvenementCreateSessionRequestDto
+            {
+                CodeSession = "WEEK-PUB",
+                IdSite = idSite,
+                Libelle = "In seven days",
+                StartAtUtc = DateTime.UtcNow.AddDays(7),
+                InventoryMode = "GlobalQuota",
+                GlobalQuota = new EvenementCreateSessionGlobalQuotaDto
+                {
+                    CapaciteTotale = 10,
+                    PrixUnitaire = 5m,
+                    CodeDevise = "CDF"
+                }
+            }, idSociete);
+            await service.PublishAsync(inSevenDays.IdEvenementSession, idSociete);
+
+            var tomorrow = await service.CreateDraftAsync(new EvenementCreateSessionRequestDto
+            {
+                CodeSession = "TOMORROW-PUB",
+                IdSite = idSite,
+                Libelle = "Tomorrow",
+                StartAtUtc = DateTime.UtcNow.AddDays(1),
+                InventoryMode = "GlobalQuota",
+                GlobalQuota = new EvenementCreateSessionGlobalQuotaDto
+                {
+                    CapaciteTotale = 10,
+                    PrixUnitaire = 5m,
+                    CodeDevise = "CDF"
+                }
+            }, idSociete);
+            await service.PublishAsync(tomorrow.IdEvenementSession, idSociete);
+
+            var live = await service.CreateDraftAsync(new EvenementCreateSessionRequestDto
+            {
+                CodeSession = "LIVE-PUB",
+                IdSite = idSite,
+                Libelle = "In progress",
+                StartAtUtc = DateTime.UtcNow.AddHours(-1),
+                EndAtUtc = DateTime.UtcNow.AddHours(4),
+                InventoryMode = "GlobalQuota",
+                GlobalQuota = new EvenementCreateSessionGlobalQuotaDto
+                {
+                    CapaciteTotale = 10,
+                    PrixUnitaire = 5m,
+                    CodeDevise = "CDF"
+                }
+            }, idSociete);
+            await service.PublishAsync(live.IdEvenementSession, idSociete);
+
+            var global = await service.ListPublishedGlobalAsync();
+
+            Assert.Equal(3, global.Count);
+            Assert.Equal("LIVE-PUB", global[0].CodeSession);
+            Assert.Equal("TOMORROW-PUB", global[1].CodeSession);
+            Assert.Equal("WEEK-PUB", global[2].CodeSession);
+        }
+
+        [Fact]
         public async Task ListPublishedGlobalAsync_respects_inventory_mode_filter()
         {
             await using var ctx = BuildDb(nameof(ListPublishedGlobalAsync_respects_inventory_mode_filter));
@@ -274,6 +338,7 @@ namespace CongoTravel.Tests
                 NomOrganisateur = "Live Nation",
                 TelephoneOrganisateur = "+243811111111",
                 MailOrganisateur = "music@orga.cd",
+                LogoOrganisateur = "https://cdn.example/music.png",
                 Ville = " Kinshasa ",
                 Commune = " Lingwala ",
                 Quartier = " Quartier Test ",
@@ -317,6 +382,7 @@ namespace CongoTravel.Tests
             Assert.Equal("Live Nation", filtered[0].NomOrganisateur);
             Assert.Equal("+243811111111", filtered[0].TelephoneOrganisateur);
             Assert.Equal("music@orga.cd", filtered[0].MailOrganisateur);
+            Assert.Equal("https://cdn.example/music.png", filtered[0].LogoOrganisateur);
             Assert.Equal("Kinshasa", filtered[0].Ville);
             Assert.Equal("Lingwala", filtered[0].Commune);
             Assert.Equal("Quartier Test", filtered[0].Quartier);
@@ -345,6 +411,53 @@ namespace CongoTravel.Tests
             Assert.Single(filtered);
             Assert.Equal("B-ONLY", filtered[0].CodeSession);
             Assert.Equal(idB, filtered[0].IdSociete);
+        }
+
+        [Fact]
+        public async Task ListPublishedGlobalAsync_excludes_sessions_of_inactive_societe()
+        {
+            await using var ctx = BuildDb(nameof(ListPublishedGlobalAsync_excludes_sessions_of_inactive_societe));
+            var (idA, idSiteA) = await SeedSocieteAsync(ctx, "Societe Active");
+            var (idB, idSiteB) = await SeedSocieteAsync(ctx, "Societe Inactive");
+            var service = CreateService(ctx);
+
+            var active = await service.CreateDraftAsync(BuildValidCreateRequest("ACTIVE-PUB", idSiteA), idA);
+            await service.PublishAsync(active.IdEvenementSession, idA);
+
+            var inactive = await service.CreateDraftAsync(BuildValidCreateRequest("INACTIVE-PUB", idSiteB), idB);
+            await service.PublishAsync(inactive.IdEvenementSession, idB);
+
+            var inactiveSociete = await ctx.Societes.FirstAsync(s => s.IdSociete == idB);
+            inactiveSociete.Statut = false;
+            await ctx.SaveChangesAsync();
+
+            var global = await service.ListPublishedGlobalAsync();
+
+            Assert.Single(global);
+            Assert.Equal("ACTIVE-PUB", global[0].CodeSession);
+            Assert.DoesNotContain(global, s => s.CodeSession == "INACTIVE-PUB");
+        }
+
+        [Fact]
+        public async Task ListPublishedGlobalAsync_returns_empty_for_inactive_societe_id_filter()
+        {
+            await using var ctx = BuildDb(nameof(ListPublishedGlobalAsync_returns_empty_for_inactive_societe_id_filter));
+            var (idSociete, idSite) = await SeedSocieteAsync(ctx, "Societe Inactive");
+            var service = CreateService(ctx);
+
+            var created = await service.CreateDraftAsync(BuildValidCreateRequest("INACTIVE-ONLY", idSite), idSociete);
+            await service.PublishAsync(created.IdEvenementSession, idSociete);
+
+            var societe = await ctx.Societes.FirstAsync(s => s.IdSociete == idSociete);
+            societe.Statut = false;
+            await ctx.SaveChangesAsync();
+
+            var filtered = await service.ListPublishedGlobalAsync(new EvenementSessionListFilter
+            {
+                IdSociete = idSociete
+            });
+
+            Assert.Empty(filtered);
         }
 
         [Fact]
@@ -384,6 +497,25 @@ namespace CongoTravel.Tests
         }
 
         [Fact]
+        public async Task GetPublishedByIdAsync_returns_null_for_inactive_societe()
+        {
+            await using var ctx = BuildDb(nameof(GetPublishedByIdAsync_returns_null_for_inactive_societe));
+            var (idSociete, idSite) = await SeedSocieteAsync(ctx, "Societe Inactive");
+            var service = CreateService(ctx);
+
+            var created = await service.CreateDraftAsync(BuildValidCreateRequest("INACTIVE-ID", idSite), idSociete);
+            await service.PublishAsync(created.IdEvenementSession, idSociete);
+
+            var societe = await ctx.Societes.FirstAsync(s => s.IdSociete == idSociete);
+            societe.Statut = false;
+            await ctx.SaveChangesAsync();
+
+            var publishedOnly = await service.GetPublishedByIdAsync(created.IdEvenementSession);
+
+            Assert.Null(publishedOnly);
+        }
+
+        [Fact]
         public async Task GetByIdAsync_without_societe_returns_any_status()
         {
             await using var ctx = BuildDb(nameof(GetByIdAsync_without_societe_returns_any_status));
@@ -419,6 +551,27 @@ namespace CongoTravel.Tests
         }
 
         [Fact]
+        public async Task GetPublishedByCodeAsync_returns_null_for_inactive_societe()
+        {
+            await using var ctx = BuildDb(nameof(GetPublishedByCodeAsync_returns_null_for_inactive_societe));
+            var (idSociete, idSite) = await SeedSocieteAsync(ctx, "Societe Inactive");
+            var service = CreateService(ctx);
+
+            var created = await service.CreateDraftAsync(BuildValidCreateRequest("INACTIVE-CODE", idSite), idSociete);
+            await service.PublishAsync(created.IdEvenementSession, idSociete);
+
+            var societe = await ctx.Societes.FirstAsync(s => s.IdSociete == idSociete);
+            societe.Statut = false;
+            await ctx.SaveChangesAsync();
+
+            var byCode = await service.GetPublishedByCodeAsync("INACTIVE-CODE");
+            var byCodeAndSociete = await service.GetPublishedByCodeAsync("INACTIVE-CODE", idSociete);
+
+            Assert.Null(byCode);
+            Assert.Null(byCodeAndSociete);
+        }
+
+        [Fact]
         public async Task GetByIdAsync_enriches_cover_price_availability_and_societe()
         {
             await using var ctx = BuildDb(nameof(GetByIdAsync_enriches_cover_price_availability_and_societe));
@@ -430,6 +583,7 @@ namespace CongoTravel.Tests
                 CodeSession = "DETAIL-ENRICH",
                 IdSite = idSite,
                 Libelle = "Détail enrichi",
+                LogoOrganisateur = "https://cdn.example/detail.png",
                 StartAtUtc = DateTime.UtcNow.AddDays(2),
                 InventoryMode = "GlobalQuota",
                 GlobalQuota = new EvenementCreateSessionGlobalQuotaDto
@@ -459,6 +613,7 @@ namespace CongoTravel.Tests
 
             Assert.NotNull(detail);
             Assert.Equal("Detail Co", detail!.NomSociete);
+            Assert.Equal("https://cdn.example/detail.png", detail.LogoOrganisateur);
             Assert.NotNull(detail.PhotoCouverture);
             Assert.Equal(1, detail.PhotoCouverture!.Ordre);
             Assert.Equal(2, detail.Photos.Count);

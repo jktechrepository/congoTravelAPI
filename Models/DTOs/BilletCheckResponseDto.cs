@@ -38,5 +38,11 @@ namespace CongoTravel.Models.DTOs
 
         /// <summary>Téléphone affiché à l’embarquement : passager réel, pas l’acheteur.</summary>
         public string? TelephoneClient { get; set; }
+
+        /// <summary>Poids de bagage offert défini pour la société émettrice.</summary>
+        public decimal KiloBagageOffert { get; set; }
+
+        /// <summary>Logo de la société émettrice du billet, si chargé.</summary>
+        public string? LogoSociete { get; set; }
     }
 }

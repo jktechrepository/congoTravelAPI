@@ -58,7 +58,7 @@ WHERE `IdSiteTouristiqueTicket` = {0}
                 .ToListAsync(cancellationToken);
 
             return rows
-                .Select(row => SiteTouristiqueTicketMapper.ToListItemDto(row.Ticket, row.Reservation))
+                .Select(row => SiteTouristiqueTicketMapper.ToListItemDto(row.Ticket, row.Reservation, row.Societe))
                 .ToList();
         }
 
@@ -118,13 +118,15 @@ WHERE `IdSiteTouristiqueTicket` = {0}
                     on t.IdSiteTouristiqueReservationLine equals line.IdSiteTouristiqueReservationLine
                 join r in _context.SiteTouristiqueReservations.AsNoTracking()
                     on line.IdSiteTouristiqueReservation equals r.IdSiteTouristiqueReservation
+                join s in _context.Societes.AsNoTracking()
+                    on r.IdSociete equals s.IdSociete
                 where r.IdSociete == idSociete && t.IssuedAtUtc.Date == day
                 orderby t.IssuedAtUtc descending
-                select new TicketListRow { Ticket = t, Reservation = r })
+                select new TicketListRow { Ticket = t, Reservation = r, Societe = s })
                 .ToListAsync(cancellationToken);
 
             return rows
-                .Select(row => SiteTouristiqueTicketMapper.ToListItemDto(row.Ticket, row.Reservation))
+                .Select(row => SiteTouristiqueTicketMapper.ToListItemDto(row.Ticket, row.Reservation, row.Societe))
                 .ToList();
         }
 
@@ -143,13 +145,15 @@ WHERE `IdSiteTouristiqueTicket` = {0}
                     on t.IdSiteTouristiqueReservationLine equals line.IdSiteTouristiqueReservationLine
                 join r in _context.SiteTouristiqueReservations.AsNoTracking()
                     on line.IdSiteTouristiqueReservation equals r.IdSiteTouristiqueReservation
+                join s in _context.Societes.AsNoTracking()
+                    on r.IdSociete equals s.IdSociete
                 where r.IdSociete == idSociete && t.IssuedAtUtc >= start && t.IssuedAtUtc <= end
                 orderby t.IssuedAtUtc descending
-                select new TicketListRow { Ticket = t, Reservation = r })
+                select new TicketListRow { Ticket = t, Reservation = r, Societe = s })
                 .ToListAsync(cancellationToken);
 
             return rows
-                .Select(row => SiteTouristiqueTicketMapper.ToListItemDto(row.Ticket, row.Reservation))
+                .Select(row => SiteTouristiqueTicketMapper.ToListItemDto(row.Ticket, row.Reservation, row.Societe))
                 .ToList();
         }
 
@@ -327,8 +331,10 @@ WHERE `IdSiteTouristiqueTicket` = {0}
                     on t.IdSiteTouristiqueReservationLine equals line.IdSiteTouristiqueReservationLine
                 join r in _context.SiteTouristiqueReservations.AsNoTracking()
                     on line.IdSiteTouristiqueReservation equals r.IdSiteTouristiqueReservation
+                join s in _context.Societes.AsNoTracking()
+                    on r.IdSociete equals s.IdSociete
                 where r.IdSociete == idSociete
-                select new TicketListRow { Ticket = t, Reservation = r };
+                select new TicketListRow { Ticket = t, Reservation = r, Societe = s };
 
             if (filter?.Status.HasValue == true)
                 query = query.Where(row => row.Ticket.Status == filter.Status.Value);
@@ -355,6 +361,9 @@ WHERE `IdSiteTouristiqueTicket` = {0}
                 .AsNoTracking()
                 .Include(t => t.ReservationLine!)
                     .ThenInclude(l => l.Reservation!)
+                        .ThenInclude(r => r.Societe)
+                .Include(t => t.ReservationLine!)
+                    .ThenInclude(l => l.Reservation!)
                         .ThenInclude(r => r.Journee!)
                             .ThenInclude(j => j.Lieu)
                 .FirstOrDefaultAsync(t => t.IdSiteTouristiqueTicket == idSiteTouristiqueTicket, cancellationToken);
@@ -365,6 +374,9 @@ WHERE `IdSiteTouristiqueTicket` = {0}
             CancellationToken cancellationToken)
         {
             var query = _context.SiteTouristiqueTickets
+                .Include(t => t.ReservationLine!)
+                    .ThenInclude(l => l.Reservation!)
+                        .ThenInclude(r => r.Societe)
                 .Include(t => t.ReservationLine!)
                     .ThenInclude(l => l.Reservation!)
                         .ThenInclude(r => r.Journee!)
@@ -410,6 +422,8 @@ WHERE `IdSiteTouristiqueTicket` = {0}
             public SiteTouristiqueTicket Ticket { get; init; } = null!;
 
             public SiteTouristiqueReservation Reservation { get; init; } = null!;
+
+            public Models.Societe Societe { get; init; } = null!;
         }
     }
 }

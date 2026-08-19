@@ -196,6 +196,62 @@ namespace CongoTravel.Tests
         }
 
         [Fact]
+        public async Task Callback_code_0_rejects_currency_mismatch()
+        {
+            await using var ctx = BuildDb(nameof(Callback_code_0_rejects_currency_mismatch));
+            var (_, _, orderNumber) =
+                await RestaurantTestFactories.SeedPendingFlexPayPaymentAsync(
+                    ctx, quantity: 1, orderNumber: "FP-RST-MISMATCH-001", idUtilisateur: 7);
+            var service = RestaurantTestFactories.CreateCallbackService(ctx);
+
+            var result = await service.ProcessCallbackAsync(new FlexPayCallbackDto
+            {
+                Code = "0",
+                OrderNumber = orderNumber,
+                Amount = "10",
+                Currency = "CDF"
+            });
+
+            Assert.False(result.Success);
+            Assert.Contains("devise callback", result.Message, StringComparison.OrdinalIgnoreCase);
+        }
+
+        [Fact]
+        public async Task Verify_rejects_currency_mismatch_from_provider()
+        {
+            await using var ctx = BuildDb(nameof(Verify_rejects_currency_mismatch_from_provider));
+            var (idSociete, _, orderNumber) =
+                await RestaurantTestFactories.SeedPendingFlexPayPaymentAsync(
+                    ctx, quantity: 1, orderNumber: "FP-RST-VERIFY-MISMATCH-001", idUtilisateur: 7);
+
+            var flexPay = new Mock<IFlexPayService>();
+            flexPay
+                .Setup(f => f.VerifierStatutTransactionAsync(
+                    It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new FlexPayCheckResponseDto
+                {
+                    Code = "0",
+                    Transaction = new FlexPayTransactionDto
+                    {
+                        Status = "0",
+                        Amount = "10",
+                        Currency = "CDF"
+                    }
+                });
+
+            var service = RestaurantTestFactories.CreateCallbackService(ctx, flexPay.Object);
+
+            var result = await service.VerifyAndFinalizeAsync(orderNumber, idSociete);
+
+            Assert.False(result.IsConfirmSuccess);
+            Assert.NotNull(result.StatusOnly);
+            Assert.False(result.StatusOnly!.Success);
+            Assert.Contains("devise callback", result.StatusOnly.Message, StringComparison.OrdinalIgnoreCase);
+            Assert.Equal(RestaurantPaymentStatus.PENDING,
+                await ctx.RestaurantPayments.Select(p => p.Status).SingleAsync());
+        }
+
+        [Fact]
         public async Task ExpireHoldsAsync_pending_flexpay_marks_failed_and_notifies()
         {
             await using var ctx = BuildDb(nameof(ExpireHoldsAsync_pending_flexpay_marks_failed_and_notifies));

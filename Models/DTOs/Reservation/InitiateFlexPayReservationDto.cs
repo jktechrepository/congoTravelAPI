@@ -16,6 +16,10 @@ namespace CongoTravel.Models.DTOs.Reservation
 
     public class FlexPayPaiementDataDto
     {
+        /// <summary>
+        /// Montant attendu dans la devise tarif du voyage (<c>Reservation.IdVoyage.CodeDevisePrix</c>),
+        /// même si <c>CodeDevisePaiement</c> diffère.
+        /// </summary>
         [Required]
         [Range(0.01, double.MaxValue)]
         public decimal MontantAPaye { get; set; }

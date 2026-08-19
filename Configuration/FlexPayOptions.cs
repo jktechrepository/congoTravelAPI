@@ -31,6 +31,12 @@ namespace CongoTravel.Configuration
 
         public bool ForceProductionCallbackInDev { get; set; }
 
+        /// <summary>Devises autorisées pour le canal Mobile Money.</summary>
+        public List<string> MobileMoneySupportedCurrencies { get; set; } = new() { "CDF", "USD" };
+
+        /// <summary>Devises autorisées pour le canal Carte Bancaire.</summary>
+        public List<string> CardSupportedCurrencies { get; set; } = new() { "CDF", "USD" };
+
         /// <summary>
         /// Chemin relatif callback FlexPay événement (défaut <c>/api/events/flexpay/callback</c>).
         /// Concaténé à <see cref="CallbackBaseUrl"/> ou à l'hôte courant.

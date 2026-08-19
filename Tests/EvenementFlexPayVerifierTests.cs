@@ -145,6 +145,26 @@ namespace CongoTravel.Tests
         }
 
         [Fact]
+        public async Task VerifyAndFinalizeAsync_rejects_currency_mismatch_from_provider()
+        {
+            await using var ctx = BuildDb(nameof(VerifyAndFinalizeAsync_rejects_currency_mismatch_from_provider));
+            var (idSociete, _, orderNumber) =
+                await EvenementTestFactories.SeedPendingFlexPayPaymentAsync(ctx, quantity: 1);
+            var service = EvenementTestFactories.CreateCallbackService(
+                ctx,
+                EvenementTestFactories.CreateFlexPayCheckMockBuilder("0", amount: "20", currency: "CDF").Object);
+
+            var result = await service.VerifyAndFinalizeAsync(orderNumber, idSociete);
+
+            Assert.False(result.IsConfirmSuccess);
+            Assert.NotNull(result.StatusOnly);
+            Assert.False(result.StatusOnly!.Success);
+            Assert.Contains("devise callback", result.StatusOnly.Message, StringComparison.OrdinalIgnoreCase);
+            Assert.Equal(EvenementPaymentStatus.PENDING,
+                await ctx.EvenementPayments.Select(p => p.Status).SingleAsync());
+        }
+
+        [Fact]
         public async Task VerifyAndFinalizeAsync_cancelled_reservation_pending_payment_exits_pending()
         {
             await using var ctx = BuildDb(

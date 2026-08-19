@@ -1,3 +1,4 @@
+using CongoTravel.Models;
 using CongoTravel.Models.DTOs.SiteTouristique;
 using CongoTravel.Models.SiteTouristique;
 
@@ -7,7 +8,8 @@ namespace CongoTravel.Helpers.SiteTouristique
     {
         public static SiteTouristiqueTicketListItemDto ToListItemDto(
             SiteTouristiqueTicket ticket,
-            SiteTouristiqueReservation reservation) =>
+            SiteTouristiqueReservation reservation,
+            Societe? societe = null) =>
             new()
             {
                 IdSiteTouristiqueTicket = ticket.IdSiteTouristiqueTicket,
@@ -18,7 +20,8 @@ namespace CongoTravel.Helpers.SiteTouristique
                 UsedAtUtc = ticket.UsedAtUtc,
                 IdSiteTouristiqueReservation = reservation.IdSiteTouristiqueReservation,
                 ReferenceReservation = reservation.ReferenceReservation,
-                IdSiteTouristiqueJournee = reservation.IdSiteTouristiqueJournee
+                IdSiteTouristiqueJournee = reservation.IdSiteTouristiqueJournee,
+                LogoSociete = societe?.Logo ?? reservation.Societe?.Logo
             };
 
         public static SiteTouristiqueTicketDetailResponseDto ToDetailDto(
@@ -41,7 +44,8 @@ namespace CongoTravel.Helpers.SiteTouristique
                 IdSiteTouristique = journee.IdSiteTouristique,
                 CodeLieu = journee.Lieu?.CodeLieu,
                 NomLieu = journee.Lieu?.Nom,
-                DateVisite = journee.DateVisite
+                DateVisite = journee.DateVisite,
+                LogoSociete = reservation.Societe?.Logo
             };
 
         public static SiteTouristiqueTicketCheckResponseDto ToCheckResponse(
@@ -63,7 +67,8 @@ namespace CongoTravel.Helpers.SiteTouristique
                 CodeLieu = journee?.Lieu?.CodeLieu,
                 NomLieu = journee?.Lieu?.Nom,
                 DateVisite = journee?.DateVisite,
-                CustomerRef = reservation?.CustomerRef
+                CustomerRef = reservation?.CustomerRef,
+                LogoSociete = reservation?.Societe?.Logo
             };
 
         public static SiteTouristiqueTicketUseResponseDto ToUseResponse(SiteTouristiqueTicket ticket, bool alreadyUsed) =>

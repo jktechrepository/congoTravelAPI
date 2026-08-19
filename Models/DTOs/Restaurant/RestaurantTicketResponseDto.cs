@@ -10,6 +10,8 @@ namespace CongoTravel.Models.DTOs.Restaurant
 
         public string Status { get; set; } = string.Empty;
 
+        public string? LogoSociete { get; set; }
+
         public DateTime IssuedAtUtc { get; set; }
 
         public DateTime? UsedAtUtc { get; set; }

@@ -71,6 +71,7 @@ namespace CongoTravel.Services.Evenement
                 NomOrganisateur = NormalizeOptionalText(request.NomOrganisateur),
                 TelephoneOrganisateur = NormalizeOptionalText(request.TelephoneOrganisateur),
                 MailOrganisateur = NormalizeOptionalEmail(request.MailOrganisateur),
+                LogoOrganisateur = NormalizeOptionalText(request.LogoOrganisateur),
                 Ville = NormalizeOptionalText(request.Ville),
                 Commune = NormalizeOptionalText(request.Commune),
                 Quartier = NormalizeOptionalText(request.Quartier),
@@ -138,7 +139,9 @@ namespace CongoTravel.Services.Evenement
             var session = await SessionDetailQuery()
                 .FirstOrDefaultAsync(
                     s => s.IdEvenementSession == idEvenementSession
-                         && s.Status == EvenementSessionStatus.Published,
+                         && s.Status == EvenementSessionStatus.Published
+                         && s.Societe != null
+                         && s.Societe.Statut == true,
                     cancellationToken);
 
             return session == null ? null : EvenementSessionMapper.ToResponseDto(session);
@@ -173,7 +176,9 @@ namespace CongoTravel.Services.Evenement
             var query = SessionDetailQuery()
                 .Where(s =>
                     s.CodeSession == normalized
-                    && s.Status == EvenementSessionStatus.Published);
+                    && s.Status == EvenementSessionStatus.Published
+                    && s.Societe != null
+                    && s.Societe.Statut == true);
 
             if (idSociete.HasValue && idSociete.Value > 0)
             {
@@ -215,6 +220,8 @@ namespace CongoTravel.Services.Evenement
             var utcNow = DateTime.UtcNow;
             var query = SessionListQuery()
                 .Where(s => s.Status == EvenementSessionStatus.Published
+                            && s.Societe != null
+                            && s.Societe.Statut == true
                             && ((s.EndAtUtc.HasValue && s.EndAtUtc > utcNow)
                                 || (!s.EndAtUtc.HasValue && s.StartAtUtc.AddHours(24) > utcNow)));
 
@@ -228,7 +235,7 @@ namespace CongoTravel.Services.Evenement
                 query = query.Where(s => s.TypeEvenement == filter.TypeEvenement.Value);
 
             var sessions = await query
-                .OrderByDescending(s => s.StartAtUtc)
+                .OrderBy(s => s.StartAtUtc)
                 .ToListAsync(cancellationToken);
 
             return sessions

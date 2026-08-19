@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using CongoTravel.Data;
 using CongoTravel.Helpers.Restaurant;
+using CongoTravel.Models;
 using CongoTravel.Models.DTOs.Restaurant;
 using CongoTravel.Models.Restaurant;
 using CongoTravel.Models.Restaurant.Enums;
@@ -62,7 +63,7 @@ WHERE `IdRestaurantTicket` = {0}
                 .ToListAsync(cancellationToken);
 
             return rows
-                .Select(row => RestaurantTicketMapper.ToListItemDto(row.Ticket, row.Reservation))
+                .Select(row => RestaurantTicketMapper.ToListItemDto(row.Ticket, row.Reservation, row.Societe))
                 .ToList();
         }
 
@@ -122,13 +123,15 @@ WHERE `IdRestaurantTicket` = {0}
                     on t.IdRestaurantReservationLine equals line.IdRestaurantReservationLine
                 join r in _context.RestaurantReservations.AsNoTracking()
                     on line.IdRestaurantReservation equals r.IdRestaurantReservation
+                join s in _context.Societes.AsNoTracking()
+                    on r.IdSociete equals s.IdSociete
                 where r.IdSociete == idSociete && t.IssuedAtUtc.Date == day
                 orderby t.IssuedAtUtc descending
-                select new TicketListRow { Ticket = t, Reservation = r })
+                select new TicketListRow { Ticket = t, Reservation = r, Societe = s })
                 .ToListAsync(cancellationToken);
 
             return rows
-                .Select(row => RestaurantTicketMapper.ToListItemDto(row.Ticket, row.Reservation))
+                .Select(row => RestaurantTicketMapper.ToListItemDto(row.Ticket, row.Reservation, row.Societe))
                 .ToList();
         }
 
@@ -147,13 +150,15 @@ WHERE `IdRestaurantTicket` = {0}
                     on t.IdRestaurantReservationLine equals line.IdRestaurantReservationLine
                 join r in _context.RestaurantReservations.AsNoTracking()
                     on line.IdRestaurantReservation equals r.IdRestaurantReservation
+                join s in _context.Societes.AsNoTracking()
+                    on r.IdSociete equals s.IdSociete
                 where r.IdSociete == idSociete && t.IssuedAtUtc >= start && t.IssuedAtUtc <= end
                 orderby t.IssuedAtUtc descending
-                select new TicketListRow { Ticket = t, Reservation = r })
+                select new TicketListRow { Ticket = t, Reservation = r, Societe = s })
                 .ToListAsync(cancellationToken);
 
             return rows
-                .Select(row => RestaurantTicketMapper.ToListItemDto(row.Ticket, row.Reservation))
+                .Select(row => RestaurantTicketMapper.ToListItemDto(row.Ticket, row.Reservation, row.Societe))
                 .ToList();
         }
 
@@ -343,8 +348,10 @@ WHERE `IdRestaurantTicket` = {0}
                     on t.IdRestaurantReservationLine equals line.IdRestaurantReservationLine
                 join r in _context.RestaurantReservations.AsNoTracking()
                     on line.IdRestaurantReservation equals r.IdRestaurantReservation
+                join s in _context.Societes.AsNoTracking()
+                    on r.IdSociete equals s.IdSociete
                 where r.IdSociete == idSociete
-                select new TicketListRow { Ticket = t, Reservation = r };
+                select new TicketListRow { Ticket = t, Reservation = r, Societe = s };
 
             if (filter?.Status.HasValue == true)
                 query = query.Where(row => row.Ticket.Status == filter.Status.Value);
@@ -372,6 +379,9 @@ WHERE `IdRestaurantTicket` = {0}
                 .Include(t => t.ReservationLine!)
                     .ThenInclude(l => l.Reservation!)
                         .ThenInclude(r => r.Creneau)
+                .Include(t => t.ReservationLine!)
+                    .ThenInclude(l => l.Reservation!)
+                        .ThenInclude(r => r.Societe)
                 .FirstOrDefaultAsync(t => t.IdRestaurantTicket == idRestaurantTicket, cancellationToken);
 
         private async Task<RestaurantTicket?> LoadTicketGraphAsync(
@@ -383,6 +393,9 @@ WHERE `IdRestaurantTicket` = {0}
                 .Include(t => t.ReservationLine!)
                     .ThenInclude(l => l.Reservation!)
                         .ThenInclude(r => r.Creneau)
+                .Include(t => t.ReservationLine!)
+                    .ThenInclude(l => l.Reservation!)
+                        .ThenInclude(r => r.Societe)
                 .Where(t => t.TicketCode == normalizedCode);
 
             if (asNoTracking)
@@ -424,6 +437,8 @@ WHERE `IdRestaurantTicket` = {0}
             public RestaurantTicket Ticket { get; init; } = null!;
 
             public RestaurantReservation Reservation { get; init; } = null!;
+
+            public Societe Societe { get; init; } = null!;
         }
     }
 }

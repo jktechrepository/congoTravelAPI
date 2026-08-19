@@ -7,7 +7,8 @@ namespace CongoTravel.Helpers.Evenement
     {
         public static EvenementTicketListItemDto ToListItemDto(
             EvenementTicket ticket,
-            EvenementReservation reservation) =>
+            EvenementReservation reservation,
+            EvenementSession? session = null) =>
             new()
             {
                 IdEvenementTicket = ticket.IdEvenementTicket,
@@ -18,7 +19,8 @@ namespace CongoTravel.Helpers.Evenement
                 UsedAtUtc = ticket.UsedAtUtc,
                 IdEvenementReservation = reservation.IdEvenementReservation,
                 ReferenceReservation = reservation.ReferenceReservation,
-                IdEvenementSession = reservation.IdEvenementSession
+                IdEvenementSession = reservation.IdEvenementSession,
+                LogoOrganisateur = session?.LogoOrganisateur ?? reservation.Session?.LogoOrganisateur
             };
 
         public static EvenementTicketDetailResponseDto ToDetailDto(
@@ -40,6 +42,7 @@ namespace CongoTravel.Helpers.Evenement
                 IdEvenementSession = session.IdEvenementSession,
                 CodeSession = session.CodeSession,
                 LibelleSession = session.Libelle,
+                LogoOrganisateur = session.LogoOrganisateur,
                 StartAtUtc = session.StartAtUtc,
                 EndAtUtc = session.EndAtUtc
             };
@@ -62,6 +65,7 @@ namespace CongoTravel.Helpers.Evenement
                 IdEvenementSession = session?.IdEvenementSession,
                 CodeSession = session?.CodeSession,
                 LibelleSession = session?.Libelle,
+                LogoOrganisateur = session?.LogoOrganisateur,
                 StartAtUtc = session?.StartAtUtc,
                 CustomerRef = reservation?.CustomerRef
             };

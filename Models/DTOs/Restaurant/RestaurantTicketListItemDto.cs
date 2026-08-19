@@ -19,5 +19,7 @@ namespace CongoTravel.Models.DTOs.Restaurant
         public string ReferenceReservation { get; set; } = string.Empty;
 
         public int IdRestaurantCreneau { get; set; }
+
+        public string? LogoSociete { get; set; }
     }
 }

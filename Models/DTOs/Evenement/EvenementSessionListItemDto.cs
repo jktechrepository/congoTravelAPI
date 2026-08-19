@@ -36,6 +36,8 @@ namespace CongoTravel.Models.DTOs.Evenement
 
         public string? MailOrganisateur { get; set; }
 
+        public string? LogoOrganisateur { get; set; }
+
         public string? Ville { get; set; }
 
         public string? Commune { get; set; }

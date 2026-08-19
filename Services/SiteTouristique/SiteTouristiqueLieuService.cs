@@ -105,7 +105,10 @@ namespace CongoTravel.Services.SiteTouristique
         {
             var lieu = await LieuDetailQuery()
                 .FirstOrDefaultAsync(
-                    l => l.IdSiteTouristique == idSiteTouristique && l.Status == SiteTouristiqueStatus.Published,
+                    l => l.IdSiteTouristique == idSiteTouristique
+                         && l.Status == SiteTouristiqueStatus.Published
+                         && l.Societe != null
+                         && l.Societe.Statut == true,
                     cancellationToken);
             return lieu == null ? null : SiteTouristiqueLieuMapper.ToResponseDto(lieu);
         }
@@ -134,7 +137,11 @@ namespace CongoTravel.Services.SiteTouristique
 
             var normalized = codeLieu.Trim();
             var query = LieuDetailQuery()
-                .Where(l => l.CodeLieu == normalized && l.Status == SiteTouristiqueStatus.Published);
+                .Where(l =>
+                    l.CodeLieu == normalized
+                    && l.Status == SiteTouristiqueStatus.Published
+                    && l.Societe != null
+                    && l.Societe.Statut == true);
 
             if (idSociete.HasValue && idSociete.Value > 0)
             {
@@ -171,7 +178,10 @@ namespace CongoTravel.Services.SiteTouristique
             SiteTouristiqueLieuListFilter? filter = null,
             CancellationToken cancellationToken = default)
         {
-            var query = LieuListQuery().Where(l => l.Status == SiteTouristiqueStatus.Published);
+            var query = LieuListQuery().Where(l =>
+                l.Status == SiteTouristiqueStatus.Published
+                && l.Societe != null
+                && l.Societe.Statut == true);
             if (filter?.IdSociete.HasValue == true && filter.IdSociete.Value > 0)
                 query = query.Where(l => l.IdSociete == filter.IdSociete.Value);
 

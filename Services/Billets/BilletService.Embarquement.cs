@@ -64,7 +64,10 @@ namespace CongoTravel.Services
             public Voyage? VoyageReference { get; init; }
         }
 
-        private static BilletCheckResponseDto ToCheckResponseDto(Billet billet, BilletEligibiliteResult e)
+        private static BilletCheckResponseDto ToCheckResponseDto(
+            Billet billet,
+            BilletEligibiliteResult e,
+            decimal kiloBagageOffert)
         {
             var voyage = e.VoyageReference ?? billet.Reservation?.Voyage;
             return new BilletCheckResponseDto
@@ -79,7 +82,9 @@ namespace CongoTravel.Services
                 DateDepartVoyage = e.DateDepartVoyage ?? voyage?.DateDepart.Date,
                 HeureDepartVoyage = e.HeureDepartVoyage ?? voyage?.HeureDepart,
                 NomClient = billet.ReservationPassenger?.NomComplet,
-                TelephoneClient = billet.ReservationPassenger?.Telephone
+                TelephoneClient = billet.ReservationPassenger?.Telephone,
+                KiloBagageOffert = kiloBagageOffert,
+                LogoSociete = billet.Societe?.Logo
             };
         }
 
@@ -542,7 +547,7 @@ namespace CongoTravel.Services
         /// <inheritdoc />
         public async Task<BilletCheckResponseDto> CheckBilletAsync(int idBillet, int? idVoyageCible = null)
         {
-            var billet = await GetByIdAsync(idBillet);
+            var billet = await GetBilletForOperationalLookupByIdAsync(idBillet);
             return await CheckBilletCoreAsync(billet, idVoyageCible);
         }
 
@@ -553,8 +558,7 @@ namespace CongoTravel.Services
                 return BilletCheckNonReconnu();
 
             var normalized = qrCode.Trim();
-            var billet = await QueryBilletsWithEmbarquementIncludes()
-                .FirstOrDefaultAsync(b => b.QrCode == normalized);
+            var billet = await GetBilletForOperationalLookupByQrCodeAsync(normalized);
             return await CheckBilletCoreAsync(billet, idVoyageCible);
         }
 
@@ -581,7 +585,11 @@ namespace CongoTravel.Services
                 return BilletCheckNonReconnu();
 
             var elig = await EvaluerEligibiliteEmbarquementAsync(billet, idVoyageCible);
-            return ToCheckResponseDto(billet, elig);
+            var config = await _configSocieteRepository.GetBySocieteAsync(billet.IdSociete);
+            return ToCheckResponseDto(
+                billet,
+                elig,
+                config?.PoidsBagageParKiloOffert ?? 0m);
         }
 
 
@@ -600,7 +608,7 @@ namespace CongoTravel.Services
             {
                 await using var tx = await _context.Database.BeginTransactionAsync();
 
-                var billet = await GetByIdAsync(idBillet);
+                var billet = await GetBilletForOperationalLookupByIdAsync(idBillet);
                 if (billet == null)
                 {
                     return new BilletEmbarquementOperationResult

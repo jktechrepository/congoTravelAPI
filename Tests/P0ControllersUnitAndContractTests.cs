@@ -116,7 +116,7 @@ namespace CongoTravel.Tests
         {
             var voyageRepo = new Mock<IVoyageRepository>();
             SetupVoyageRepoRepartitionEmpty(voyageRepo);
-            voyageRepo.Setup(r => r.GetByIdAsync(123)).ReturnsAsync((Voyage?)null);
+            voyageRepo.Setup(r => r.GetByIdPublicAsync(123)).ReturnsAsync((Voyage?)null);
             var tarifService = new Mock<IVoyageTarifService>();
             var mapper = new Mock<IMapper>();
             var reportService = new Mock<IVoyageReportService>();
@@ -143,7 +143,7 @@ namespace CongoTravel.Tests
         {
             var voyageRepo = new Mock<IVoyageRepository>();
             SetupVoyageRepoRepartitionEmpty(voyageRepo);
-            voyageRepo.Setup(r => r.GetByIdAsync(124)).ReturnsAsync(new Voyage
+            voyageRepo.Setup(r => r.GetByIdPublicAsync(124)).ReturnsAsync(new Voyage
             {
                 Id = 124,
                 Prix = 1000,
@@ -185,6 +185,34 @@ namespace CongoTravel.Tests
             Assert.Contains(payload.Tarifs, t => t.IdCategorieSiege == 1 && t.Prix == 1000);
             Assert.Contains(payload.Tarifs, t => t.IdCategorieSiege == 2 && t.Prix == 1500);
             Assert.Contains(payload.Tarifs, t => t.IdCategorieSiege == 1 && t.Libelle == "ECO");
+        }
+
+        [Fact]
+        public async Task Voyage_GetTarifsCategorieSiege_returns_not_found_when_public_voyage_is_hidden()
+        {
+            var voyageRepo = new Mock<IVoyageRepository>();
+            SetupVoyageRepoRepartitionEmpty(voyageRepo);
+            voyageRepo.Setup(r => r.GetByIdPublicAsync(125)).ReturnsAsync((Voyage?)null);
+            var tarifService = new Mock<IVoyageTarifService>();
+            var mapper = new Mock<IMapper>();
+            var reportService = new Mock<IVoyageReportService>();
+            var currentUser = new Mock<ICurrentUserService>();
+            currentUser.SetupGet(x => x.SocieteId).Returns(1);
+            currentUser.SetupGet(x => x.UserId).Returns(1);
+            currentUser.SetupGet(x => x.UserName).Returns("tester");
+            var controller = new VoyageController(
+                voyageRepo.Object,
+                tarifService.Object,
+                reportService.Object,
+                currentUser.Object,
+                CreateVoyageControllerDbContext(),
+                mapper.Object,
+                NullLogger<VoyageController>.Instance);
+
+            var action = await controller.GetTarifsCategorieSiege(125);
+
+            Assert.IsType<NotFoundObjectResult>(action.Result);
+            tarifService.Verify(t => t.GetTarifsByVoyageAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]

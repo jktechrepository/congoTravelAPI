@@ -1,3 +1,4 @@
+using CongoTravel.Models;
 using CongoTravel.Models.DTOs.Restaurant;
 using CongoTravel.Models.Restaurant;
 
@@ -81,7 +82,7 @@ namespace CongoTravel.Helpers.Restaurant
             var tickets = reservation.Lines
                 .SelectMany(l => l.Tickets)
                 .OrderBy(t => t.IdRestaurantTicket)
-                .Select(ToTicketResponse)
+                .Select(t => ToTicketResponse(t, reservation.Societe))
                 .ToList();
 
             return new()
@@ -114,13 +115,16 @@ namespace CongoTravel.Helpers.Restaurant
             };
         }
 
-        public static RestaurantTicketResponseDto ToTicketResponse(RestaurantTicket ticket) =>
+        public static RestaurantTicketResponseDto ToTicketResponse(
+            RestaurantTicket ticket,
+            Societe? societe = null) =>
             new()
             {
                 IdRestaurantTicket = ticket.IdRestaurantTicket,
                 IdRestaurantReservationLine = ticket.IdRestaurantReservationLine,
                 TicketCode = ticket.TicketCode,
                 Status = ticket.Status.ToString(),
+                LogoSociete = societe?.Logo ?? ticket.ReservationLine?.Reservation?.Societe?.Logo,
                 IssuedAtUtc = ticket.IssuedAtUtc,
                 UsedAtUtc = ticket.UsedAtUtc
             };

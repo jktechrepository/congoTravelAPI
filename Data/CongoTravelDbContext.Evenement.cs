@@ -43,6 +43,7 @@ namespace CongoTravel.Data
                 entity.Property(e => e.NomOrganisateur).HasMaxLength(255);
                 entity.Property(e => e.TelephoneOrganisateur).HasMaxLength(50);
                 entity.Property(e => e.MailOrganisateur).HasMaxLength(255);
+                entity.Property(e => e.LogoOrganisateur).HasMaxLength(1000);
 
                 entity.Property(e => e.Ville).HasMaxLength(100);
                 entity.Property(e => e.Commune).HasMaxLength(100);

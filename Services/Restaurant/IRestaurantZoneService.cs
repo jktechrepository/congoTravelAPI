@@ -14,8 +14,18 @@ namespace CongoTravel.Services.Restaurant
             int idSociete,
             CancellationToken cancellationToken = default);
 
+        Task<RestaurantZoneResponseDto?> GetPublishedByIdAsync(
+            int idRestaurantZone,
+            CancellationToken cancellationToken = default);
+
         Task<IReadOnlyList<RestaurantZoneResponseDto>> ListAsync(
             int idSociete,
+            int? idRestaurant = null,
+            bool actifsSeulement = false,
+            CancellationToken cancellationToken = default);
+
+        Task<IReadOnlyList<RestaurantZoneResponseDto>> ListPublishedGlobalAsync(
+            int? idSociete = null,
             int? idRestaurant = null,
             bool actifsSeulement = false,
             CancellationToken cancellationToken = default);

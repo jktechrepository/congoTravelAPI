@@ -34,6 +34,13 @@ Body inclut passagers, sièges, et bloc paiement (`montantPaye`, `methodePaiemen
 POST /api/Reservation/reservation_with_paiement_electronique
 ```
 
+### Contrat devise (obligatoire)
+
+- `montantAPaye` doit toujours être envoyé dans la devise tarif du voyage (`codeDeviseVoyage`).
+- `codeDevisePaiement` indique la devise débitée chez FlexPay (`CDF` ou `USD` uniquement).
+- Si `codeDevisePaiement` diffère de la devise tarif, l’API applique le taux actif société.
+- Le callback/verify rejette une confirmation dont la devise provider diffère de la devise attendue.
+
 ### Flux mobile recommandé
 
 ```

@@ -78,7 +78,7 @@ namespace CongoTravel.Helpers.Evenement
             var tickets = reservation.Lines
                 .SelectMany(l => l.Tickets)
                 .OrderBy(t => t.IdEvenementTicket)
-                .Select(ToTicketResponse)
+                .Select(t => ToTicketResponse(t, reservation.Session))
                 .ToList();
 
             return new EvenementReservationResponseDto
@@ -138,13 +138,16 @@ namespace CongoTravel.Helpers.Evenement
                 DateCreation = payment.DateCreation
             };
 
-        public static EvenementTicketResponseDto ToTicketResponse(EvenementTicket ticket) =>
+        public static EvenementTicketResponseDto ToTicketResponse(
+            EvenementTicket ticket,
+            EvenementSession? session = null) =>
             new()
             {
                 IdEvenementTicket = ticket.IdEvenementTicket,
                 IdEvenementReservationLine = ticket.IdEvenementReservationLine,
                 TicketCode = ticket.TicketCode,
                 Status = ticket.Status.ToString(),
+                LogoOrganisateur = session?.LogoOrganisateur ?? ticket.ReservationLine?.Reservation?.Session?.LogoOrganisateur,
                 IssuedAtUtc = ticket.IssuedAtUtc,
                 UsedAtUtc = ticket.UsedAtUtc
             };

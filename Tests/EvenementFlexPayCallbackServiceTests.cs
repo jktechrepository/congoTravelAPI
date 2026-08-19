@@ -109,6 +109,25 @@ namespace CongoTravel.Tests
         }
 
         [Fact]
+        public async Task ProcessCallbackAsync_rejects_currency_mismatch()
+        {
+            await using var ctx = BuildDb(nameof(ProcessCallbackAsync_rejects_currency_mismatch));
+            var (_, _, orderNumber) = await EvenementTestFactories.SeedPendingFlexPayPaymentAsync(ctx, quantity: 1);
+            var service = CreateCallbackService(ctx);
+
+            var result = await service.ProcessCallbackAsync(new FlexPayCallbackDto
+            {
+                Code = "0",
+                OrderNumber = orderNumber,
+                Amount = "20",
+                Currency = "CDF"
+            });
+
+            Assert.False(result.Success);
+            Assert.Contains("devise callback", result.Message, StringComparison.OrdinalIgnoreCase);
+        }
+
+        [Fact]
         public async Task ProcessCallbackAsync_rejects_expired_hold_and_marks_payment_failed()
         {
             await using var ctx = BuildDb(nameof(ProcessCallbackAsync_rejects_expired_hold_and_marks_payment_failed));

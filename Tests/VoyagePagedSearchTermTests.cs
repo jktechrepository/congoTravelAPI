@@ -113,7 +113,7 @@ namespace CongoTravel.Tests
             await ctx.SaveChangesAsync();
         }
 
-        private static async Task AddOtherSocieteVoyageAsync(CongoTravelDbContext ctx)
+        private static async Task<(int IdSociete, int IdVoyage)> AddOtherSocieteVoyageAsync(CongoTravelDbContext ctx)
         {
             var societe2 = new Societe { Nom = "OtherCo", DateCreation = DateTime.UtcNow };
             ctx.Societes.Add(societe2);
@@ -157,7 +157,7 @@ namespace CongoTravel.Tests
             ctx.Destinations.Add(dest2);
             await ctx.SaveChangesAsync();
 
-            ctx.Voyages.Add(new Voyage
+            var voyage = new Voyage
             {
                 DateDepart = new DateTime(2026, 7, 20),
                 HeureDepart = new TimeSpan(10, 0, 0),
@@ -168,8 +168,11 @@ namespace CongoTravel.Tests
                 IdSite = site2.IdSite,
                 Statut = true,
                 DateCreation = DateTime.UtcNow
-            });
+            };
+            ctx.Voyages.Add(voyage);
             await ctx.SaveChangesAsync();
+
+            return (societe2.IdSociete, voyage.Id);
         }
 
         private static (DateTime Debut, DateTime Fin) DayRange(DateTime date) =>
@@ -387,6 +390,47 @@ namespace CongoTravel.Tests
                 idSociete: seed.IdSociete);
             Assert.Equal(1, avecSociete.TotalCount);
             Assert.Equal(seed.IdSociete, avecSociete.Data.Single().IdSociete);
+        }
+
+        [Fact]
+        public async Task GetPagedPublicAsync_excludes_voyages_of_inactive_societe()
+        {
+            var db = nameof(GetPagedPublicAsync_excludes_voyages_of_inactive_societe);
+            await using var ctx = new CongoTravelDbContext(Options(db));
+            await SeedVoyagePagedContextAsync(ctx);
+            var (inactiveSocieteId, inactiveVoyageId) = await AddOtherSocieteVoyageAsync(ctx);
+
+            var inactiveSociete = await ctx.Societes.FirstAsync(s => s.IdSociete == inactiveSocieteId);
+            inactiveSociete.Statut = false;
+            await ctx.SaveChangesAsync();
+
+            var svc = CreateService(ctx);
+            var result = await svc.GetPagedPublicAsync(new PagedRequest { PageNumber = 1, PageSize = 20 });
+
+            Assert.Equal(1, result.TotalCount);
+            Assert.DoesNotContain(result.Data, v => v.Id == inactiveVoyageId);
+            Assert.All(result.Data, v => Assert.NotEqual(inactiveSocieteId, v.IdSociete));
+        }
+
+        [Fact]
+        public async Task GetBySocietePagedPublicAsync_returns_empty_for_inactive_societe()
+        {
+            var db = nameof(GetBySocietePagedPublicAsync_returns_empty_for_inactive_societe);
+            await using var ctx = new CongoTravelDbContext(Options(db));
+            await SeedVoyagePagedContextAsync(ctx);
+            var (inactiveSocieteId, _) = await AddOtherSocieteVoyageAsync(ctx);
+
+            var inactiveSociete = await ctx.Societes.FirstAsync(s => s.IdSociete == inactiveSocieteId);
+            inactiveSociete.Statut = false;
+            await ctx.SaveChangesAsync();
+
+            var svc = CreateService(ctx);
+            var result = await svc.GetBySocietePagedPublicAsync(
+                inactiveSocieteId,
+                new PagedRequest { PageNumber = 1, PageSize = 20 });
+
+            Assert.Equal(0, result.TotalCount);
+            Assert.Empty(result.Data);
         }
     }
 }

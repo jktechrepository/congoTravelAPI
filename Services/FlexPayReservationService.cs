@@ -77,9 +77,14 @@ namespace CongoTravel.Services
             if (dto.Paiement.MontantAPaye <= 0)
                 throw new InvalidOperationException("FlexPay exige un paiement intégral : montantAPaye doit être > 0.");
 
-            var codeDevisePaiement = dto.Paiement.CodeDevisePaiement.Trim().ToUpperInvariant();
-            if (codeDevisePaiement is not ("CDF" or "USD"))
-                throw new InvalidOperationException("FlexPay n'accepte que CDF ou USD comme devise de paiement.");
+            var codeDevisePaiement = FlexPayCurrencyPolicy.NormalizePaymentCurrencyOrThrow(
+                dto.Paiement.CodeDevisePaiement,
+                "FlexPay");
+            FlexPayCurrencyPolicy.EnsureChannelCurrencySupported(
+                _flexPayOptions,
+                methode,
+                codeDevisePaiement,
+                "FlexPay");
 
             if (methode == MethodePaiementHelper.MobileMoney
                 && string.IsNullOrWhiteSpace(dto.Paiement.Phone))
@@ -147,7 +152,8 @@ namespace CongoTravel.Services
                 {
                     throw new InvalidOperationException(
                         $"Montant à payer incohérent : attendu {montantAttendu} {codeDeviseVoyage} " +
-                        $"(billets {montantBillets} + supplément électronique {supplement}), reçu {dto.Paiement.MontantAPaye}.");
+                        $"(billets {montantBillets} + supplément électronique {supplement}), reçu {dto.Paiement.MontantAPaye}. " +
+                        $"Règle API: MontantAPaye doit être saisi dans la devise tarif {codeDeviseVoyage}.");
                 }
 
                 decimal montantFlexPay = montantAttendu;
@@ -288,8 +294,15 @@ namespace CongoTravel.Services
                 }
 
                 _logger.LogInformation(
-                    "FlexPay initiation OK — Commande={CommandeId}, Order={OrderNumber}, Voyage={VoyageId}",
-                    idCommande, orderNumber, dto.Reservation.IdVoyage);
+                    "FlexPay initiation OK — Commande={CommandeId}, Order={OrderNumber}, Voyage={VoyageId}, Tarif={MontantTarif} {DeviseTarif}, Paiement={MontantPaiement} {DevisePaiement}, Taux={Taux}",
+                    idCommande,
+                    orderNumber,
+                    dto.Reservation.IdVoyage,
+                    montantAttendu,
+                    codeDeviseVoyage,
+                    montantFlexPay,
+                    codeDevisePaiement,
+                    taux);
 
                 var initiationMessage = methode == MethodePaiementHelper.CarteBancaire
                     ? "Redirigez le client vers paymentUrl pour finaliser le paiement carte."

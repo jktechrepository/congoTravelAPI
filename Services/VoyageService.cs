@@ -69,6 +69,27 @@ namespace CongoTravel.Services
                 .Include(v => v.Vehicule)
                     .ThenInclude(vh => vh!.Photos);
 
+        private static IQueryable<Voyage> ApplyActiveSocieteFilter(IQueryable<Voyage> query) =>
+            query.Where(v => v.Societe != null && v.Societe.Statut == true);
+
+        private IQueryable<Voyage> BuildVoyageReadQuery(bool publicOnly)
+        {
+            IQueryable<Voyage> query = _context.Voyages;
+            if (publicOnly)
+                query = ApplyActiveSocieteFilter(query);
+
+            return IncludeVehiculeNavigations(query)
+                .Include(v => v.Destination)
+                .Include(v => v.Site)
+                .Include(v => v.VoyageTarifsCategorieSiege)
+                    .ThenInclude(t => t.CategorieSiege);
+        }
+
+        private IQueryable<Voyage> BuildVoyageDetailQuery(bool publicOnly) =>
+            BuildVoyageReadQuery(publicOnly)
+                .Include(v => v.VoyageDestinations!)
+                    .ThenInclude(vd => vd.Destination);
+
         /// <summary>
         /// Filtre recherche traduisible en SQL (évite <c>ToString(format)</c> non supporté par EF Core / MySQL).
         /// </summary>
@@ -136,6 +157,25 @@ namespace CongoTravel.Services
             }
         }
 
+        public async Task<IEnumerable<Voyage>> GetAllPublicAsync(DateTime? dateDepartDebut = null, DateTime? dateDepartFin = null)
+        {
+            try
+            {
+                var filtreDateActif = dateDepartDebut.HasValue && dateDepartFin.HasValue;
+                var query = ApplyDateDepartRange(
+                    BuildVoyageReadQuery(publicOnly: true),
+                    dateDepartDebut,
+                    dateDepartFin);
+
+                return await OrderVoyagesForListe(query, filtreDateActif).ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur lors de la récupération publique de tous les voyages");
+                throw;
+            }
+        }
+
         public async Task<Voyage?> GetByIdAsync(int id)
         {
             try
@@ -152,6 +192,20 @@ namespace CongoTravel.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Erreur lors de la récupération du voyage {VoyageId}", id);
+                throw;
+            }
+        }
+
+        public async Task<Voyage?> GetByIdPublicAsync(int id)
+        {
+            try
+            {
+                return await BuildVoyageDetailQuery(publicOnly: true)
+                    .FirstOrDefaultAsync(v => v.Id == id);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur lors de la récupération publique du voyage {VoyageId}", id);
                 throw;
             }
         }
@@ -544,6 +598,28 @@ namespace CongoTravel.Services
             }
         }
 
+        public async Task<IEnumerable<Voyage>> GetBySocietePublicAsync(int idSociete, DateTime? dateDepartDebut = null, DateTime? dateDepartFin = null)
+        {
+            try
+            {
+                var query = ApplyDateDepartRange(
+                    BuildVoyageReadQuery(publicOnly: true)
+                        .Where(v => v.IdSociete == idSociete),
+                    dateDepartDebut,
+                    dateDepartFin);
+
+                return await query
+                    .OrderBy(v => v.DateDepart)
+                    .ThenBy(v => v.HeureDepart)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur lors de la récupération publique des voyages pour la société {SocieteId}", idSociete);
+                throw;
+            }
+        }
+
         public async Task<IEnumerable<Voyage>> GetBySiteAsync(int idSite, DateTime? dateDepartDebut = null, DateTime? dateDepartFin = null)
         {
             try
@@ -570,6 +646,28 @@ namespace CongoTravel.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Erreur lors de la récupération des voyages pour le site {SiteId}", idSite);
+                throw;
+            }
+        }
+
+        public async Task<IEnumerable<Voyage>> GetBySitePublicAsync(int idSite, DateTime? dateDepartDebut = null, DateTime? dateDepartFin = null)
+        {
+            try
+            {
+                var query = ApplyDateDepartRange(
+                    BuildVoyageReadQuery(publicOnly: true)
+                        .Where(v => v.IdSite == idSite),
+                    dateDepartDebut,
+                    dateDepartFin);
+
+                return await query
+                    .OrderBy(v => v.DateDepart)
+                    .ThenBy(v => v.HeureDepart)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur lors de la récupération publique des voyages pour le site {SiteId}", idSite);
                 throw;
             }
         }
@@ -634,6 +732,28 @@ namespace CongoTravel.Services
             }
         }
 
+        public async Task<IEnumerable<Voyage>> GetByDestinationPublicAsync(int idDestination, DateTime? dateDepartDebut = null, DateTime? dateDepartFin = null)
+        {
+            try
+            {
+                var query = ApplyDateDepartRange(
+                    BuildVoyageReadQuery(publicOnly: true)
+                        .Where(v => v.IdDestination == idDestination),
+                    dateDepartDebut,
+                    dateDepartFin);
+
+                return await query
+                    .OrderBy(v => v.DateDepart)
+                    .ThenBy(v => v.HeureDepart)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur lors de la récupération publique des voyages pour la destination {DestinationId}", idDestination);
+                throw;
+            }
+        }
+
         public async Task<IEnumerable<Voyage>> GetByDateAsync(DateTime date)
         {
             try
@@ -654,6 +774,22 @@ namespace CongoTravel.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Erreur lors de la récupération des voyages pour la date {Date}", date);
+                throw;
+            }
+        }
+
+        public async Task<IEnumerable<Voyage>> GetByDatePublicAsync(DateTime date)
+        {
+            try
+            {
+                return await BuildVoyageReadQuery(publicOnly: true)
+                    .Where(v => v.DateDepart.Date == date.Date)
+                    .OrderBy(v => v.HeureDepart)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur lors de la récupération publique des voyages pour la date {Date}", date);
                 throw;
             }
         }
@@ -683,6 +819,23 @@ namespace CongoTravel.Services
             }
         }
 
+        public async Task<IEnumerable<Voyage>> GetByVehiculeAndDestinationPublicAsync(int idVehicule, int idDestination)
+        {
+            try
+            {
+                return await BuildVoyageReadQuery(publicOnly: true)
+                    .Where(v => v.IdVehicule == idVehicule && v.IdDestination == idDestination)
+                    .OrderBy(v => v.DateDepart)
+                    .ThenBy(v => v.HeureDepart)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur lors de la récupération publique des voyages pour le véhicule {VehiculeId} et destination {DestinationId}", idVehicule, idDestination);
+                throw;
+            }
+        }
+
         public async Task<IEnumerable<Voyage>> GetByDateRangeAsync(DateTime dateDebut, DateTime dateFin)
         {
             try
@@ -704,6 +857,23 @@ namespace CongoTravel.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Erreur lors de la récupération des voyages entre {DateDebut} et {DateFin}", dateDebut, dateFin);
+                throw;
+            }
+        }
+
+        public async Task<IEnumerable<Voyage>> GetByDateRangePublicAsync(DateTime dateDebut, DateTime dateFin)
+        {
+            try
+            {
+                return await BuildVoyageReadQuery(publicOnly: true)
+                    .Where(v => v.DateDepart.Date >= dateDebut.Date && v.DateDepart.Date <= dateFin.Date)
+                    .OrderBy(v => v.DateDepart)
+                    .ThenBy(v => v.HeureDepart)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur lors de la récupération publique des voyages entre {DateDebut} et {DateFin}", dateDebut, dateFin);
                 throw;
             }
         }
@@ -757,6 +927,22 @@ namespace CongoTravel.Services
             }
         }
 
+        public async Task<IEnumerable<Voyage>> GetByPriceRangePublicAsync(int prixMin, int prixMax)
+        {
+            try
+            {
+                return await BuildVoyageReadQuery(publicOnly: true)
+                    .Where(v => v.Prix >= prixMin && v.Prix <= prixMax)
+                    .OrderBy(v => v.Prix)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur lors de la récupération publique des voyages avec prix entre {PrixMin} et {PrixMax}", prixMin, prixMax);
+                throw;
+            }
+        }
+
         // Méthodes d'existence
         public async Task<bool> ExistsAsync(int id)
         {
@@ -767,6 +953,22 @@ namespace CongoTravel.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Erreur lors de la vérification d'existence du voyage {VoyageId}", id);
+                throw;
+            }
+        }
+
+        public async Task<bool> ExistsPublicAsync(int id)
+        {
+            try
+            {
+                return await _context.Voyages.AnyAsync(v =>
+                    v.Id == id &&
+                    v.Societe != null &&
+                    v.Societe.Statut == true);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur lors de la vérification publique d'existence du voyage {VoyageId}", id);
                 throw;
             }
         }
@@ -851,6 +1053,68 @@ namespace CongoTravel.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Erreur lors de la récupération paginée des voyages");
+                throw;
+            }
+        }
+
+        public async Task<PagedResult<Voyage>> GetPagedPublicAsync(
+            PagedRequest request,
+            DateTime? dateDepartDebut = null,
+            DateTime? dateDepartFin = null)
+        {
+            try
+            {
+                var query = ApplyDateDepartRange(
+                    BuildVoyageReadQuery(publicOnly: true),
+                    dateDepartDebut,
+                    dateDepartFin);
+
+                query = query.AsQueryable();
+                query = ApplyVoyageSearchTerm(query, request.SearchTerm);
+
+                var totalCount = await query.CountAsync();
+
+                if (!string.IsNullOrEmpty(request.SortBy))
+                {
+                    switch (request.SortBy.ToLower())
+                    {
+                        case "date":
+                            query = request.SortDescending
+                                ? query.OrderByDescending(v => v.DateDepart).ThenByDescending(v => v.HeureDepart)
+                                : query.OrderBy(v => v.DateDepart).ThenBy(v => v.HeureDepart);
+                            break;
+                        case "prix":
+                            query = request.SortDescending
+                                ? query.OrderByDescending(v => v.Prix)
+                                : query.OrderBy(v => v.Prix);
+                            break;
+                        case "vehicule":
+                            query = request.SortDescending
+                                ? query.OrderByDescending(v => v.Vehicule != null ? v.Vehicule.AliasVehicule : "")
+                                : query.OrderBy(v => v.Vehicule != null ? v.Vehicule.AliasVehicule : "");
+                            break;
+                        default:
+                            query = query.OrderByDescending(v => v.DateCreation);
+                            break;
+                    }
+                }
+                else
+                {
+                    query = dateDepartDebut.HasValue && dateDepartFin.HasValue
+                        ? query.OrderBy(v => v.DateDepart).ThenBy(v => v.HeureDepart)
+                        : query.OrderByDescending(v => v.DateCreation);
+                }
+
+                var items = await query
+                    .Skip((request.PageNumber - 1) * request.PageSize)
+                    .Take(request.PageSize)
+                    .ToListAsync();
+
+                return new PagedResult<Voyage>(items, totalCount, request.PageNumber, request.PageSize);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur lors de la récupération paginée publique des voyages");
                 throw;
             }
         }
@@ -943,6 +1207,90 @@ namespace CongoTravel.Services
             }
         }
 
+        public async Task<PagedResult<Voyage>> SearchPagedPublicAsync(
+            PagedRequest request,
+            string? villeDepart = null,
+            string? villeArrivee = null,
+            int? idSociete = null,
+            DateTime? dateDepartDebut = null,
+            DateTime? dateDepartFin = null)
+        {
+            try
+            {
+                var depart = NormalizeSearchText(villeDepart);
+                var arrivee = NormalizeSearchText(villeArrivee);
+
+                var query = ApplyDateDepartRange(
+                    BuildVoyageReadQuery(publicOnly: true),
+                    dateDepartDebut,
+                    dateDepartFin);
+
+                if (idSociete.HasValue)
+                    query = query.Where(v => v.IdSociete == idSociete.Value);
+
+                if (depart != null)
+                    query = query.Where(v =>
+                        v.Destination != null &&
+                        v.Destination.VilleDepart.ToLower().Contains(depart));
+
+                if (arrivee != null)
+                    query = query.Where(v =>
+                        v.Destination != null &&
+                        v.Destination.VilleArrivee.ToLower().Contains(arrivee));
+
+                query = query.AsQueryable();
+                query = ApplyVoyageSearchTerm(query, request.SearchTerm);
+
+                var totalCount = await query.CountAsync();
+
+                if (!string.IsNullOrEmpty(request.SortBy))
+                {
+                    switch (request.SortBy.ToLower())
+                    {
+                        case "date":
+                            query = request.SortDescending
+                                ? query.OrderByDescending(v => v.DateDepart).ThenByDescending(v => v.HeureDepart)
+                                : query.OrderBy(v => v.DateDepart).ThenBy(v => v.HeureDepart);
+                            break;
+                        case "prix":
+                            query = request.SortDescending
+                                ? query.OrderByDescending(v => v.Prix)
+                                : query.OrderBy(v => v.Prix);
+                            break;
+                        case "vehicule":
+                            query = request.SortDescending
+                                ? query.OrderByDescending(v => v.Vehicule != null ? v.Vehicule.AliasVehicule : "")
+                                : query.OrderBy(v => v.Vehicule != null ? v.Vehicule.AliasVehicule : "");
+                            break;
+                        default:
+                            query = query.OrderByDescending(v => v.DateCreation);
+                            break;
+                    }
+                }
+                else
+                {
+                    query = OrderVoyagesForListe(query, dateDepartDebut.HasValue && dateDepartFin.HasValue);
+                }
+
+                var items = await query
+                    .Skip((request.PageNumber - 1) * request.PageSize)
+                    .Take(request.PageSize)
+                    .ToListAsync();
+
+                return new PagedResult<Voyage>(items, totalCount, request.PageNumber, request.PageSize);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(
+                    ex,
+                    "Erreur lors de la recherche paginée publique des voyages (idSociete: {IdSociete}, villeDepart: {VilleDepart}, villeArrivee: {VilleArrivee})",
+                    idSociete,
+                    villeDepart,
+                    villeArrivee);
+                throw;
+            }
+        }
+
         public async Task<PagedResult<Voyage>> GetBySocietePagedAsync(
             int idSociete,
             PagedRequest request,
@@ -1005,6 +1353,63 @@ namespace CongoTravel.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Erreur lors de la récupération paginée des voyages pour la société {SocieteId}", idSociete);
+                throw;
+            }
+        }
+
+        public async Task<PagedResult<Voyage>> GetBySocietePagedPublicAsync(
+            int idSociete,
+            PagedRequest request,
+            DateTime? dateDepartDebut = null,
+            DateTime? dateDepartFin = null)
+        {
+            try
+            {
+                var query = ApplyDateDepartRange(
+                    BuildVoyageReadQuery(publicOnly: true)
+                        .Where(v => v.IdSociete == idSociete),
+                    dateDepartDebut,
+                    dateDepartFin);
+
+                query = query.AsQueryable();
+                query = ApplyVoyageSearchTerm(query, request.SearchTerm);
+
+                var totalCount = await query.CountAsync();
+
+                if (!string.IsNullOrEmpty(request.SortBy))
+                {
+                    switch (request.SortBy.ToLower())
+                    {
+                        case "date":
+                            query = request.SortDescending
+                                ? query.OrderByDescending(v => v.DateDepart).ThenByDescending(v => v.HeureDepart)
+                                : query.OrderBy(v => v.DateDepart).ThenBy(v => v.HeureDepart);
+                            break;
+                        case "prix":
+                            query = request.SortDescending
+                                ? query.OrderByDescending(v => v.Prix)
+                                : query.OrderBy(v => v.Prix);
+                            break;
+                        default:
+                            query = query.OrderBy(v => v.DateDepart).ThenBy(v => v.HeureDepart);
+                            break;
+                    }
+                }
+                else
+                {
+                    query = OrderVoyagesForListe(query, dateDepartDebut.HasValue && dateDepartFin.HasValue);
+                }
+
+                var items = await query
+                    .Skip((request.PageNumber - 1) * request.PageSize)
+                    .Take(request.PageSize)
+                    .ToListAsync();
+
+                return new PagedResult<Voyage>(items, totalCount, request.PageNumber, request.PageSize);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur lors de la récupération paginée publique des voyages pour la société {SocieteId}", idSociete);
                 throw;
             }
         }
@@ -1075,6 +1480,63 @@ namespace CongoTravel.Services
             }
         }
 
+        public async Task<PagedResult<Voyage>> GetBySitePagedPublicAsync(
+            int idSite,
+            PagedRequest request,
+            DateTime? dateDepartDebut = null,
+            DateTime? dateDepartFin = null)
+        {
+            try
+            {
+                var query = ApplyDateDepartRange(
+                    BuildVoyageReadQuery(publicOnly: true)
+                        .Where(v => v.IdSite == idSite),
+                    dateDepartDebut,
+                    dateDepartFin);
+
+                query = query.AsQueryable();
+                query = ApplyVoyageSearchTerm(query, request.SearchTerm);
+
+                var totalCount = await query.CountAsync();
+
+                if (!string.IsNullOrEmpty(request.SortBy))
+                {
+                    switch (request.SortBy.ToLower())
+                    {
+                        case "date":
+                            query = request.SortDescending
+                                ? query.OrderByDescending(v => v.DateDepart).ThenByDescending(v => v.HeureDepart)
+                                : query.OrderBy(v => v.DateDepart).ThenBy(v => v.HeureDepart);
+                            break;
+                        case "prix":
+                            query = request.SortDescending
+                                ? query.OrderByDescending(v => v.Prix)
+                                : query.OrderBy(v => v.Prix);
+                            break;
+                        default:
+                            query = query.OrderBy(v => v.DateDepart).ThenBy(v => v.HeureDepart);
+                            break;
+                    }
+                }
+                else
+                {
+                    query = OrderVoyagesForListe(query, dateDepartDebut.HasValue && dateDepartFin.HasValue);
+                }
+
+                var items = await query
+                    .Skip((request.PageNumber - 1) * request.PageSize)
+                    .Take(request.PageSize)
+                    .ToListAsync();
+
+                return new PagedResult<Voyage>(items, totalCount, request.PageNumber, request.PageSize);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur lors de la récupération paginée publique des voyages pour le site {SiteId}", idSite);
+                throw;
+            }
+        }
+
         public async Task<PagedResult<Voyage>> GetByVehiculePagedAsync(
             int idVehicule,
             PagedRequest request,
@@ -1141,6 +1603,63 @@ namespace CongoTravel.Services
             }
         }
 
+        public async Task<PagedResult<Voyage>> GetByVehiculePagedPublicAsync(
+            int idVehicule,
+            PagedRequest request,
+            DateTime? dateDepartDebut = null,
+            DateTime? dateDepartFin = null)
+        {
+            try
+            {
+                var query = ApplyDateDepartRange(
+                    BuildVoyageReadQuery(publicOnly: true)
+                        .Where(v => v.IdVehicule == idVehicule),
+                    dateDepartDebut,
+                    dateDepartFin);
+
+                query = query.AsQueryable();
+                query = ApplyVoyageSearchTerm(query, request.SearchTerm);
+
+                var totalCount = await query.CountAsync();
+
+                if (!string.IsNullOrEmpty(request.SortBy))
+                {
+                    switch (request.SortBy.ToLower())
+                    {
+                        case "date":
+                            query = request.SortDescending
+                                ? query.OrderByDescending(v => v.DateDepart).ThenByDescending(v => v.HeureDepart)
+                                : query.OrderBy(v => v.DateDepart).ThenBy(v => v.HeureDepart);
+                            break;
+                        case "prix":
+                            query = request.SortDescending
+                                ? query.OrderByDescending(v => v.Prix)
+                                : query.OrderBy(v => v.Prix);
+                            break;
+                        default:
+                            query = query.OrderBy(v => v.DateDepart).ThenBy(v => v.HeureDepart);
+                            break;
+                    }
+                }
+                else
+                {
+                    query = OrderVoyagesForListe(query, dateDepartDebut.HasValue && dateDepartFin.HasValue);
+                }
+
+                var items = await query
+                    .Skip((request.PageNumber - 1) * request.PageSize)
+                    .Take(request.PageSize)
+                    .ToListAsync();
+
+                return new PagedResult<Voyage>(items, totalCount, request.PageNumber, request.PageSize);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur lors de la récupération paginée publique des voyages pour le véhicule {VehiculeId}", idVehicule);
+                throw;
+            }
+        }
+
         public async Task<PagedResult<Voyage>> GetByDestinationPagedAsync(
             int idDestination,
             PagedRequest request,
@@ -1203,6 +1722,63 @@ namespace CongoTravel.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Erreur lors de la récupération paginée des voyages pour la destination {DestinationId}", idDestination);
+                throw;
+            }
+        }
+
+        public async Task<PagedResult<Voyage>> GetByDestinationPagedPublicAsync(
+            int idDestination,
+            PagedRequest request,
+            DateTime? dateDepartDebut = null,
+            DateTime? dateDepartFin = null)
+        {
+            try
+            {
+                var query = ApplyDateDepartRange(
+                    BuildVoyageReadQuery(publicOnly: true)
+                        .Where(v => v.IdDestination == idDestination),
+                    dateDepartDebut,
+                    dateDepartFin);
+
+                query = query.AsQueryable();
+                query = ApplyVoyageSearchTerm(query, request.SearchTerm);
+
+                var totalCount = await query.CountAsync();
+
+                if (!string.IsNullOrEmpty(request.SortBy))
+                {
+                    switch (request.SortBy.ToLower())
+                    {
+                        case "date":
+                            query = request.SortDescending
+                                ? query.OrderByDescending(v => v.DateDepart).ThenByDescending(v => v.HeureDepart)
+                                : query.OrderBy(v => v.DateDepart).ThenBy(v => v.HeureDepart);
+                            break;
+                        case "prix":
+                            query = request.SortDescending
+                                ? query.OrderByDescending(v => v.Prix)
+                                : query.OrderBy(v => v.Prix);
+                            break;
+                        default:
+                            query = query.OrderBy(v => v.DateDepart).ThenBy(v => v.HeureDepart);
+                            break;
+                    }
+                }
+                else
+                {
+                    query = OrderVoyagesForListe(query, dateDepartDebut.HasValue && dateDepartFin.HasValue);
+                }
+
+                var items = await query
+                    .Skip((request.PageNumber - 1) * request.PageSize)
+                    .Take(request.PageSize)
+                    .ToListAsync();
+
+                return new PagedResult<Voyage>(items, totalCount, request.PageNumber, request.PageSize);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur lors de la récupération paginée publique des voyages pour la destination {DestinationId}", idDestination);
                 throw;
             }
         }
@@ -1286,6 +1862,27 @@ namespace CongoTravel.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Erreur lors de la lecture des destinations du voyage {VoyageId}", idVoyage);
+                throw;
+            }
+        }
+
+        public async Task<IReadOnlyList<VoyageDestination>> GetOrderedDestinationsPublicAsync(int idVoyage)
+        {
+            try
+            {
+                return await _context.VoyageDestinations
+                    .Include(vd => vd.Destination)
+                    .Where(vd =>
+                        vd.IdVoyage == idVoyage &&
+                        vd.Voyage != null &&
+                        vd.Voyage.Societe != null &&
+                        vd.Voyage.Societe.Statut == true)
+                    .OrderBy(vd => vd.Ordre)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur lors de la lecture publique des destinations du voyage {VoyageId}", idVoyage);
                 throw;
             }
         }

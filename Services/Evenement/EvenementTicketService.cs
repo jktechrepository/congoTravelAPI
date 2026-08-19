@@ -62,7 +62,7 @@ WHERE `IdEvenementTicket` = {0}
                 .ToListAsync(cancellationToken);
 
             return rows
-                .Select(row => EvenementTicketMapper.ToListItemDto(row.Ticket, row.Reservation))
+                .Select(row => EvenementTicketMapper.ToListItemDto(row.Ticket, row.Reservation, row.Session))
                 .ToList();
         }
 
@@ -122,13 +122,15 @@ WHERE `IdEvenementTicket` = {0}
                     on t.IdEvenementReservationLine equals line.IdEvenementReservationLine
                 join r in _context.EvenementReservations.AsNoTracking()
                     on line.IdEvenementReservation equals r.IdEvenementReservation
+                join s in _context.EvenementSessions.AsNoTracking()
+                    on r.IdEvenementSession equals s.IdEvenementSession
                 where r.IdSociete == idSociete && t.IssuedAtUtc.Date == day
                 orderby t.IssuedAtUtc descending
-                select new TicketListRow { Ticket = t, Reservation = r })
+                select new TicketListRow { Ticket = t, Reservation = r, Session = s })
                 .ToListAsync(cancellationToken);
 
             return rows
-                .Select(row => EvenementTicketMapper.ToListItemDto(row.Ticket, row.Reservation))
+                .Select(row => EvenementTicketMapper.ToListItemDto(row.Ticket, row.Reservation, row.Session))
                 .ToList();
         }
 
@@ -147,13 +149,15 @@ WHERE `IdEvenementTicket` = {0}
                     on t.IdEvenementReservationLine equals line.IdEvenementReservationLine
                 join r in _context.EvenementReservations.AsNoTracking()
                     on line.IdEvenementReservation equals r.IdEvenementReservation
+                join s in _context.EvenementSessions.AsNoTracking()
+                    on r.IdEvenementSession equals s.IdEvenementSession
                 where r.IdSociete == idSociete && t.IssuedAtUtc >= start && t.IssuedAtUtc <= end
                 orderby t.IssuedAtUtc descending
-                select new TicketListRow { Ticket = t, Reservation = r })
+                select new TicketListRow { Ticket = t, Reservation = r, Session = s })
                 .ToListAsync(cancellationToken);
 
             return rows
-                .Select(row => EvenementTicketMapper.ToListItemDto(row.Ticket, row.Reservation))
+                .Select(row => EvenementTicketMapper.ToListItemDto(row.Ticket, row.Reservation, row.Session))
                 .ToList();
         }
 
@@ -343,8 +347,10 @@ WHERE `IdEvenementTicket` = {0}
                     on t.IdEvenementReservationLine equals line.IdEvenementReservationLine
                 join r in _context.EvenementReservations.AsNoTracking()
                     on line.IdEvenementReservation equals r.IdEvenementReservation
+                join s in _context.EvenementSessions.AsNoTracking()
+                    on r.IdEvenementSession equals s.IdEvenementSession
                 where r.IdSociete == idSociete
-                select new TicketListRow { Ticket = t, Reservation = r };
+                select new TicketListRow { Ticket = t, Reservation = r, Session = s };
 
             if (filter?.Status.HasValue == true)
                 query = query.Where(row => row.Ticket.Status == filter.Status.Value);
@@ -424,6 +430,8 @@ WHERE `IdEvenementTicket` = {0}
             public EvenementTicket Ticket { get; init; } = null!;
 
             public EvenementReservation Reservation { get; init; } = null!;
+
+            public EvenementSession Session { get; init; } = null!;
         }
     }
 }

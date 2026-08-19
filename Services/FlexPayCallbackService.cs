@@ -158,6 +158,10 @@ namespace CongoTravel.Services
                 }
 
                 ValidateCallbackAmount(callback, commande);
+                FlexPayCurrencyPolicy.EnsureCallbackCurrencyMatchesExpected(
+                    callback.Currency,
+                    commande.CodeDevisePaiement,
+                    "Callback FlexPay transport");
 
                 var result = await FinalizeSuccessAsync(commande, paiement, transaction, callback, cancellationToken);
                 audit.TraiteAvecSucces = true;

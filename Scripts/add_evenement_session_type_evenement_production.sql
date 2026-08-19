@@ -1,5 +1,5 @@
 -- Ajoute TypeEvenement + coordonnées organisateur sur EvenementSessions.
--- Migrations EF : AddEvenementSessionTypeEvenement + AddEvenementSessionOrganisateurFields
+-- Migrations EF : AddEvenementSessionTypeEvenement + AddEvenementSessionOrganisateurFields + AddEvenementSessionLogoOrganisateur
 
 SET @db := DATABASE();
 
@@ -198,6 +198,26 @@ SET @sql := IF(
         ADD COLUMN `MailOrganisateur` varchar(255) NULL
         AFTER `TelephoneOrganisateur`',
     'SELECT ''Colonne MailOrganisateur déjà présente — ignoré'' AS Info'
+);
+
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @col_exists := (
+    SELECT COUNT(*)
+    FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = @db
+      AND TABLE_NAME = 'EvenementSessions'
+      AND COLUMN_NAME = 'LogoOrganisateur'
+);
+
+SET @sql := IF(
+    @col_exists = 0,
+    'ALTER TABLE `EvenementSessions`
+        ADD COLUMN `LogoOrganisateur` varchar(1000) NULL
+        AFTER `MailOrganisateur`',
+    'SELECT ''Colonne LogoOrganisateur déjà présente — ignoré'' AS Info'
 );
 
 PREPARE stmt FROM @sql;

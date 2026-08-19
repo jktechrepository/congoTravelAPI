@@ -1,7 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.Logging.Abstractions;
+using Moq;
+using Microsoft.AspNetCore.Mvc;
+using CongoTravel.Controllers;
 using CongoTravel.Data;
 using CongoTravel.Models.DTOs.SiteTouristique;
+using CongoTravel.Services.Repositories;
 using CongoTravel.Services.SiteTouristique;
 using Xunit;
 
@@ -170,6 +175,122 @@ namespace CongoTravel.Tests
 
             var remaining = await photoService.GetByLieuIdAsync(lieu.IdSiteTouristique, idSociete);
             Assert.Empty(remaining);
+        }
+
+        [Fact]
+        public async Task ListPublishedGlobalAsync_excludes_lieux_of_inactive_societe()
+        {
+            await using var ctx = BuildDb(nameof(ListPublishedGlobalAsync_excludes_lieux_of_inactive_societe));
+            var (idActiveSociete, idActiveSite) = await SiteTouristiqueTestFactories.SeedSocieteWithSiteAsync(ctx, "ST Active");
+            var (idInactiveSociete, idInactiveSite) = await SiteTouristiqueTestFactories.SeedSocieteWithSiteAsync(ctx, "ST Inactive");
+            var service = SiteTouristiqueTestFactories.CreateLieuService(ctx);
+
+            var active = await service.CreateDraftAsync(new SiteTouristiqueCreateLieuRequestDto
+            {
+                CodeLieu = "ACTIVE-LIEU",
+                Nom = "Lieu Actif",
+                IdSite = idActiveSite
+            }, idActiveSociete);
+            await service.PublishAsync(active.IdSiteTouristique, idActiveSociete);
+
+            var inactive = await service.CreateDraftAsync(new SiteTouristiqueCreateLieuRequestDto
+            {
+                CodeLieu = "INACTIVE-LIEU",
+                Nom = "Lieu Inactif",
+                IdSite = idInactiveSite
+            }, idInactiveSociete);
+            await service.PublishAsync(inactive.IdSiteTouristique, idInactiveSociete);
+
+            var societeInactive = await ctx.Societes.FirstAsync(s => s.IdSociete == idInactiveSociete);
+            societeInactive.Statut = false;
+            await ctx.SaveChangesAsync();
+
+            var published = await service.ListPublishedGlobalAsync();
+
+            Assert.Single(published);
+            Assert.Equal("ACTIVE-LIEU", published[0].CodeLieu);
+            Assert.DoesNotContain(published, l => l.CodeLieu == "INACTIVE-LIEU");
+        }
+
+        [Fact]
+        public async Task GetPublishedByIdAsync_returns_null_for_inactive_societe()
+        {
+            await using var ctx = BuildDb(nameof(GetPublishedByIdAsync_returns_null_for_inactive_societe));
+            var (idSociete, idSite) = await SiteTouristiqueTestFactories.SeedSocieteWithSiteAsync(ctx, "ST Inactive Id");
+            var service = SiteTouristiqueTestFactories.CreateLieuService(ctx);
+
+            var created = await service.CreateDraftAsync(new SiteTouristiqueCreateLieuRequestDto
+            {
+                CodeLieu = "INACTIVE-ID",
+                Nom = "Lieu Inactif Id",
+                IdSite = idSite
+            }, idSociete);
+            await service.PublishAsync(created.IdSiteTouristique, idSociete);
+
+            var societe = await ctx.Societes.FirstAsync(s => s.IdSociete == idSociete);
+            societe.Statut = false;
+            await ctx.SaveChangesAsync();
+
+            var published = await service.GetPublishedByIdAsync(created.IdSiteTouristique);
+
+            Assert.Null(published);
+        }
+
+        [Fact]
+        public async Task GetPublishedByCodeAsync_returns_null_for_inactive_societe()
+        {
+            await using var ctx = BuildDb(nameof(GetPublishedByCodeAsync_returns_null_for_inactive_societe));
+            var (idSociete, idSite) = await SiteTouristiqueTestFactories.SeedSocieteWithSiteAsync(ctx, "ST Inactive Code");
+            var service = SiteTouristiqueTestFactories.CreateLieuService(ctx);
+
+            var created = await service.CreateDraftAsync(new SiteTouristiqueCreateLieuRequestDto
+            {
+                CodeLieu = "INACTIVE-CODE",
+                Nom = "Lieu Inactif Code",
+                IdSite = idSite
+            }, idSociete);
+            await service.PublishAsync(created.IdSiteTouristique, idSociete);
+
+            var societe = await ctx.Societes.FirstAsync(s => s.IdSociete == idSociete);
+            societe.Statut = false;
+            await ctx.SaveChangesAsync();
+
+            var published = await service.GetPublishedByCodeAsync("INACTIVE-CODE");
+
+            Assert.Null(published);
+        }
+
+        [Fact]
+        public async Task GetPhotos_returns_not_found_when_public_lieu_societe_is_inactive()
+        {
+            await using var ctx = BuildDb(nameof(GetPhotos_returns_not_found_when_public_lieu_societe_is_inactive));
+            var (idSociete, idSite) = await SiteTouristiqueTestFactories.SeedSocieteWithSiteAsync(ctx, "ST Inactive Photos");
+            var lieuService = SiteTouristiqueTestFactories.CreateLieuService(ctx);
+            var photoService = SiteTouristiqueTestFactories.CreateLieuPhotoService(ctx);
+
+            var created = await lieuService.CreateDraftAsync(new SiteTouristiqueCreateLieuRequestDto
+            {
+                CodeLieu = "INACTIVE-PHOTO",
+                Nom = "Lieu Inactif Photos",
+                IdSite = idSite,
+                Photos = new List<AddSiteTouristiqueLieuPhotoDto> { PhotoDto(1) }
+            }, idSociete);
+            await lieuService.PublishAsync(created.IdSiteTouristique, idSociete);
+
+            var societe = await ctx.Societes.FirstAsync(s => s.IdSociete == idSociete);
+            societe.Statut = false;
+            await ctx.SaveChangesAsync();
+
+            var currentUser = new Mock<ICurrentUserService>();
+            var controller = new SiteTouristiqueLieuController(
+                lieuService,
+                photoService,
+                currentUser.Object,
+                NullLogger<SiteTouristiqueLieuController>.Instance);
+
+            var action = await controller.GetPhotos(created.IdSiteTouristique);
+
+            Assert.IsType<NotFoundObjectResult>(action.Result);
         }
     }
 }

@@ -9,7 +9,8 @@ namespace CongoTravel.Services
     public interface IBilletPricingEnrichmentService
     {
         /// <summary>
-        /// Renseigne <see cref="BilletResponseDto.PrixVoyage"/> pour chaque DTO à partir des entités billet (appariement par <see cref="Billet.IdBillet"/>).
+        /// Renseigne les champs dérivés de config et de tarification billet
+        /// à partir des entités billet (appariement par <see cref="Billet.IdBillet"/>).
         /// </summary>
         Task EnrichPrixVoyageAsync(IReadOnlyList<Billet> billets, IList<BilletResponseDto> dtos);
     }

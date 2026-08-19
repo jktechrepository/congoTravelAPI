@@ -61,6 +61,7 @@ namespace CongoTravel.Services.Evenement
             var normalized = reference.Trim();
             var reservation = await _context.EvenementReservations
                 .AsNoTracking()
+                .Include(r => r.Session)
                 .Include(r => r.Lines)
                     .ThenInclude(l => l.Tickets)
                 .Include(r => r.Payments)
@@ -150,6 +151,7 @@ namespace CongoTravel.Services.Evenement
         {
             var reservation = await _context.EvenementReservations
                 .AsNoTracking()
+                .Include(r => r.Session)
                 .Include(r => r.Lines)
                     .ThenInclude(l => l.Tickets)
                 .FirstOrDefaultAsync(
@@ -162,7 +164,7 @@ namespace CongoTravel.Services.Evenement
             return reservation.Lines
                 .SelectMany(l => l.Tickets)
                 .OrderBy(t => t.IdEvenementTicket)
-                .Select(EvenementReservationMapper.ToTicketResponse)
+                .Select(t => EvenementReservationMapper.ToTicketResponse(t, reservation.Session))
                 .ToList();
         }
 
@@ -445,6 +447,7 @@ namespace CongoTravel.Services.Evenement
         {
             return await _context.EvenementReservations
                 .AsNoTracking()
+                .Include(r => r.Session)
                 .Include(r => r.Lines)
                     .ThenInclude(l => l.Tickets)
                 .Include(r => r.Payments)

@@ -3,6 +3,7 @@ using CongoTravel.Data;
 using CongoTravel.Helpers.Restaurant;
 using CongoTravel.Models.DTOs.Restaurant;
 using CongoTravel.Models.Restaurant;
+using CongoTravel.Models.Restaurant.Enums;
 
 namespace CongoTravel.Services.Restaurant
 {
@@ -89,6 +90,23 @@ namespace CongoTravel.Services.Restaurant
             return zone == null ? null : RestaurantZoneMapper.ToResponseDto(zone);
         }
 
+        public async Task<RestaurantZoneResponseDto?> GetPublishedByIdAsync(
+            int idRestaurantZone,
+            CancellationToken cancellationToken = default)
+        {
+            var zone = await _context.RestaurantZones
+                .AsNoTracking()
+                .FirstOrDefaultAsync(
+                    z => z.IdRestaurantZone == idRestaurantZone
+                         && z.Societe != null
+                         && z.Societe.Statut == true
+                         && z.Restaurant != null
+                         && z.Restaurant.Status == RestaurantStatus.Published,
+                    cancellationToken);
+
+            return zone == null ? null : RestaurantZoneMapper.ToResponseDto(zone);
+        }
+
         public async Task<IReadOnlyList<RestaurantZoneResponseDto>> ListAsync(
             int idSociete,
             int? idRestaurant = null,
@@ -98,6 +116,36 @@ namespace CongoTravel.Services.Restaurant
             var query = _context.RestaurantZones
                 .AsNoTracking()
                 .Where(z => z.IdSociete == idSociete);
+
+            if (idRestaurant is > 0)
+                query = query.Where(z => z.IdRestaurant == idRestaurant.Value);
+
+            if (actifsSeulement)
+                query = query.Where(z => z.Actif);
+
+            var zones = await query
+                .OrderBy(z => z.Libelle)
+                .ToListAsync(cancellationToken);
+
+            return zones.Select(RestaurantZoneMapper.ToResponseDto).ToList();
+        }
+
+        public async Task<IReadOnlyList<RestaurantZoneResponseDto>> ListPublishedGlobalAsync(
+            int? idSociete = null,
+            int? idRestaurant = null,
+            bool actifsSeulement = false,
+            CancellationToken cancellationToken = default)
+        {
+            var query = _context.RestaurantZones
+                .AsNoTracking()
+                .Where(z =>
+                    z.Societe != null
+                    && z.Societe.Statut == true
+                    && z.Restaurant != null
+                    && z.Restaurant.Status == RestaurantStatus.Published);
+
+            if (idSociete is > 0)
+                query = query.Where(z => z.IdSociete == idSociete.Value);
 
             if (idRestaurant is > 0)
                 query = query.Where(z => z.IdRestaurant == idRestaurant.Value);

@@ -10,6 +10,8 @@ namespace CongoTravel.Models.DTOs.Evenement
 
         public string Status { get; set; } = string.Empty;
 
+        public string? LogoOrganisateur { get; set; }
+
         public DateTime IssuedAtUtc { get; set; }
 
         public DateTime? UsedAtUtc { get; set; }

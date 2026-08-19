@@ -56,6 +56,7 @@ namespace CongoTravel.Tests
             Assert.Equal("CONFIRMED", result!.Status);
             Assert.NotEmpty(result.Lines);
             Assert.Equal(2, result.Tickets.Count);
+            Assert.All(result.Tickets, t => Assert.Equal("https://cdn.example/reservation-read.png", t.LogoOrganisateur));
             Assert.Single(result.Payments);
         }
 
@@ -241,6 +242,20 @@ namespace CongoTravel.Tests
         }
 
         [Fact]
+        public async Task GetTicketsByReservationAsync_includes_logo_organisateur()
+        {
+            await using var ctx = BuildDb(nameof(GetTicketsByReservationAsync_includes_logo_organisateur));
+            var (idSociete, idReservation) = await SeedConfirmedReservationAsync(ctx, quantity: 2);
+            var service = CreateService(ctx);
+
+            var tickets = await service.GetTicketsByReservationAsync(idReservation, idSociete);
+
+            Assert.NotNull(tickets);
+            Assert.Equal(2, tickets!.Count);
+            Assert.All(tickets, t => Assert.Equal("https://cdn.example/reservation-read.png", t.LogoOrganisateur));
+        }
+
+        [Fact]
         public async Task ListBySocieteAndSessionAsync_returns_null_when_session_not_in_societe()
         {
             await using var ctx = BuildDb(nameof(ListBySocieteAndSessionAsync_returns_null_when_session_not_in_societe));
@@ -295,6 +310,7 @@ namespace CongoTravel.Tests
                 IdSociete = societeId,
                 CodeSession = $"READ-{Guid.NewGuid():N}"[..12],
                 Libelle = "Read test",
+                LogoOrganisateur = "https://cdn.example/reservation-read.png",
                 StartAtUtc = DateTime.UtcNow.AddDays(1),
                 InventoryMode = EvenementInventoryMode.GlobalQuota,
                 Status = EvenementSessionStatus.Published,

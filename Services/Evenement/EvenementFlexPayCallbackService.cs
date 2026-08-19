@@ -142,13 +142,12 @@ namespace CongoTravel.Services.Evenement
             }
 
             var callbackCode = FlexPayStatusHelper.IsSuccess(status) ? "0" : "1";
-            var callback = new FlexPayCallbackDto
-            {
-                Code = callbackCode,
-                OrderNumber = orderNumber.Trim(),
-                Amount = trackedPayment.Montant.ToString(CultureInfo.InvariantCulture),
-                Currency = trackedPayment.CodeDevise
-            };
+            var callback = FlexPayVerifyCallbackHelper.BuildSyntheticCallback(
+                check,
+                orderNumber,
+                trackedPayment.Montant,
+                trackedPayment.CodeDevise,
+                callbackCode);
 
             var processResult = await ProcessCallbackAsync(callback, cancellationToken);
             return await WrapVerifierResultAsync(
@@ -220,6 +219,10 @@ namespace CongoTravel.Services.Evenement
                 }
 
                 ValidateCallbackAmount(callback, payment);
+                FlexPayCurrencyPolicy.EnsureCallbackCurrencyMatchesExpected(
+                    callback.Currency,
+                    payment.CodeDevise,
+                    "Callback FlexPay événement");
 
                 _logger.LogInformation(
                     "Callback FlexPay événement — Order={OrderNumber}, Amount={Amount}, Currency={Currency}, Attendu={Montant} {DevisePaiement} (tarif {MontantTarif} {DeviseTarif})",

@@ -15,5 +15,6 @@ namespace CongoTravel.Models.DTOs.SiteTouristique
         public string? NomLieu { get; set; }
         public DateOnly? DateVisite { get; set; }
         public string? CustomerRef { get; set; }
+        public string? LogoSociete { get; set; }
     }
 }

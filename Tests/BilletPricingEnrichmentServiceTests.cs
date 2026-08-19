@@ -124,6 +124,41 @@ namespace CongoTravel.Tests
             Assert.NotEqual(dtoEco.PrixVoyage, dtoVip.PrixVoyage);
             Assert.NotEqual(16000, dtoEco.PrixVoyage);
             Assert.NotEqual(16000, dtoVip.PrixVoyage);
+            Assert.Equal(0m, dtoEco.KiloBagageOffert);
+            Assert.Equal(0m, dtoVip.KiloBagageOffert);
+        }
+
+        [Fact]
+        public async Task EnrichPrixVoyageAsync_populates_kilo_bagage_offert_from_config()
+        {
+            var db = nameof(EnrichPrixVoyageAsync_populates_kilo_bagage_offert_from_config);
+            await using var ctx = new CongoTravelDbContext(Options(db));
+
+            var societe = new Societe { Nom = "S", DateCreation = DateTime.UtcNow };
+            ctx.Societes.Add(societe);
+            await ctx.SaveChangesAsync();
+
+            ctx.ConfigSocietes.Add(new ConfigSociete
+            {
+                IdSociete = societe.IdSociete,
+                PoidsBagageParKiloOffert = 25.5m,
+                DateCreation = DateTime.UtcNow
+            });
+            await ctx.SaveChangesAsync();
+
+            var billet = new Billet
+            {
+                IdBillet = 10,
+                IdSociete = societe.IdSociete,
+                QrCode = "QR-KILO"
+            };
+            var dto = new BilletResponseDto { IdBillet = 10 };
+
+            var svc = new BilletPricingEnrichmentService(ctx, new VoyageTarifService(ctx));
+            await svc.EnrichPrixVoyageAsync(new[] { billet }, new List<BilletResponseDto> { dto });
+
+            Assert.Equal(25.5m, dto.KiloBagageOffert);
+            Assert.Null(dto.PrixVoyage);
         }
     }
 }

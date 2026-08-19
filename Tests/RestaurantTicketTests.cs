@@ -71,6 +71,7 @@ namespace CongoTravel.Tests
         {
             await using var ctx = BuildDb(nameof(CheckTicketAsync_valide_within_window_and_rejects_hors_fenetre_used_void));
             var (idSociete, ticketCode, idTicket) = await SeedConfirmedTicketAsync(ctx, quantity: 1);
+            await SetSocieteLogoAsync(ctx, idSociete, "https://cdn.example/restaurant-logo.png");
 
             var service = RestaurantTestFactories.CreateTicketService(ctx);
 
@@ -78,6 +79,7 @@ namespace CongoTravel.Tests
             Assert.Equal(200, ok.HttpStatusCode);
             Assert.True(ok.Response.EntreeAutorisee);
             Assert.Equal("Valide", ok.Response.Statut);
+            Assert.Equal("https://cdn.example/restaurant-logo.png", ok.Response.LogoSociete);
 
             var ticket = await ctx.RestaurantTickets.SingleAsync(t => t.IdRestaurantTicket == idTicket);
             ticket.Status = RestaurantTicketStatus.USED;
@@ -99,6 +101,7 @@ namespace CongoTravel.Tests
             var unknown = await service.CheckTicketAsync("REST-TKT-UNKNOWN", idSociete);
             Assert.Equal(404, unknown.HttpStatusCode);
             Assert.Equal("NonReconnu", unknown.Response.Statut);
+            Assert.Null(unknown.Response.LogoSociete);
         }
 
         [Fact]
@@ -151,6 +154,83 @@ namespace CongoTravel.Tests
             var second = await service.UseTicketAsync(ticketCode, idSociete);
             Assert.Equal(200, second.HttpStatusCode);
             Assert.True(second.Response!.AlreadyUsed);
+        }
+
+        [Fact]
+        public async Task Get_ticket_reads_include_logo_societe()
+        {
+            await using var ctx = BuildDb(nameof(Get_ticket_reads_include_logo_societe));
+            var (idSociete, ticketCode, idTicket) = await SeedConfirmedTicketAsync(ctx, quantity: 1);
+            await SetSocieteLogoAsync(ctx, idSociete, "https://cdn.example/restaurant-ticket.png");
+
+            var reservationId = await ctx.RestaurantTickets
+                .Where(t => t.IdRestaurantTicket == idTicket)
+                .Select(t => t.ReservationLine!.IdRestaurantReservation)
+                .SingleAsync();
+
+            var service = RestaurantTestFactories.CreateTicketService(ctx);
+            var byId = await service.GetByIdAsync(idTicket, idSociete);
+            var byCode = await service.GetByTicketCodeAsync(ticketCode, idSociete);
+            var list = await service.ListAsync(idSociete);
+            var byReservation = await service.ListByReservationAsync(reservationId, idSociete);
+
+            Assert.NotNull(byId);
+            Assert.Equal("https://cdn.example/restaurant-ticket.png", byId!.LogoSociete);
+            Assert.NotNull(byCode);
+            Assert.Equal("https://cdn.example/restaurant-ticket.png", byCode!.LogoSociete);
+            Assert.Single(list);
+            Assert.Equal("https://cdn.example/restaurant-ticket.png", list[0].LogoSociete);
+            Assert.Single(byReservation);
+            Assert.Equal("https://cdn.example/restaurant-ticket.png", byReservation[0].LogoSociete);
+        }
+
+        [Fact]
+        public async Task Reservation_get_by_id_includes_logo_societe_on_nested_tickets()
+        {
+            await using var ctx = BuildDb(nameof(Reservation_get_by_id_includes_logo_societe_on_nested_tickets));
+            var (idSociete, _, idCreneau) = await RestaurantTestFactories.SeedPublishedCreneauAsync(
+                ctx, "READ", capacite: 20);
+            await SetSocieteLogoAsync(ctx, idSociete, "https://cdn.example/restaurant-reservation.png");
+
+            var hold = await RestaurantTestFactories.CreateHoldService(ctx).CreateHoldAsync(
+                idCreneau,
+                idSociete,
+                new RestaurantHoldRequestDto
+                {
+                    Items = new List<RestaurantHoldItemRequestDto> { new() { Quantity = 2 } }
+                });
+
+            var confirmed = await RestaurantTestFactories.CreatePaymentService(ctx).ConfirmPaymentAsync(
+                hold.IdRestaurantReservation,
+                idSociete,
+                new RestaurantConfirmPaymentRequestDto { MethodePaiement = "CASH" });
+
+            var reservation = await RestaurantTestFactories.CreateReservationService(ctx)
+                .GetByIdAsync(confirmed.Reservation.IdRestaurantReservation, idSociete);
+
+            Assert.NotNull(reservation);
+            Assert.Equal(2, reservation!.Tickets.Count);
+            Assert.All(
+                reservation.Tickets,
+                t => Assert.Equal("https://cdn.example/restaurant-reservation.png", t.LogoSociete));
+        }
+
+        [Fact]
+        public async Task Ticket_get_responses_return_null_logo_when_societe_has_no_logo()
+        {
+            await using var ctx = BuildDb(nameof(Ticket_get_responses_return_null_logo_when_societe_has_no_logo));
+            var (idSociete, ticketCode, idTicket) = await SeedConfirmedTicketAsync(ctx, quantity: 1);
+            var service = RestaurantTestFactories.CreateTicketService(ctx);
+
+            var detail = await service.GetByIdAsync(idTicket, idSociete);
+            var byCode = await service.GetByTicketCodeAsync(ticketCode, idSociete);
+            var check = await service.CheckTicketAsync(ticketCode, idSociete);
+
+            Assert.NotNull(detail);
+            Assert.Null(detail!.LogoSociete);
+            Assert.NotNull(byCode);
+            Assert.Null(byCode!.LogoSociete);
+            Assert.Null(check.Response.LogoSociete);
         }
 
         [Fact]
@@ -242,6 +322,16 @@ namespace CongoTravel.Tests
 
             var ticket = confirmed.Reservation.Tickets.First();
             return (idSociete, ticket.TicketCode, ticket.IdRestaurantTicket);
+        }
+
+        private static async Task SetSocieteLogoAsync(
+            CongoTravelDbContext ctx,
+            int idSociete,
+            string logo)
+        {
+            var societe = await ctx.Societes.SingleAsync(s => s.IdSociete == idSociete);
+            societe.Logo = logo;
+            await ctx.SaveChangesAsync();
         }
     }
 }

@@ -2,7 +2,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.AspNetCore.Mvc;
 using Moq;
+using CongoTravel.Controllers;
 using CongoTravel.Data;
 using CongoTravel.Extensions;
 using CongoTravel.Models.DTOs.Restaurant;
@@ -29,6 +31,16 @@ namespace CongoTravel.Tests
             mock.SetupGet(u => u.IsSuperAdmin).Returns(false);
             mock.SetupGet(u => u.SocieteId).Returns(jwtSocieteId);
             mock.SetupGet(u => u.UserId).Returns(0);
+            return mock;
+        }
+
+        private static Mock<ICurrentUserService> MockStaffUser(int jwtSocieteId)
+        {
+            var mock = new Mock<ICurrentUserService>();
+            mock.SetupGet(u => u.IsStaff).Returns(true);
+            mock.SetupGet(u => u.IsSuperAdmin).Returns(false);
+            mock.SetupGet(u => u.SocieteId).Returns(jwtSocieteId);
+            mock.SetupGet(u => u.UserId).Returns(1);
             return mock;
         }
 
@@ -321,6 +333,86 @@ namespace CongoTravel.Tests
             var salle = availability.ZoneQuotas.Single(z => z.IdRestaurantZone == idZoneSalle);
             Assert.Equal(20, salle.QuantiteDisponible);
             Assert.Equal(10m, salle.MontantAcompteUnitaire); // 20% * 50
+        }
+
+        [Fact]
+        public async Task ListPublishedGlobalAsync_excludes_zones_of_inactive_societe()
+        {
+            await using var ctx = BuildDb(nameof(ListPublishedGlobalAsync_excludes_zones_of_inactive_societe));
+            var active = await SeedPublishedClassQuotaCreneauAsync(ctx, "ACTIVE-ZONE");
+            var inactive = await SeedPublishedClassQuotaCreneauAsync(ctx, "INACTIVE-ZONE");
+            var zoneService = new RestaurantZoneService(ctx, NullLogger<RestaurantZoneService>.Instance);
+
+            var societeInactive = await ctx.Societes.FirstAsync(s => s.IdSociete == inactive.IdSociete);
+            societeInactive.Statut = false;
+            await ctx.SaveChangesAsync();
+
+            var zones = await zoneService.ListPublishedGlobalAsync();
+
+            Assert.Contains(zones, z => z.IdRestaurantZone == active.IdZoneTerrasse);
+            Assert.DoesNotContain(zones, z => z.IdRestaurantZone == inactive.IdZoneTerrasse);
+            Assert.DoesNotContain(zones, z => z.IdRestaurantZone == inactive.IdZoneSalle);
+        }
+
+        [Fact]
+        public async Task GetPublishedByIdAsync_returns_null_for_inactive_societe()
+        {
+            await using var ctx = BuildDb(nameof(GetPublishedByIdAsync_returns_null_for_inactive_societe));
+            var seeded = await SeedPublishedClassQuotaCreneauAsync(ctx, "INACTIVE-ID");
+            var zoneService = new RestaurantZoneService(ctx, NullLogger<RestaurantZoneService>.Instance);
+
+            var societe = await ctx.Societes.FirstAsync(s => s.IdSociete == seeded.IdSociete);
+            societe.Statut = false;
+            await ctx.SaveChangesAsync();
+
+            var zone = await zoneService.GetPublishedByIdAsync(seeded.IdZoneTerrasse);
+
+            Assert.Null(zone);
+        }
+
+        [Fact]
+        public async Task Controller_GetById_returns_not_found_for_client_when_societe_inactive()
+        {
+            await using var ctx = BuildDb(nameof(Controller_GetById_returns_not_found_for_client_when_societe_inactive));
+            var seeded = await SeedPublishedClassQuotaCreneauAsync(ctx, "CLIENT-HIDE");
+            var zoneService = new RestaurantZoneService(ctx, NullLogger<RestaurantZoneService>.Instance);
+
+            var societe = await ctx.Societes.FirstAsync(s => s.IdSociete == seeded.IdSociete);
+            societe.Statut = false;
+            await ctx.SaveChangesAsync();
+
+            var controller = new RestaurantZoneController(
+                zoneService,
+                MockClientUser().Object,
+                NullLogger<RestaurantZoneController>.Instance);
+
+            var action = await controller.GetById(seeded.IdZoneTerrasse);
+
+            Assert.IsType<NotFoundObjectResult>(action.Result);
+        }
+
+        [Fact]
+        public async Task Controller_GetById_returns_zone_for_staff_when_societe_inactive()
+        {
+            await using var ctx = BuildDb(nameof(Controller_GetById_returns_zone_for_staff_when_societe_inactive));
+            var seeded = await SeedPublishedClassQuotaCreneauAsync(ctx, "STAFF-OK");
+            var zoneService = new RestaurantZoneService(ctx, NullLogger<RestaurantZoneService>.Instance);
+
+            var societe = await ctx.Societes.FirstAsync(s => s.IdSociete == seeded.IdSociete);
+            societe.Statut = false;
+            await ctx.SaveChangesAsync();
+
+            var controller = new RestaurantZoneController(
+                zoneService,
+                MockStaffUser(seeded.IdSociete).Object,
+                NullLogger<RestaurantZoneController>.Instance);
+
+            var action = await controller.GetById(seeded.IdZoneTerrasse);
+
+            var ok = Assert.IsType<OkObjectResult>(action.Result);
+            var payload = Assert.IsType<RestaurantZoneResponseDto>(ok.Value);
+            Assert.Equal(seeded.IdZoneTerrasse, payload.IdRestaurantZone);
+            Assert.Equal(seeded.IdSociete, payload.IdSociete);
         }
     }
 }

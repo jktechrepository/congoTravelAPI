@@ -73,6 +73,7 @@ namespace CongoTravel.Tests
 
             Assert.False(result.EmbarquementAutorise);
             Assert.Equal("BilletExpire", result.Statut);
+            Assert.Equal(0m, result.KiloBagageOffert);
             Assert.Equal(voyage.DateDepart.Date, result.DateDepartVoyage);
             Assert.Equal(voyage.HeureDepart, result.HeureDepartVoyage);
         }
@@ -140,6 +141,14 @@ namespace CongoTravel.Tests
         {
             await using var db = BuildDbContext(nameof(CheckBillet_returns_passenger_identity_not_buyer_in_nomClient_fields));
             var depart = DateTime.Today;
+            var societe = new Societe
+            {
+                IdSociete = 1,
+                Nom = "Congo Travel",
+                Logo = "https://cdn.example/logo-check.png",
+                Statut = true,
+                DateCreation = DateTime.UtcNow
+            };
             var client = new Client
             {
                 IdClient = 300,
@@ -199,12 +208,18 @@ namespace CongoTravel.Tests
                 DateValiditeFin = depart.Date.AddDays(1)
             };
 
+            db.Societes.Add(societe);
             db.Clients.Add(client);
             db.Voyages.Add(voyage);
             db.Reservations.Add(reservation);
             db.ReservationPassengers.Add(passenger);
             db.Billets.Add(billet);
-            db.ConfigSocietes.Add(ConfigSocieteDefaults.CreateForSociete(1));
+            db.ConfigSocietes.Add(new ConfigSociete
+            {
+                IdSociete = 1,
+                PoidsBagageParKiloOffert = 20m,
+                DateCreation = DateTime.UtcNow
+            });
             await db.SaveChangesAsync();
 
             var service = BilletServiceTestHelper.Create(db);
@@ -212,8 +227,74 @@ namespace CongoTravel.Tests
 
             Assert.Equal("Passager Réel", result.NomClient);
             Assert.Equal("+243999", result.TelephoneClient);
+            Assert.Equal(20m, result.KiloBagageOffert);
+            Assert.Equal("https://cdn.example/logo-check.png", result.LogoSociete);
             Assert.NotEqual(client.NomClient, result.NomClient);
             Assert.NotEqual(client.Telephone, result.TelephoneClient);
+        }
+
+        [Fact]
+        public async Task CheckBillet_returns_null_logo_when_societe_logo_missing()
+        {
+            await using var db = BuildDbContext(nameof(CheckBillet_returns_null_logo_when_societe_logo_missing));
+            var depart = DateTime.Today;
+            db.Societes.Add(new Societe
+            {
+                IdSociete = 1,
+                Nom = "Congo Travel",
+                Statut = true,
+                DateCreation = DateTime.UtcNow
+            });
+
+            db.Voyages.Add(new Voyage
+            {
+                Id = 104,
+                IdSociete = 1,
+                IdVehicule = 10,
+                IdDestination = 20,
+                DateDepart = depart,
+                HeureDepart = TimeSpan.FromHours(12),
+                Prix = 100,
+                CodeDevisePrix = "CDF",
+                CodeDevisePrincipale = "CDF",
+                TauxVersDevisePrincipale = 1m,
+                PrixDevisePrincipale = 100,
+                Statut = true
+            });
+
+            db.Reservations.Add(new Reservation
+            {
+                IdReservation = 204,
+                IdVoyage = 104,
+                IdClient = 300,
+                IdUtilisateur = 400,
+                IdSociete = 1,
+                DateReservation = DateTime.UtcNow,
+                Statut = true,
+                StatutReservation = "CONFIRMEE",
+                NombreDePlace = 1
+            });
+
+            db.Billets.Add(new Billet
+            {
+                IdBillet = 503,
+                IdSociete = 1,
+                IdReservation = 204,
+                QrCode = "QR-NO-LOGO",
+                DateGeneration = DateTime.UtcNow,
+                IsUsed = false,
+                DateValiditeDebut = depart.Date,
+                DateValiditeFin = depart.Date.AddDays(1)
+            });
+
+            db.ConfigSocietes.Add(ConfigSocieteDefaults.CreateForSociete(1));
+            await db.SaveChangesAsync();
+
+            var service = BilletServiceTestHelper.Create(db);
+            var result = await service.CheckBilletByQrCodeAsync("QR-NO-LOGO");
+
+            Assert.Equal(0m, result.KiloBagageOffert);
+            Assert.Null(result.LogoSociete);
         }
 
         [Fact]

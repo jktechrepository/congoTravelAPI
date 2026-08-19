@@ -280,6 +280,7 @@ namespace CongoTravel.Services.Restaurant
         {
             return await _context.RestaurantReservations
                 .AsNoTracking()
+                .Include(r => r.Societe)
                 .Include(r => r.Lines)
                     .ThenInclude(l => l.Tickets)
                 .Include(r => r.Payments)

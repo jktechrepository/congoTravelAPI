@@ -29,7 +29,7 @@ namespace CongoTravel.Controllers
         }
 
         [HttpGet]
-        [Permission("Restaurant.Zone.Read")]
+        [AllowAnonymous]
         [ProducesResponseType(typeof(IEnumerable<RestaurantZoneResponseDto>), 200)]
         public async Task<ActionResult<IEnumerable<RestaurantZoneResponseDto>>> GetList(
             [FromQuery] int? idSociete,
@@ -39,11 +39,23 @@ namespace CongoTravel.Controllers
         {
             try
             {
-                var effectiveSocieteId = RestaurantTenancyGuard.ResolveEffectiveSocieteId(
+                var isStaffTenant = RestaurantTenancyGuard.TryResolveStaffTenantForCatalogList(
                     _currentUserService,
-                    idSociete);
+                    idSociete,
+                    out var effectiveSocieteId);
+
+                if (!isStaffTenant || !effectiveSocieteId.HasValue)
+                {
+                    var published = await _zoneService.ListPublishedGlobalAsync(
+                        idSociete is > 0 ? idSociete : null,
+                        idRestaurant is > 0 ? idRestaurant : null,
+                        actifsSeulement,
+                        cancellationToken);
+                    return Ok(published);
+                }
+
                 var zones = await _zoneService.ListAsync(
-                    effectiveSocieteId,
+                    effectiveSocieteId.Value,
                     idRestaurant,
                     actifsSeulement,
                     cancellationToken);
@@ -61,19 +73,34 @@ namespace CongoTravel.Controllers
         }
 
         [HttpGet("{id:int}")]
-        [Permission("Restaurant.Zone.Read")]
+        [AllowAnonymous]
         [ProducesResponseType(typeof(RestaurantZoneResponseDto), 200)]
         [ProducesResponseType(404)]
-        public async Task<ActionResult<RestaurantZoneResponseDto>> GetById(int id)
+        public async Task<ActionResult<RestaurantZoneResponseDto>> GetById(
+            int id,
+            [FromQuery] int? idSociete = null,
+            CancellationToken cancellationToken = default)
         {
             try
             {
-                var idSociete = RestaurantTenancyGuard.ResolveEffectiveSocieteId(_currentUserService);
-                var zone = await _zoneService.GetByIdAsync(id, idSociete);
-                if (zone == null)
-                    return NotFound(new { message = $"Zone restaurant {id} introuvable." });
+                var isStaffTenant = RestaurantTenancyGuard.TryResolveStaffTenantForCatalogList(
+                    _currentUserService,
+                    idSociete,
+                    out var effectiveSocieteId);
 
-                return Ok(zone);
+                if (isStaffTenant && effectiveSocieteId.HasValue)
+                {
+                    var zone = await _zoneService.GetByIdAsync(id, effectiveSocieteId.Value, cancellationToken);
+                    if (zone == null)
+                        return NotFound(new { message = $"Zone restaurant {id} introuvable." });
+                    return Ok(zone);
+                }
+
+                var published = await _zoneService.GetPublishedByIdAsync(id, cancellationToken);
+                if (published == null)
+                    return NotFound(new { message = $"Zone restaurant Published {id} introuvable." });
+
+                return Ok(published);
             }
             catch (UnauthorizedAccessException)
             {

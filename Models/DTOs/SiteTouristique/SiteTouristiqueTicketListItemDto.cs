@@ -20,5 +20,7 @@ namespace CongoTravel.Models.DTOs.SiteTouristique
         public string ReferenceReservation { get; set; } = string.Empty;
 
         public int IdSiteTouristiqueJournee { get; set; }
+
+        public string? LogoSociete { get; set; }
     }
 }

@@ -1,10 +1,14 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Moq;
+using CongoTravel.Configuration;
 using CongoTravel.Data;
 using CongoTravel.Helpers;
 using CongoTravel.Helpers.SiteTouristique;
 using CongoTravel.Models;
+using CongoTravel.Models.DTOs.FlexPay;
 using CongoTravel.Models.DTOs.SiteTouristique;
 using CongoTravel.Models.SiteTouristique;
 using CongoTravel.Models.SiteTouristique.Enums;
@@ -178,6 +182,87 @@ namespace CongoTravel.Tests
             await ctx.SaveChangesAsync();
 
             return (idSociete, idReservation, orderNumber);
+        }
+
+        public static SiteTouristiqueFlexPayCallbackService CreateCallbackService(
+            CongoTravelDbContext ctx,
+            IFlexPayService? flexPayService = null,
+            IFlexPayRealtimeNotifier? realtimeNotifier = null) =>
+            new(
+                ctx,
+                flexPayService ?? Mock.Of<IFlexPayService>(),
+                CreateConfirmationService(ctx),
+                CreateReservationService(ctx),
+                realtimeNotifier ?? Mock.Of<IFlexPayRealtimeNotifier>(),
+                NullLogger<SiteTouristiqueFlexPayCallbackService>.Instance);
+
+        public static SiteTouristiqueFlexPayInitiationService CreateFlexPayInitiationService(
+            CongoTravelDbContext ctx,
+            IFlexPayService flexPayService,
+            bool enabled = true,
+            FlexPayOptions? flexPayOptions = null)
+        {
+            var httpAccessor = new Mock<IHttpContextAccessor>();
+            httpAccessor.Setup(a => a.HttpContext).Returns((HttpContext?)null);
+
+            flexPayOptions ??= new FlexPayOptions
+            {
+                Enabled = enabled,
+                SiteTouristiqueEnabled = enabled,
+                CallbackBaseUrl = "https://api.test.example/api/FlexPay/callback",
+                SiteTouristiqueCallbackRelativePath = "/api/sites-touristiques/flexpay/callback"
+            };
+
+            return new SiteTouristiqueFlexPayInitiationService(
+                ctx,
+                flexPayService,
+                httpAccessor.Object,
+                Options.Create(flexPayOptions),
+                new InfoPaiementResolutionService(ctx, NullLogger<InfoPaiementResolutionService>.Instance),
+                CreateConfirmationService(ctx),
+                new DeviseMontantConverter(ctx),
+                NullLogger<SiteTouristiqueFlexPayInitiationService>.Instance);
+        }
+
+        public static IFlexPayService CreateFlexPayCheckMock(string checkStatus) =>
+            CreateFlexPayCheckMockBuilder(checkStatus).Object;
+
+        public static Mock<IFlexPayService> CreateFlexPayCheckMockBuilder(
+            string checkStatus,
+            string? amount = null,
+            string? currency = null)
+        {
+            var flexApi = new Mock<IFlexPayService>();
+            flexApi
+                .Setup(f => f.VerifierStatutTransactionAsync(
+                    It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new FlexPayCheckResponseDto
+                {
+                    Code = checkStatus,
+                    Transaction = new FlexPayTransactionDto
+                    {
+                        Status = checkStatus,
+                        Amount = amount,
+                        Currency = currency
+                    }
+                });
+            return flexApi;
+        }
+
+        public static Mock<IFlexPayService> CreateFlexPayApiMock(string mobileOrderNumber = "FP-ST-001")
+        {
+            var flexApi = new Mock<IFlexPayService>();
+            flexApi
+                .Setup(f => f.InitierPaiementMobileMoneyAsync(
+                    It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                    It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new FlexPayPaymentResponseDto
+                {
+                    Code = "0",
+                    OrderNumber = mobileOrderNumber,
+                    Message = "OK"
+                });
+            return flexApi;
         }
     }
 }

@@ -153,15 +153,18 @@ namespace CongoTravel.Services.Restaurant
             if (montantTarif <= 0)
                 throw new InvalidOperationException("Le montant d'acompte de la réservation doit être > 0.");
 
-            var codeDevisePaiement = string.IsNullOrWhiteSpace(request.CodeDevisePaiement)
+            var codeDevisePaiementRaw = string.IsNullOrWhiteSpace(request.CodeDevisePaiement)
                 ? codeDeviseTarif
                 : request.CodeDevisePaiement.Trim().ToUpperInvariant();
 
-            if (codeDevisePaiement is not ("CDF" or "USD"))
-            {
-                throw new InvalidOperationException(
-                    "FlexPay restaurant n'accepte que CDF ou USD comme devise de paiement.");
-            }
+            var codeDevisePaiement = FlexPayCurrencyPolicy.NormalizePaymentCurrencyOrThrow(
+                codeDevisePaiementRaw,
+                "FlexPay restaurant");
+            FlexPayCurrencyPolicy.EnsureChannelCurrencySupported(
+                _flexPayOptions,
+                methode,
+                codeDevisePaiement,
+                "FlexPay restaurant");
 
             decimal montantFlexPay = montantTarif;
             decimal taux = 1m;

@@ -37,6 +37,7 @@ namespace CongoTravel.Tests
             Assert.Equal("Valide", result.Response.Statut);
             Assert.Equal("GALA-TEST", result.Response.CodeSession);
             Assert.Equal("CUST-42", result.Response.CustomerRef);
+            Assert.Equal("https://cdn.example/ticket-check.png", result.Response.LogoOrganisateur);
         }
 
         [Fact]
@@ -103,6 +104,7 @@ namespace CongoTravel.Tests
                 IdSociete = idSociete,
                 CodeSession = "GALA-TEST",
                 Libelle = "Gala test",
+                LogoOrganisateur = "https://cdn.example/ticket-check.png",
                 StartAtUtc = utcNow.AddHours(-2),
                 EndAtUtc = utcNow.AddHours(4),
                 InventoryMode = EvenementInventoryMode.GlobalQuota,

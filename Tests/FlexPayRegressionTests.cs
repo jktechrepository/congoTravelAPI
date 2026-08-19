@@ -749,7 +749,7 @@ namespace CongoTravel.Tests
                 idVoyage, societe.IdSociete, satellite.IdSite, client.IdClient, user.IdUtilisateur, idCat, 50000m);
 
             var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => flexPay.InitiateAsync(dto));
-            Assert.Contains("FlexPay", ex.Message, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("Paiement electronique non configurer", ex.Message, StringComparison.OrdinalIgnoreCase);
         }
 
         private static async Task<Client> SeedClientAsync(CongoTravelDbContext ctx, int idSociete)
@@ -860,11 +860,134 @@ namespace CongoTravel.Tests
             Assert.NotNull(result.OrderNumberFlexPay);
         }
 
+        [Fact]
+        public async Task FlexPay_initiate_cross_currency_converts_tarif_amount()
+        {
+            await using var ctx = new CongoTravelDbContext(CreateDbOptions(nameof(FlexPay_initiate_cross_currency_converts_tarif_amount)));
+            var (idVoyage, _, idCat, idSite) = await SeedMinimalVoyageAsync(ctx);
+            var societe = await ctx.Societes.FirstAsync();
+            var client = await SeedClientAsync(ctx, societe.IdSociete);
+            var user = await SeedUserAsync(ctx, societe.IdSociete);
+            await SeedTauxAsync(ctx, societe.IdSociete, "CDF", "USD", 0.0004m);
+
+            decimal? capturedAmount = null;
+            var tarifMock = new Mock<IVoyageTarifService>();
+            tarifMock
+                .Setup(t => t.ComputeTotalForSiegesAsync(It.IsAny<int>(), It.IsAny<IReadOnlyList<int>>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(50000m);
+
+            var flexApi = new Mock<IFlexPayService>();
+            flexApi
+                .Setup(f => f.InitierPaiementMobileMoneyAsync(
+                    It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                    It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .Callback<string, string, string, string, decimal, string, string, CancellationToken>(
+                    (_, _, _, _, amount, _, _, _) => capturedAmount = amount)
+                .ReturnsAsync(new FlexPayPaymentResponseDto { Code = "0", OrderNumber = "FP-CROSS-1", Message = "OK" });
+
+            var service = CreateFlexPayServiceWithMocks(ctx, enabled: true, tarifMock, flexApi);
+            var dto = BuildFlexPayDto(idVoyage, societe.IdSociete, idSite, client.IdClient, user.IdUtilisateur, idCat, 50000m);
+            dto.Paiement.CodeDevisePaiement = "USD";
+
+            var result = await service.InitiateAsync(dto);
+
+            Assert.NotNull(result.OrderNumberFlexPay);
+            Assert.Equal("USD", result.CodeDevisePaiement);
+            Assert.Equal(20m, capturedAmount);
+            Assert.Equal(50000m, result.MontantVoyage);
+            Assert.Equal(20m, result.Paiement.MontantAPaye);
+        }
+
+        [Fact]
+        public async Task FlexPay_initiate_cross_currency_fails_without_active_rate()
+        {
+            await using var ctx = new CongoTravelDbContext(CreateDbOptions(nameof(FlexPay_initiate_cross_currency_fails_without_active_rate)));
+            var (idVoyage, _, idCat, idSite) = await SeedMinimalVoyageAsync(ctx);
+            var societe = await ctx.Societes.FirstAsync();
+            var client = await SeedClientAsync(ctx, societe.IdSociete);
+            var user = await SeedUserAsync(ctx, societe.IdSociete);
+
+            var service = CreateFlexPayService(ctx, enabled: true);
+            var dto = BuildFlexPayDto(idVoyage, societe.IdSociete, idSite, client.IdClient, user.IdUtilisateur, idCat, 50000m);
+            dto.Paiement.CodeDevisePaiement = "USD";
+
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => service.InitiateAsync(dto));
+            Assert.Contains("Aucun taux actif", ex.Message, StringComparison.OrdinalIgnoreCase);
+        }
+
+        [Fact]
+        public async Task FlexPay_initiate_rejects_currency_not_supported_by_mobile_money_channel()
+        {
+            await using var ctx = new CongoTravelDbContext(CreateDbOptions(nameof(FlexPay_initiate_rejects_currency_not_supported_by_mobile_money_channel)));
+            var (idVoyage, _, idCat, idSite) = await SeedMinimalVoyageAsync(ctx);
+            var societe = await ctx.Societes.FirstAsync();
+            var client = await SeedClientAsync(ctx, societe.IdSociete);
+            var user = await SeedUserAsync(ctx, societe.IdSociete);
+
+            var tarifMock = new Mock<IVoyageTarifService>();
+            tarifMock
+                .Setup(t => t.ComputeTotalForSiegesAsync(It.IsAny<int>(), It.IsAny<IReadOnlyList<int>>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((int _, IReadOnlyList<int> seats, int _, CancellationToken _) => seats.Count * 50000m);
+
+            var flexApi = new Mock<IFlexPayService>();
+            flexApi
+                .Setup(f => f.InitierPaiementMobileMoneyAsync(
+                    It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                    It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new FlexPayPaymentResponseDto { Code = "0", OrderNumber = "FP-CHAN-1", Message = "OK" });
+
+            var service = CreateFlexPayServiceWithMocks(
+                ctx,
+                enabled: true,
+                tarifMock,
+                flexApi,
+                mobileCurrencies: new[] { "CDF" },
+                cardCurrencies: new[] { "CDF", "USD" });
+
+            var dto = BuildFlexPayDto(idVoyage, societe.IdSociete, idSite, client.IdClient, user.IdUtilisateur, idCat, 50000m);
+            dto.Paiement.CodeDevisePaiement = "USD";
+
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => service.InitiateAsync(dto));
+            Assert.Contains("n'autorise pas la devise USD", ex.Message, StringComparison.OrdinalIgnoreCase);
+        }
+
+        [Fact]
+        public async Task FlexPay_callback_rejects_when_currency_mismatches_expected()
+        {
+            await using var ctx = new CongoTravelDbContext(CreateDbOptions(nameof(FlexPay_callback_rejects_when_currency_mismatches_expected)));
+            var (idVoyage, _, idCat, idSite) = await SeedMinimalVoyageAsync(ctx);
+            var societe = await ctx.Societes.FirstAsync();
+            var client = await SeedClientAsync(ctx, societe.IdSociete);
+            var user = await SeedUserAsync(ctx, societe.IdSociete);
+
+            var flexPay = CreateFlexPayService(ctx, enabled: true);
+            var initiated = await flexPay.InitiateAsync(
+                BuildFlexPayDto(idVoyage, societe.IdSociete, idSite, client.IdClient, user.IdUtilisateur, idCat, 50000m));
+
+            var callbackSvc = CreateCallbackService(ctx);
+            var cb = new FlexPayCallbackDto
+            {
+                Code = "0",
+                OrderNumber = initiated.OrderNumberFlexPay,
+                Reference = initiated.ReferenceFlexPay,
+                Amount = "50000",
+                Currency = "USD"
+            };
+
+            var result = await callbackSvc.ProcessCallbackAsync(cb, "{}", null, null);
+
+            Assert.False(result.Success);
+            Assert.Contains("devise callback", result.Message, StringComparison.OrdinalIgnoreCase);
+            Assert.Equal(0, await ctx.Reservations.CountAsync());
+        }
+
         private static FlexPayReservationService CreateFlexPayServiceWithMocks(
             CongoTravelDbContext ctx,
             bool enabled,
             Mock<IVoyageTarifService> tarifMock,
-            Mock<IFlexPayService> flexApi)
+            Mock<IFlexPayService> flexApi,
+            IEnumerable<string>? mobileCurrencies = null,
+            IEnumerable<string>? cardCurrencies = null)
         {
             var httpAccessor = new Mock<IHttpContextAccessor>();
             httpAccessor.Setup(a => a.HttpContext).Returns((HttpContext?)null);
@@ -882,13 +1005,35 @@ namespace CongoTravel.Tests
                 {
                     Enabled = enabled,
                     SeatHoldMinutes = 15,
-                    CallbackBaseUrl = "https://test.example/api/FlexPay/callback"
+                    CallbackBaseUrl = "https://test.example/api/FlexPay/callback",
+                    MobileMoneySupportedCurrencies = (mobileCurrencies ?? new[] { "CDF", "USD" }).ToList(),
+                    CardSupportedCurrencies = (cardCurrencies ?? new[] { "CDF", "USD" }).ToList()
                 }),
                 resolution,
                 ConfigSocieteTestHelper.Create(ctx),
                 new DeviseMontantConverter(ctx),
                 CurrentUserTestHelper.MockClient(),
                 NullLogger<FlexPayReservationService>.Instance);
+        }
+
+        private static async Task SeedTauxAsync(
+            CongoTravelDbContext ctx,
+            int idSociete,
+            string source,
+            string cible,
+            decimal taux)
+        {
+            ctx.TauxChanges.Add(new TauxChange
+            {
+                IdSociete = idSociete,
+                CodeDeviseSource = source,
+                CodeDeviseCible = cible,
+                Taux = taux,
+                DateEffet = DateTime.UtcNow.AddDays(-1),
+                Statut = true,
+                DateCreation = DateTime.UtcNow
+            });
+            await ctx.SaveChangesAsync();
         }
     }
 }

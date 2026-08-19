@@ -26,6 +26,14 @@ namespace CongoTravel.Services
                 return;
 
             var dtoByBilletId = dtos.ToDictionary(d => d.IdBillet);
+            var societeIds = billets
+                .Select(b => b.IdSociete)
+                .Distinct()
+                .ToList();
+            var configBySocieteId = await _context.ConfigSocietes
+                .AsNoTracking()
+                .Where(c => societeIds.Contains(c.IdSociete))
+                .ToDictionaryAsync(c => c.IdSociete);
             var siegeIdsNeedingLookup = billets
                 .Where(b => b.IdSiege.HasValue && (b.Siege == null || b.Siege.IdCategorieSiege <= 0))
                 .Select(b => b.IdSiege!.Value)
@@ -43,6 +51,9 @@ namespace CongoTravel.Services
             {
                 if (!dtoByBilletId.TryGetValue(billet.IdBillet, out var dto))
                     continue;
+
+                if (configBySocieteId.TryGetValue(billet.IdSociete, out var config))
+                    dto.KiloBagageOffert = config.PoidsBagageParKiloOffert;
 
                 var idVoyage = billet.Reservation?.Voyage?.Id;
                 if (!idVoyage.HasValue || idVoyage.Value <= 0)

@@ -43,6 +43,9 @@ namespace CongoTravel.Models.DTOs.Evenement
         [MaxLength(255)]
         public string? MailOrganisateur { get; set; }
 
+        [MaxLength(1000)]
+        public string? LogoOrganisateur { get; set; }
+
         [MaxLength(100)]
         public string? Ville { get; set; }
 

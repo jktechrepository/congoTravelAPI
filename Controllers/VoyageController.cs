@@ -166,7 +166,7 @@ namespace CongoTravel.Controllers
             [FromQuery] PagedRequest request,
             [FromQuery] DateTime? date = null,
             [FromQuery, DefaultValue(VoyageListePeriode.Jour)] VoyageListePeriode periode = VoyageListePeriode.Jour) =>
-            ExecutePagedQueryAsync(request, date, periode, (r, d, f) => _voyageRepository.GetPagedAsync(r, d, f));
+            ExecutePagedQueryAsync(request, date, periode, (r, d, f) => _voyageRepository.GetPagedPublicAsync(r, d, f));
 
         /// <summary>
         /// Recherche paginée de voyages par ville de départ, ville d'arrivée et/ou société.
@@ -186,7 +186,7 @@ namespace CongoTravel.Controllers
                 request,
                 date,
                 periode,
-                (r, d, f) => _voyageRepository.SearchPagedAsync(r, villeDepart, villeArrivee, idSociete, d, f));
+                (r, d, f) => _voyageRepository.SearchPagedPublicAsync(r, villeDepart, villeArrivee, idSociete, d, f));
 
         /// <summary>
         /// Liste paginée des voyages d'une société. Query : pageNumber, pageSize, searchTerm, sortBy, sortDescending, date, periode (Jour | Hebdomadaire | Mensuel | Tout).
@@ -199,7 +199,7 @@ namespace CongoTravel.Controllers
             [FromQuery] PagedRequest request,
             [FromQuery] DateTime? date = null,
             [FromQuery, DefaultValue(VoyageListePeriode.Jour)] VoyageListePeriode periode = VoyageListePeriode.Jour) =>
-            ExecutePagedQueryAsync(request, date, periode, (r, d, f) => _voyageRepository.GetBySocietePagedAsync(idSociete, r, d, f));
+            ExecutePagedQueryAsync(request, date, periode, (r, d, f) => _voyageRepository.GetBySocietePagedPublicAsync(idSociete, r, d, f));
 
         /// <summary>
         /// Liste paginée des voyages d'un site. Query : pageNumber, pageSize, searchTerm, sortBy, sortDescending, date, periode (Jour | Hebdomadaire | Mensuel | Tout).
@@ -212,7 +212,7 @@ namespace CongoTravel.Controllers
             [FromQuery] PagedRequest request,
             [FromQuery] DateTime? date = null,
             [FromQuery, DefaultValue(VoyageListePeriode.Jour)] VoyageListePeriode periode = VoyageListePeriode.Jour) =>
-            ExecutePagedQueryAsync(request, date, periode, (r, d, f) => _voyageRepository.GetBySitePagedAsync(idSite, r, d, f));
+            ExecutePagedQueryAsync(request, date, periode, (r, d, f) => _voyageRepository.GetBySitePagedPublicAsync(idSite, r, d, f));
 
         /// <summary>
         /// Liste paginée des voyages d'un véhicule. Query : pageNumber, pageSize, searchTerm, sortBy, sortDescending, date, periode (Jour | Hebdomadaire | Mensuel | Tout).
@@ -225,7 +225,7 @@ namespace CongoTravel.Controllers
             [FromQuery] PagedRequest request,
             [FromQuery] DateTime? date = null,
             [FromQuery, DefaultValue(VoyageListePeriode.Jour)] VoyageListePeriode periode = VoyageListePeriode.Jour) =>
-            ExecutePagedQueryAsync(request, date, periode, (r, d, f) => _voyageRepository.GetByVehiculePagedAsync(idVehicule, r, d, f));
+            ExecutePagedQueryAsync(request, date, periode, (r, d, f) => _voyageRepository.GetByVehiculePagedPublicAsync(idVehicule, r, d, f));
 
         /// <summary>
         /// Liste paginée des voyages d'une destination. Query : pageNumber, pageSize, searchTerm, sortBy, sortDescending, date, periode (Jour | Hebdomadaire | Mensuel | Tout).
@@ -238,7 +238,7 @@ namespace CongoTravel.Controllers
             [FromQuery] PagedRequest request,
             [FromQuery] DateTime? date = null,
             [FromQuery, DefaultValue(VoyageListePeriode.Jour)] VoyageListePeriode periode = VoyageListePeriode.Jour) =>
-            ExecutePagedQueryAsync(request, date, periode, (r, d, f) => _voyageRepository.GetByDestinationPagedAsync(idDestination, r, d, f));
+            ExecutePagedQueryAsync(request, date, periode, (r, d, f) => _voyageRepository.GetByDestinationPagedPublicAsync(idDestination, r, d, f));
 
         // GET: api/voyage — legacy (tableau non paginé)
         /// <summary>Legacy : tableau complet. Préférer <c>GET /api/Voyage/paged</c>.</summary>
@@ -252,7 +252,7 @@ namespace CongoTravel.Controllers
             try
             {
                 var (dateDebut, dateFin) = ResolveDateDepartFilter(date, periode);
-                var voyages = await _voyageRepository.GetAllAsync(dateDebut, dateFin);
+                var voyages = await _voyageRepository.GetAllPublicAsync(dateDebut, dateFin);
                 return Ok(await MapVoyageResponsesAsync(voyages));
             }
             catch (Exception ex)
@@ -269,7 +269,7 @@ namespace CongoTravel.Controllers
         {
             try
             {
-                var voyage = await _voyageRepository.GetByIdAsync(id);
+                var voyage = await _voyageRepository.GetByIdPublicAsync(id);
                 if (voyage == null)
                     return NotFound(new { message = $"Voyage avec l'ID {id} non trouvé" });
 
@@ -413,7 +413,7 @@ namespace CongoTravel.Controllers
         {
             try
             {
-                var voyage = await _voyageRepository.GetByIdAsync(id);
+                var voyage = await _voyageRepository.GetByIdPublicAsync(id);
                 if (voyage == null)
                     return NotFound(new { message = $"Voyage avec l'ID {id} non trouvé" });
 
@@ -437,10 +437,10 @@ namespace CongoTravel.Controllers
         {
             try
             {
-                if (!await _voyageRepository.ExistsAsync(id))
+                if (!await _voyageRepository.ExistsPublicAsync(id))
                     return NotFound(new { message = $"Voyage avec l'ID {id} non trouvé" });
 
-                var steps = await _voyageRepository.GetOrderedDestinationsAsync(id);
+                var steps = await _voyageRepository.GetOrderedDestinationsPublicAsync(id);
                 var dtos = _mapper.Map<List<VoyageEtapeReadDto>>(steps);
 
                 return Ok(dtos);
@@ -512,7 +512,7 @@ namespace CongoTravel.Controllers
             try
             {
                 var (dateDebut, dateFin) = ResolveDateDepartFilter(date, periode);
-                var voyages = await _voyageRepository.GetBySocieteAsync(idSociete, dateDebut, dateFin);
+                var voyages = await _voyageRepository.GetBySocietePublicAsync(idSociete, dateDebut, dateFin);
                 return Ok(await MapVoyageResponsesAsync(voyages));
             }
             catch (Exception ex)
@@ -534,7 +534,7 @@ namespace CongoTravel.Controllers
             try
             {
                 var (dateDebut, dateFin) = ResolveDateDepartFilter(date, periode);
-                var voyages = await _voyageRepository.GetBySiteAsync(idSite, dateDebut, dateFin);
+                var voyages = await _voyageRepository.GetBySitePublicAsync(idSite, dateDebut, dateFin);
                 return Ok(await MapVoyageResponsesAsync(voyages));
             }
             catch (Exception ex)
@@ -577,7 +577,7 @@ namespace CongoTravel.Controllers
             try
             {
                 var (dateDebut, dateFin) = ResolveDateDepartFilter(date, periode);
-                var voyages = await _voyageRepository.GetByDestinationAsync(idDestination, dateDebut, dateFin);
+                var voyages = await _voyageRepository.GetByDestinationPublicAsync(idDestination, dateDebut, dateFin);
                 return Ok(await MapVoyageResponsesAsync(voyages));
             }
             catch (Exception ex)
@@ -594,7 +594,7 @@ namespace CongoTravel.Controllers
         {
             try
             {
-                var voyages = await _voyageRepository.GetByDateAsync(date);
+                var voyages = await _voyageRepository.GetByDatePublicAsync(date);
                 return Ok(await MapVoyageResponsesAsync(voyages));
             }
             catch (Exception ex)
@@ -611,7 +611,7 @@ namespace CongoTravel.Controllers
         {
             try
             {
-                var voyages = await _voyageRepository.GetByVehiculeAndDestinationAsync(idVehicule, idDestination);
+                var voyages = await _voyageRepository.GetByVehiculeAndDestinationPublicAsync(idVehicule, idDestination);
                 return Ok(await MapVoyageResponsesAsync(voyages));
             }
             catch (Exception ex)
@@ -628,7 +628,7 @@ namespace CongoTravel.Controllers
         {
             try
             {
-                var voyages = await _voyageRepository.GetByDateRangeAsync(dateDebut, dateFin);
+                var voyages = await _voyageRepository.GetByDateRangePublicAsync(dateDebut, dateFin);
                 return Ok(await MapVoyageResponsesAsync(voyages));
             }
             catch (Exception ex)
@@ -661,7 +661,7 @@ namespace CongoTravel.Controllers
         {
             try
             {
-                var voyages = await _voyageRepository.GetByPriceRangeAsync(prixMin, prixMax);
+                var voyages = await _voyageRepository.GetByPriceRangePublicAsync(prixMin, prixMax);
                 return Ok(await MapVoyageResponsesAsync(voyages));
             }
             catch (Exception ex)

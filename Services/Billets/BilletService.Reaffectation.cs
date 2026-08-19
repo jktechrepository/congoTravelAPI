@@ -27,7 +27,7 @@ namespace CongoTravel.Services
             {
                 await using var tx = await _context.Database.BeginTransactionAsync();
 
-                var billet = await GetByIdAsync(idBillet);
+                var billet = await GetBilletForOperationalLookupByIdAsync(idBillet);
                 if (billet == null)
                 {
                     return new BilletReaffectationResult

@@ -315,6 +315,7 @@ void initApi(String baseUrl) {
 | 02 | [MODULE_02_TRANSPORT_VOYAGE.md](MODULE_02_TRANSPORT_VOYAGE.md) | Admin, Agent, Client | Voyages, destinations, véhicules, tarifs |
 | 03 | [MODULE_03_RESERVATION_BILLET.md](MODULE_03_RESERVATION_BILLET.md) | Tous | Réservation, billets, scan QR, embarquement |
 | 04 | [MODULE_04_PAIEMENT_FLEXPAY.md](MODULE_04_PAIEMENT_FLEXPAY.md) | Admin, Agent, Client | Cash, FlexPay, multi-devise, remboursement |
+| — | [INTEGRATION_PAIEMENT_ELECTRONIQUE_CROSS_DEVISE_VUE_FLUTTER.md](INTEGRATION_PAIEMENT_ELECTRONIQUE_CROSS_DEVISE_VUE_FLUTTER.md) | Tous (Vue + Flutter) | Paiement FlexPay cross-devise — Transport, Evenement, Restaurant, Site touristique |
 | 05 | [MODULE_05_EVENEMENT_BILLETTERIE.md](MODULE_05_EVENEMENT_BILLETTERIE.md) | Admin, Client, Gate | Billetterie `api/events/*` — Vue guichet + Flutter catalogue/FlexPay/contrôle entrée |
 | — | [INTEGRATION_SIGNALR_EVENEMENT_FLEXPAY.md](INTEGRATION_SIGNALR_EVENEMENT_FLEXPAY.md) | Client, Guichet (Vue + Flutter) | SignalR FlexPay événement + poll secours |
 | 10 | [MODULE_10_SITE_TOURISTIQUE.md](MODULE_10_SITE_TOURISTIQUE.md) | Admin, Client, Gate | Billetterie `api/sites-touristiques/*` — lieu + journée + planification, CASH/FlexPay, gate |
@@ -338,6 +339,7 @@ Pour la liste exhaustive de toutes les routes : [`DOCUMENTATION_API_ENDPOINTS_CO
 - [`DOCUMENTATION_INTEGRATION_FRONTENDS_VUE_FLUTTER.md`](DOCUMENTATION_INTEGRATION_FRONTENDS_VUE_FLUTTER.md) — version détaillée historique
 - [`DOCUMENTATION_BACKEND_CONTRACT_FRONTENDS.md`](DOCUMENTATION_BACKEND_CONTRACT_FRONTENDS.md) — contrats payload détaillés
 - [`INTEGRATION_FLUTTER_FLEXPAY.md`](INTEGRATION_FLUTTER_FLEXPAY.md) — FlexPay transport approfondi
+- [`INTEGRATION_PAIEMENT_ELECTRONIQUE_CROSS_DEVISE_VUE_FLUTTER.md`](INTEGRATION_PAIEMENT_ELECTRONIQUE_CROSS_DEVISE_VUE_FLUTTER.md) — FlexPay cross-devise (4 domaines, Vue + Flutter)
 - [`INTEGRATION_SIGNALR_EVENEMENT_FLEXPAY.md`](INTEGRATION_SIGNALR_EVENEMENT_FLEXPAY.md) — SignalR + poll FlexPay événement (Vue + Flutter)
 - [`INTEGRATION_VUEJS.md`](INTEGRATION_VUEJS.md) — dashboards Vue détaillés
 - [`INTEGRATION_LOGIN_GOOGLE_APPLE_VUE_FLUTTER.md`](INTEGRATION_LOGIN_GOOGLE_APPLE_VUE_FLUTTER.md) — login social Google / Apple (Vue + Flutter)
@@ -385,6 +387,7 @@ Pour la liste exhaustive de toutes les routes : [`DOCUMENTATION_API_ENDPOINTS_CO
 - [ ] Événements guichet : CASH / FlexPay selon [MODULE_05](MODULE_05_EVENEMENT_BILLETTERIE.md)
 - [ ] Sites touristiques : planification + vente selon [MODULE_10](MODULE_10_SITE_TOURISTIQUE.md) / [workflow](../05_transport_sync/DOCUMENTATION_WORKFLOW_SITE_TOURISTIQUE_V1.md)
 - [ ] Restaurants : créneaux + acompte selon [MODULE_11](MODULE_11_RESTAURANT.md) / [workflow](../05_transport_sync/DOCUMENTATION_WORKFLOW_RESTAURANT_V1.md)
+- [ ] FlexPay cross-devise (Transport, Evenement, Restaurant, Site touristique) : [guide](INTEGRATION_PAIEMENT_ELECTRONIQUE_CROSS_DEVISE_VUE_FLUTTER.md)
 
 ### Flutter — Agent
 
@@ -409,6 +412,7 @@ Pour la liste exhaustive de toutes les routes : [`DOCUMENTATION_API_ENDPOINTS_CO
 - [ ] Événements : achat `with-paiement-electronique` + [SignalR guide](INTEGRATION_SIGNALR_EVENEMENT_FLEXPAY.md) (permissions `Evenement.Hold.Create` + `Evenement.Reservation.Confirm`)
 - [ ] Sites touristiques : [MODULE_10](MODULE_10_SITE_TOURISTIQUE.md) (`/sites-touristiques/flexpay/verifier`, `domain: siteTouristique`)
 - [ ] Restaurants : [MODULE_11](MODULE_11_RESTAURANT.md) (`/restaurants/flexpay/verifier`, `domain: restaurant`)
+- [ ] FlexPay cross-devise : sélecteur D_p, estimation taux, double affichage montant — [guide](INTEGRATION_PAIEMENT_ELECTRONIQUE_CROSS_DEVISE_VUE_FLUTTER.md)
 
 ---
 

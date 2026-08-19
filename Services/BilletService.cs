@@ -51,6 +51,76 @@ namespace CongoTravel.Services
                         .ThenInclude(v => v.Vehicule!)
                             .ThenInclude(veh => veh.TypeVehicule);
 
+        private IQueryable<Billet> QueryBilletsForOperationalLookup() =>
+            _context.Billets
+                .Include(b => b.ReservationPassenger)
+                .Include(b => b.Reservation)
+                    .ThenInclude(r => r!.Voyage);
+
+        private IQueryable<Billet> QueryBilletsForQrCodeRead() =>
+            _context.Billets
+                .Include(b => b.ReservationPassenger)
+                .Include(b => b.Siege!)
+                    .ThenInclude(s => s.CategorieSiege)
+                .Include(b => b.Reservation)
+                    .ThenInclude(r => r!.Utilisateur)
+                .Include(b => b.Reservation)
+                    .ThenInclude(r => r!.Client)
+                .Include(b => b.Reservation)
+                    .ThenInclude(r => r!.Voyage!)
+                        .ThenInclude(v => v.Destination)
+                .Include(b => b.Reservation)
+                    .ThenInclude(r => r!.Voyage!)
+                        .ThenInclude(v => v.Vehicule!)
+                            .ThenInclude(veh => veh.TypeVehicule);
+
+        private async Task PopulateOptionalSocietesAsync(IEnumerable<Billet> billets)
+        {
+            var list = billets
+                .Where(b => b.Societe == null && b.IdSociete > 0)
+                .ToList();
+            if (list.Count == 0)
+                return;
+
+            var societeIds = list
+                .Select(b => b.IdSociete)
+                .Distinct()
+                .ToList();
+
+            var societes = await _context.Societes
+                .AsNoTracking()
+                .Where(s => societeIds.Contains(s.IdSociete))
+                .ToDictionaryAsync(s => s.IdSociete);
+
+            foreach (var billet in list)
+            {
+                if (societes.TryGetValue(billet.IdSociete, out var societe))
+                    billet.Societe = societe;
+            }
+        }
+
+        private async Task<Billet?> GetBilletForOperationalLookupByIdAsync(int id)
+        {
+            var billet = await QueryBilletsForOperationalLookup()
+                .FirstOrDefaultAsync(b => b.IdBillet == id);
+
+            if (billet != null)
+                await PopulateOptionalSocietesAsync(new[] { billet });
+
+            return billet;
+        }
+
+        private async Task<Billet?> GetBilletForOperationalLookupByQrCodeAsync(string qrCode)
+        {
+            var billet = await QueryBilletsForOperationalLookup()
+                .FirstOrDefaultAsync(b => b.QrCode == qrCode);
+
+            if (billet != null)
+                await PopulateOptionalSocietesAsync(new[] { billet });
+
+            return billet;
+        }
+
         // CRUD de base
         public async Task<IEnumerable<Billet>> GetAllAsync()
         {
@@ -260,10 +330,13 @@ namespace CongoTravel.Services
         {
             try
             {
-                return await QueryBilletsWithEmbarquementIncludes()
+                var billets = await QueryBilletsForQrCodeRead()
                     .Where(b => b.QrCode.Contains(qrCode))
                     .OrderByDescending(b => b.DateCreation)
                     .ToListAsync();
+
+                await PopulateOptionalSocietesAsync(billets);
+                return billets;
             }
             catch (Exception ex)
             {

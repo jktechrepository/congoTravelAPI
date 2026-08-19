@@ -62,7 +62,10 @@ namespace CongoTravel.Tests
         public static IFlexPayService CreateFlexPayCheckMock(string checkStatus) =>
             CreateFlexPayCheckMockBuilder(checkStatus).Object;
 
-        public static Mock<IFlexPayService> CreateFlexPayCheckMockBuilder(string checkStatus)
+        public static Mock<IFlexPayService> CreateFlexPayCheckMockBuilder(
+            string checkStatus,
+            string? amount = null,
+            string? currency = null)
         {
             var flexApi = new Mock<IFlexPayService>();
             flexApi
@@ -71,7 +74,12 @@ namespace CongoTravel.Tests
                 .ReturnsAsync(new FlexPayCheckResponseDto
                 {
                     Code = checkStatus,
-                    Transaction = new FlexPayTransactionDto { Status = checkStatus }
+                    Transaction = new FlexPayTransactionDto
+                    {
+                        Status = checkStatus,
+                        Amount = amount,
+                        Currency = currency
+                    }
                 });
             return flexApi;
         }

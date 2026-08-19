@@ -30,6 +30,8 @@ namespace CongoTravel.Models.DTOs.Evenement
 
         public string? LibelleSession { get; set; }
 
+        public string? LogoOrganisateur { get; set; }
+
         public DateTime? StartAtUtc { get; set; }
 
         public string? CustomerRef { get; set; }

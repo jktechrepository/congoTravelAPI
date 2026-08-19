@@ -24,6 +24,8 @@ namespace CongoTravel.Models.DTOs.Restaurant
 
         public int IdRestaurantCreneau { get; set; }
 
+        public string? LogoSociete { get; set; }
+
         public DateOnly DateService { get; set; }
 
         public DateTime StartAtUtc { get; set; }

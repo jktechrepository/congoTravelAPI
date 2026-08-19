@@ -142,6 +142,7 @@ namespace CongoTravel.Models.DTOs.Mapping
                 .ForMember(dest => dest.DateVoyage, opt => opt.MapFrom(src => src.Reservation != null && src.Reservation.Voyage != null ? src.Reservation.Voyage.DateDepart : (DateTime?)null))
                 .ForMember(dest => dest.HeureVoyage, opt => opt.MapFrom(src => src.Reservation != null && src.Reservation.Voyage != null ? src.Reservation.Voyage.HeureDepart : (TimeSpan?)null))
                 .ForMember(dest => dest.PrixVoyage, opt => opt.MapFrom(src => BilletResponseDtoPricing.ResolvePrixVoyage(src)))
+                .ForMember(dest => dest.LogoSociete, opt => opt.MapFrom(src => src.Societe != null ? src.Societe.Logo : null))
                 .ForMember(dest => dest.AliasVehicule, opt => opt.MapFrom(src => src.Reservation != null && src.Reservation.Voyage != null && src.Reservation.Voyage.Vehicule != null ? src.Reservation.Voyage.Vehicule.AliasVehicule : null))
                 .ForMember(dest => dest.VilleDepart, opt => opt.MapFrom(src => src.Reservation != null && src.Reservation.Voyage != null && src.Reservation.Voyage.Destination != null ? src.Reservation.Voyage.Destination.VilleDepart : null))
                 .ForMember(dest => dest.VilleArrivee, opt => opt.MapFrom(src => src.Reservation != null && src.Reservation.Voyage != null && src.Reservation.Voyage.Destination != null ? src.Reservation.Voyage.Destination.VilleArrivee : null));

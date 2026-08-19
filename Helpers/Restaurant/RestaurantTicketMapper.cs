@@ -1,3 +1,4 @@
+using CongoTravel.Models;
 using CongoTravel.Models.DTOs.Restaurant;
 using CongoTravel.Models.Restaurant;
 
@@ -7,7 +8,8 @@ namespace CongoTravel.Helpers.Restaurant
     {
         public static RestaurantTicketListItemDto ToListItemDto(
             RestaurantTicket ticket,
-            RestaurantReservation reservation) =>
+            RestaurantReservation reservation,
+            Societe? societe = null) =>
             new()
             {
                 IdRestaurantTicket = ticket.IdRestaurantTicket,
@@ -18,7 +20,8 @@ namespace CongoTravel.Helpers.Restaurant
                 UsedAtUtc = ticket.UsedAtUtc,
                 IdRestaurantReservation = reservation.IdRestaurantReservation,
                 ReferenceReservation = reservation.ReferenceReservation,
-                IdRestaurantCreneau = reservation.IdRestaurantCreneau
+                IdRestaurantCreneau = reservation.IdRestaurantCreneau,
+                LogoSociete = societe?.Logo ?? reservation.Societe?.Logo
             };
 
         public static RestaurantTicketDetailResponseDto ToDetailDto(
@@ -38,6 +41,7 @@ namespace CongoTravel.Helpers.Restaurant
                 CustomerRef = reservation.CustomerRef,
                 ReservationStatus = reservation.Status.ToString(),
                 IdRestaurantCreneau = creneau.IdRestaurantCreneau,
+                LogoSociete = reservation.Societe?.Logo,
                 DateService = creneau.DateService,
                 StartAtUtc = creneau.StartAtUtc,
                 EndAtUtc = creneau.EndAtUtc
@@ -59,6 +63,7 @@ namespace CongoTravel.Helpers.Restaurant
                 IdRestaurantReservation = reservation?.IdRestaurantReservation,
                 ReferenceReservation = reservation?.ReferenceReservation,
                 IdRestaurantCreneau = creneau?.IdRestaurantCreneau,
+                LogoSociete = reservation?.Societe?.Logo,
                 DateService = creneau?.DateService,
                 StartAtUtc = creneau?.StartAtUtc,
                 CustomerRef = reservation?.CustomerRef

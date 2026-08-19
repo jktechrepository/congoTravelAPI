@@ -40,6 +40,7 @@ namespace CongoTravel.Tests
                 NomOrganisateur = " Kansa Events ",
                 TelephoneOrganisateur = " +243900000001 ",
                 MailOrganisateur = " orga@kansa.cd ",
+                LogoOrganisateur = " https://cdn.example/event-logo.png ",
                 Ville = " Kinshasa ",
                 Commune = " Lingwala ",
                 Quartier = " Quartier Test ",
@@ -59,6 +60,7 @@ namespace CongoTravel.Tests
             Assert.Equal("Kansa Events", result.NomOrganisateur);
             Assert.Equal("+243900000001", result.TelephoneOrganisateur);
             Assert.Equal("orga@kansa.cd", result.MailOrganisateur);
+            Assert.Equal("https://cdn.example/event-logo.png", result.LogoOrganisateur);
             Assert.Equal("Grande soiree culturelle annuelle", result.Description);
             Assert.Equal("Kinshasa", result.Ville);
             Assert.Equal("Lingwala", result.Commune);
@@ -85,6 +87,7 @@ namespace CongoTravel.Tests
             Assert.Equal("Autres", result.TypeEvenement);
             Assert.Null(result.Description);
             Assert.Null(result.NomOrganisateur);
+            Assert.Null(result.LogoOrganisateur);
             Assert.Null(result.Ville);
             Assert.Null(result.Commune);
             Assert.Null(result.Quartier);
