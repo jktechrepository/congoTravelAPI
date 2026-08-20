@@ -28,6 +28,9 @@ namespace CongoTravel.Models.Evenement
 
         public int? IdEvenementReservationCourante { get; set; }
 
+        /// <summary>Hold FlexPay Plan A (commande en attente) — exclusif de <see cref="IdEvenementReservationCourante"/>.</summary>
+        public Guid? IdEvenementCommandeEnAttenteCourante { get; set; }
+
         public DateTime? HoldExpireAtUtc { get; set; }
 
         [Required]
@@ -53,6 +56,10 @@ namespace CongoTravel.Models.Evenement
         [JsonIgnore]
         [ValidateNever]
         public EvenementReservation? ReservationCourante { get; set; }
+
+        [JsonIgnore]
+        [ValidateNever]
+        public EvenementCommandeEnAttente? CommandeEnAttenteCourante { get; set; }
 
         [JsonIgnore]
         [ValidateNever]

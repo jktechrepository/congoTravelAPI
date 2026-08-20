@@ -188,7 +188,9 @@ Réponse clé :
 | Champ | Usage |
 |-------|--------|
 | `transactionStatut` | `EnAttente` |
-| `reservation.status` | `HOLD` |
+| `reservation.status` | `EN_ATTENTE_PAIEMENT` (pas de ligne `EvenementReservation` tant que callback succès) |
+| `reservation.idEvenementReservation` | `0` (placeholder) |
+| Poll / SignalR | via `orderNumber` uniquement |
 | `orderNumber` | polling verify |
 | `paymentUrl` | WebView si carte |
 | `reservationExpiresAtUtc` | compte à rebours hold |

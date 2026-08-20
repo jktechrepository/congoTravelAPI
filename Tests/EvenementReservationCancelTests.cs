@@ -62,6 +62,7 @@ namespace CongoTravel.Tests
 
             var quota = await ctx.EvenementSessionGlobalQuotas.SingleAsync();
             Assert.Equal(0, quota.QuantiteHold);
+            Assert.Empty(await ctx.EvenementReservations.ToListAsync());
         }
 
         [Fact]
@@ -87,7 +88,7 @@ namespace CongoTravel.Tests
         public async Task CancelAsync_is_idempotent_when_already_cancelled()
         {
             await using var ctx = BuildDb(nameof(CancelAsync_is_idempotent_when_already_cancelled));
-            var (idSociete, idReservation) = await SeedHoldReservationAsync(ctx, quantity: 1);
+            var (idSociete, idReservation) = await SeedConfirmedReservationAsync(ctx, quantity: 1);
             var service = CreateCancelService(ctx);
 
             await service.CancelAsync(idReservation, idSociete);
@@ -95,6 +96,8 @@ namespace CongoTravel.Tests
 
             Assert.True(second.AlreadyCancelled);
             Assert.Equal(0, second.TicketsVoided);
+            Assert.Equal("CANCELLED",
+                await ctx.EvenementReservations.Select(r => r.Status.ToString()).SingleAsync());
         }
 
         [Fact]
@@ -120,10 +123,10 @@ namespace CongoTravel.Tests
         }
 
         [Fact]
-        public async Task CancelAsync_hold_with_pending_flexpay_marks_payment_failed_and_notifies()
+        public async Task CancelAsync_hold_with_pending_flexpay_purges_and_notifies()
         {
             await using var ctx = BuildDb(
-                nameof(CancelAsync_hold_with_pending_flexpay_marks_payment_failed_and_notifies));
+                nameof(CancelAsync_hold_with_pending_flexpay_purges_and_notifies));
             var (idSociete, idReservation, orderNumber) =
                 await EvenementTestFactories.SeedPendingFlexPayPaymentAsync(ctx, quantity: 1, idUtilisateur: 11);
             var realtime = new Mock<IFlexPayRealtimeNotifier>();
@@ -132,9 +135,8 @@ namespace CongoTravel.Tests
             var result = await service.CancelAsync(idReservation, idSociete);
 
             Assert.Equal("CANCELLED", result.Reservation.Status);
-            Assert.Null(await ctx.EvenementReservations.Select(r => r.ExpiresAtUtc).SingleAsync());
-            Assert.Equal(EvenementPaymentStatus.FAILED,
-                await ctx.EvenementPayments.Select(p => p.Status).SingleAsync());
+            Assert.Empty(await ctx.EvenementReservations.ToListAsync());
+            Assert.Empty(await ctx.EvenementPayments.ToListAsync());
             Assert.Equal(0, await ctx.EvenementSessionGlobalQuotas.Select(q => q.QuantiteHold).SingleAsync());
             realtime.Verify(
                 n => n.NotifyPaymentFailedAsync(

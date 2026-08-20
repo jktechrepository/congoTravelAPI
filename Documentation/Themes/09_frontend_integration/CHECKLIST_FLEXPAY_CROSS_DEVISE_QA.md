@@ -80,6 +80,15 @@
 - **Expect API**: `success=false`.
 - **Expect DB**: réservation non confirmée.
 
+## 6) Reversement auto + FraisPlateforme (PayOut, pas d'impact UX client)
+
+Le `FraisPlateforme` n'est **pas** affiché au client : il réduit uniquement le montant PayOut vers le site.
+
+- **Given** `AutoReversementPaiementElectronique=true`, `FraisPlateforme` + `CodeDeviseFraisPlateforme` (null = devise du paiement).
+- **Expect** après callback succès (Transport / Événement / Restaurant / Site touristique) : une ligne `ReversementsSite` avec `ModulePaiement` du module, montant = `% × MontantPaye − frais converti`.
+- **Expect** si taux de conversion du frais absent : pas de reversement auto, réservation **confirmée**.
+- **Expect** `Evenement/5` et `Transport/5` ne se bloquent pas (idempotence composite).
+
 ## Régression minimale avant livraison
-- Lancer: `dotnet test Tests/CongoTravel.Tests.csproj --filter "FullyQualifiedName~FlexPayRegressionTests|FullyQualifiedName~EvenementFlexPayCallbackServiceTests|FullyQualifiedName~RestaurantPhase3FlexPayTests|FullyQualifiedName~EvenementFlexPayInitiationServiceTests" /p:UseAppHost=false`
+- Lancer: `dotnet test Tests/CongoTravel.Tests.csproj --filter "FullyQualifiedName~FlexPayRegressionTests|FullyQualifiedName~EvenementFlexPayCallbackServiceTests|FullyQualifiedName~RestaurantPhase3FlexPayTests|FullyQualifiedName~EvenementFlexPayInitiationServiceTests|FullyQualifiedName~ReversementSiteTests|FullyQualifiedName~SatelliteReversementTests" /p:UseAppHost=false`
 - Critère: 0 échec sur ce périmètre.

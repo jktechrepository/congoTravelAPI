@@ -18,6 +18,7 @@ namespace CongoTravel.Data
             ConfigureSiteTouristiqueReservation(modelBuilder);
             ConfigureSiteTouristiqueReservationLine(modelBuilder);
             ConfigureSiteTouristiqueTicket(modelBuilder);
+            ConfigureSiteTouristiqueCommandeEnAttente(modelBuilder);
             ConfigureSiteTouristiquePayment(modelBuilder);
             ConfigureSiteTouristiquePlanification(modelBuilder);
             ConfigureSiteTouristiquePlanifGlobalQuota(modelBuilder);
@@ -360,6 +361,12 @@ namespace CongoTravel.Data
                 entity.HasOne(e => e.Reservation)
                     .WithMany(r => r.Payments)
                     .HasForeignKey(e => e.IdSiteTouristiqueReservation)
+                    .IsRequired(false)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(e => e.CommandeEnAttente)
+                    .WithMany()
+                    .HasForeignKey(e => e.IdSiteTouristiqueCommandeEnAttente)
                     .OnDelete(DeleteBehavior.Restrict);
 
                 entity.HasOne(e => e.Site)
@@ -378,8 +385,35 @@ namespace CongoTravel.Data
                 entity.HasIndex(e => new { e.IdSiteTouristiqueReservation, e.Status })
                     .HasDatabaseName("IX_SiteTouristiquePayments_Reservation_Status");
 
+                entity.HasIndex(e => e.IdSiteTouristiqueCommandeEnAttente)
+                    .HasDatabaseName("IX_SiteTouristiquePayments_IdCommandeEnAttente");
+
                 entity.HasIndex(e => e.IdSite)
                     .HasDatabaseName("IX_SiteTouristiquePayments_IdSite");
+            });
+        }
+
+        private static void ConfigureSiteTouristiqueCommandeEnAttente(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<SiteTouristiqueCommandeEnAttente>(entity =>
+            {
+                entity.ToTable("SiteTouristiqueCommandesEnAttente");
+                entity.Property(e => e.MethodePaiement).IsRequired().HasMaxLength(50);
+                entity.Property(e => e.MontantTarif).HasColumnType("decimal(18,2)");
+                ConfigureSiteTouristiqueCodeDevise(entity.Property(e => e.CodeDeviseTarif));
+                entity.Property(e => e.MontantFlexPay).HasColumnType("decimal(18,2)");
+                ConfigureSiteTouristiqueCodeDevise(entity.Property(e => e.CodeDevisePaiement));
+                entity.Property(e => e.TauxVersDevisePaiement).HasColumnType("decimal(18,8)").HasDefaultValue(1m);
+                entity.Property(e => e.PayloadMetierJson).IsRequired().HasColumnType("longtext");
+
+                entity.HasOne(e => e.Journee).WithMany().HasForeignKey(e => e.IdSiteTouristiqueJournee).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(e => e.Site).WithMany().HasForeignKey(e => e.IdSite).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(e => e.PaiementEnAttente).WithMany().HasForeignKey(e => e.IdPaiementEnAttente).OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasIndex(e => e.DateExpiration).HasDatabaseName("IX_SiteTouristiqueCommandesEnAttente_DateExpiration");
+                entity.HasIndex(e => e.OrderNumberFlexPay).HasDatabaseName("IX_SiteTouristiqueCommandesEnAttente_OrderNumberFlexPay");
+                entity.HasIndex(e => e.IdempotencyKey).IsUnique().HasDatabaseName("IX_SiteTouristiqueCommandesEnAttente_Idempotency_UQ");
+                entity.HasIndex(e => new { e.IdSociete, e.IdSiteTouristiqueJournee }).HasDatabaseName("IX_SiteTouristiqueCommandesEnAttente_Societe_Journee");
             });
         }
 

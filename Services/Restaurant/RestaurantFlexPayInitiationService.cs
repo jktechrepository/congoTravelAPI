@@ -52,6 +52,11 @@ namespace CongoTravel.Services.Restaurant
             RestaurantInitiateFlexPayRequestDto request,
             CancellationToken cancellationToken = default)
         {
+            throw new InvalidOperationException(
+                "L'initiation FlexPay restaurant legacy sur une réservation HOLD est désactivée. " +
+                "Utilisez POST /api/restaurants/reservations/with-paiement-electronique.");
+
+#pragma warning disable CS0162
             MethodePaiementHelper.EnsureElectronicOnly(request.MethodePaiement);
             var methode = MethodePaiementHelper.NormalizeForStorage(request.MethodePaiement);
 
@@ -286,6 +291,7 @@ namespace CongoTravel.Services.Restaurant
                 flexPayAccepted: true,
                 message,
                 alreadyInitiated: false);
+#pragma warning restore CS0162
         }
 
         private async Task<RestaurantReservation?> LoadReservationAsync(

@@ -52,6 +52,10 @@ namespace CongoTravel.Services.SiteTouristique
             SiteTouristiqueInitiateFlexPayRequestDto request,
             CancellationToken cancellationToken = default)
         {
+            throw new InvalidOperationException(
+                "L'initiation FlexPay site touristique legacy est désactivée par le Plan A. " +
+                "Utilisez l'endpoint with-paiement-electronique.");
+#pragma warning disable CS0162
             MethodePaiementHelper.EnsureElectronicOnly(request.MethodePaiement);
             var methode = MethodePaiementHelper.NormalizeForStorage(request.MethodePaiement);
 
@@ -286,6 +290,7 @@ namespace CongoTravel.Services.SiteTouristique
                 flexPayAccepted: true,
                 message,
                 alreadyInitiated: false);
+#pragma warning restore CS0162
         }
 
         private async Task<SiteTouristiqueReservation?> LoadReservationAsync(

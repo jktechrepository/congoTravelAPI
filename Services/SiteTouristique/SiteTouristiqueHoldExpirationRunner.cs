@@ -13,49 +13,86 @@ namespace CongoTravel.Services.SiteTouristique
             "Hold expiré. Le paiement n’a pas été confirmé à temps.";
 
         private readonly IFlexPayRealtimeNotifier _flexPayRealtimeNotifier;
+        private readonly ISiteTouristiqueReservationService _reservationService;
+        private readonly ISiteTouristiqueCommandeFlexPayService _commandeFlexPayService;
         private readonly ILogger<SiteTouristiqueHoldExpirationRunner> _logger;
 
         public SiteTouristiqueHoldExpirationRunner(
             IFlexPayRealtimeNotifier flexPayRealtimeNotifier,
+            ISiteTouristiqueReservationService reservationService,
+            ISiteTouristiqueCommandeFlexPayService commandeFlexPayService,
             ILogger<SiteTouristiqueHoldExpirationRunner> logger)
         {
             _flexPayRealtimeNotifier = flexPayRealtimeNotifier;
+            _reservationService = reservationService;
+            _commandeFlexPayService = commandeFlexPayService;
             _logger = logger;
         }
 
         public async Task ExpireHoldsAsync(CongoTravelDbContext context, CancellationToken cancellationToken = default)
         {
+            await ExpirePlanACommandesAsync(context, cancellationToken);
             var utcNow = DateTime.UtcNow;
 
-            var expiredHoldIds = await context.SiteTouristiqueReservations
+            var expiredHolds = await context.SiteTouristiqueReservations
                 .AsNoTracking()
                 .Where(r => r.Status == SiteTouristiqueReservationStatus.HOLD
                             && r.ExpiresAtUtc != null
                             && r.ExpiresAtUtc < utcNow)
-                .Select(r => r.IdSiteTouristiqueReservation)
+                .Select(r => new { r.IdSiteTouristiqueReservation, r.IdSociete })
                 .ToListAsync(cancellationToken);
 
-            if (expiredHoldIds.Count == 0)
+            if (expiredHolds.Count == 0)
             {
                 _logger.LogDebug("Expiration holds site touristique : aucun HOLD expiré en attente.");
                 return;
             }
 
+            var expiredHoldIds = expiredHolds.Select(h => h.IdSiteTouristiqueReservation).ToList();
+
             var pendingFlexPay = await (
                 from p in context.SiteTouristiquePayments.AsNoTracking()
                 join r in context.SiteTouristiqueReservations.AsNoTracking()
                     on p.IdSiteTouristiqueReservation equals r.IdSiteTouristiqueReservation
-                where expiredHoldIds.Contains(p.IdSiteTouristiqueReservation)
+                where p.IdSiteTouristiqueReservation != null
+                      && expiredHoldIds.Contains(p.IdSiteTouristiqueReservation.Value)
                       && p.Status == SiteTouristiquePaymentStatus.PENDING
                       && p.Provider == SiteTouristiqueFlexPayConstants.Provider
                 select new PendingFlexPayExpireDto(
                     p.IdSiteTouristiquePayment,
-                    p.IdSiteTouristiqueReservation,
+                    p.IdSiteTouristiqueReservation.Value,
                     p.ProviderTxRef,
                     r.IdUtilisateur)).ToListAsync(cancellationToken);
 
             await ExpireHoldsInventoryAsync(context, expiredHoldIds, cancellationToken);
             await FailPendingFlexPayAndNotifyAsync(context, pendingFlexPay, cancellationToken);
+
+            foreach (var hold in expiredHolds)
+            {
+                await _reservationService.PurgeNeverConfirmedAsync(
+                    hold.IdSiteTouristiqueReservation,
+                    hold.IdSociete,
+                    cancellationToken);
+            }
+        }
+
+        private async Task ExpirePlanACommandesAsync(CongoTravelDbContext context, CancellationToken cancellationToken)
+        {
+            var expired = await context.SiteTouristiqueCommandesEnAttente
+                .Where(c => c.DateExpiration != null && c.DateExpiration < DateTime.UtcNow)
+                .ToListAsync(cancellationToken);
+            foreach (var commande in expired)
+            {
+                var payment = commande.IdPaiementEnAttente is int id
+                    ? await context.SiteTouristiquePayments.FirstOrDefaultAsync(p => p.IdSiteTouristiquePayment == id, cancellationToken)
+                    : await context.SiteTouristiquePayments.FirstOrDefaultAsync(p => p.IdSiteTouristiqueCommandeEnAttente == commande.IdSiteTouristiqueCommandeEnAttente && p.Status == SiteTouristiquePaymentStatus.PENDING, cancellationToken);
+                var order = payment?.ProviderTxRef ?? commande.OrderNumberFlexPay;
+                try { await _commandeFlexPayService.FailCommandeAsync(commande, payment, cancellationToken); }
+                catch (Exception ex) { _logger.LogWarning(ex, "Échec expiration commande site touristique Plan A — Commande={IdCommande}", commande.IdSiteTouristiqueCommandeEnAttente); continue; }
+                if (commande.IdUtilisateur is not > 0 || string.IsNullOrWhiteSpace(order)) continue;
+                try { await _flexPayRealtimeNotifier.NotifyPaymentFailedAsync(commande.IdUtilisateur.Value, order.Trim(), MessageHoldExpire, cancellationToken); }
+                catch (Exception ex) { _logger.LogWarning(ex, "SignalR paiement commande site touristique expirée non envoyé — Order={Order}", order); }
+            }
         }
 
         private async Task ExpireHoldsInventoryAsync(

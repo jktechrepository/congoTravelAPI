@@ -49,6 +49,7 @@ namespace CongoTravel.Tests
                 hold,
                 SiteTouristiqueTestFactories.CreatePaymentService(ctx),
                 Mock.Of<ISiteTouristiqueFlexPayInitiationService>(),
+                Mock.Of<ISiteTouristiqueCommandeFlexPayService>(),
                 SiteTouristiqueTestFactories.CreateReservationService(ctx),
                 currentUser,
                 NullLogger<SiteTouristiqueReservationWithPaiementService>.Instance);

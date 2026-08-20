@@ -51,14 +51,14 @@ namespace CongoTravel.Tests
             var payment = new RestaurantPaymentService(
                 ctx, confirmation, NullLogger<RestaurantPaymentService>.Instance);
             var reservation = RestaurantTestFactories.CreateReservationService(ctx);
-            var flexInit = RestaurantTestFactories.CreateFlexPayInitiationService(
-                ctx, Mock.Of<IFlexPayService>(), enabled: false);
+            var commandeFlexPay = RestaurantTestFactories.CreateCommandeFlexPayService(
+                ctx, Mock.Of<IFlexPayService>());
 
             return new RestaurantReservationWithPaiementService(
                 ctx,
                 hold,
                 payment,
-                flexInit,
+                commandeFlexPay,
                 reservation,
                 MockClientUser().Object,
                 NullLogger<RestaurantReservationWithPaiementService>.Instance);

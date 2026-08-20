@@ -1,4 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using CongoTravel.Services;
 using CongoTravel.Services.Restaurant;
 using CongoTravel.Services.Restaurant.Strategies;
 
@@ -9,6 +11,7 @@ namespace CongoTravel.Extensions
     {
         public static IServiceCollection AddRestaurantReservations(this IServiceCollection services)
         {
+            services.TryAddScoped<IReversementAutomatiqueService, NullReversementAutomatiqueService>();
             services.AddScoped<IRestaurantHoldExpirationRunner, RestaurantHoldExpirationRunner>();
             services.AddHostedService<RestaurantHoldExpirationHostedService>();
 
@@ -33,6 +36,7 @@ namespace CongoTravel.Extensions
             services.AddScoped<IRestaurantAvailabilityService, RestaurantAvailabilityService>();
             services.AddScoped<IRestaurantHoldService, RestaurantHoldService>();
             services.AddScoped<IRestaurantReservationConfirmationService, RestaurantReservationConfirmationService>();
+            services.AddScoped<IRestaurantCommandeFlexPayService, RestaurantCommandeFlexPayService>();
             services.AddScoped<IRestaurantFlexPayInitiationService, RestaurantFlexPayInitiationService>();
             services.AddScoped<IRestaurantFlexPayCallbackService, RestaurantFlexPayCallbackService>();
             services.AddScoped<IRestaurantPaymentService, RestaurantPaymentService>();

@@ -26,7 +26,9 @@ namespace CongoTravel.Services.Restaurant
         private readonly IFlexPayService _flexPayService;
         private readonly IRestaurantReservationConfirmationService _confirmationService;
         private readonly IRestaurantReservationService _reservationService;
+        private readonly IRestaurantCommandeFlexPayService _commandeFlexPayService;
         private readonly IFlexPayRealtimeNotifier _flexPayRealtimeNotifier;
+        private readonly IReversementAutomatiqueService _reversementAutomatiqueService;
         private readonly ILogger<RestaurantFlexPayCallbackService> _logger;
 
         public RestaurantFlexPayCallbackService(
@@ -34,14 +36,18 @@ namespace CongoTravel.Services.Restaurant
             IFlexPayService flexPayService,
             IRestaurantReservationConfirmationService confirmationService,
             IRestaurantReservationService reservationService,
+            IRestaurantCommandeFlexPayService commandeFlexPayService,
             IFlexPayRealtimeNotifier flexPayRealtimeNotifier,
+            IReversementAutomatiqueService reversementAutomatiqueService,
             ILogger<RestaurantFlexPayCallbackService> logger)
         {
             _context = context;
             _flexPayService = flexPayService;
             _confirmationService = confirmationService;
             _reservationService = reservationService;
+            _commandeFlexPayService = commandeFlexPayService;
             _flexPayRealtimeNotifier = flexPayRealtimeNotifier;
+            _reversementAutomatiqueService = reversementAutomatiqueService;
             _logger = logger;
         }
 
@@ -56,8 +62,14 @@ namespace CongoTravel.Services.Restaurant
             var payment = await FindPaymentAsync(orderNumber, cancellationToken)
                 ?? throw new InvalidOperationException($"Paiement FlexPay restaurant {orderNumber} introuvable.");
 
+            if (payment.IdRestaurantCommandeEnAttente.HasValue && payment.IdRestaurantReservation is null or 0)
+                return await VerifyCommandeAndFinalizeAsync(orderNumber.Trim(), payment, idSociete, cancellationToken);
+
+            if (payment.IdRestaurantReservation is null or 0)
+                throw new KeyNotFoundException($"Paiement FlexPay restaurant {orderNumber} introuvable pour la société {idSociete}.");
+
             var reservation = await LoadReservationGraphAsync(
-                payment.IdRestaurantReservation,
+                payment.IdRestaurantReservation.Value,
                 idSociete,
                 cancellationToken);
 
@@ -94,7 +106,7 @@ namespace CongoTravel.Services.Restaurant
             if (FlexPayStatusHelper.ShouldTreatAsPending(status))
             {
                 reservation = await LoadReservationGraphAsync(
-                    payment.IdRestaurantReservation,
+                    payment.IdRestaurantReservation!.Value,
                     idSociete,
                     cancellationToken)
                     ?? reservation;
@@ -174,6 +186,9 @@ namespace CongoTravel.Services.Restaurant
                         callback.OrderNumber);
                     return Failure("Paiement restaurant introuvable pour ce orderNumber.");
                 }
+
+                if (payment.IdRestaurantCommandeEnAttente.HasValue && payment.IdRestaurantReservation is null or 0)
+                    return await ProcessCommandeCallbackAsync(callback, payment, cancellationToken);
 
                 var reservation = await _context.RestaurantReservations
                     .Include(r => r.Lines)
@@ -293,6 +308,10 @@ namespace CongoTravel.Services.Restaurant
                             trackedPayment.IdRestaurantPayment,
                             cancellationToken);
 
+                        await _reversementAutomatiqueService.TryDeclencherAsync(
+                            ReversementAutomatiqueContext.FromRestaurant(trackedPayment, trackedReservation),
+                            cancellationToken);
+
                         return new RestaurantFlexPayCallbackProcessResultDto
                         {
                             Success = true,
@@ -367,6 +386,18 @@ namespace CongoTravel.Services.Restaurant
                 return Failure("Paiement restaurant introuvable pour ce orderNumber.");
             }
 
+            if (payment.IdRestaurantCommandeEnAttente.HasValue && payment.IdRestaurantReservation is null or 0)
+            {
+                var commande = await _context.RestaurantCommandesEnAttente.FirstOrDefaultAsync(
+                    c => c.IdRestaurantCommandeEnAttente == payment.IdRestaurantCommandeEnAttente.Value, cancellationToken);
+                if (commande == null)
+                    return StatusOnlyNotPending(0, payment.IdRestaurantPayment, message, true);
+                var user = commande.IdUtilisateur;
+                await _commandeFlexPayService.FailCommandeAsync(commande, payment, cancellationToken);
+                await TryNotifyPaymentFailedAsync(user, normalized, message, cancellationToken);
+                return StatusOnlyNotPending(0, payment.IdRestaurantPayment, message);
+            }
+
             var reservation = await _context.RestaurantReservations
                 .AsNoTracking()
                 .FirstOrDefaultAsync(
@@ -386,6 +417,63 @@ namespace CongoTravel.Services.Restaurant
                 cancellationToken);
         }
 
+        private async Task<RestaurantFlexPayVerifierResultDto> VerifyCommandeAndFinalizeAsync(
+            string orderNumber, RestaurantPayment payment, int idSociete, CancellationToken cancellationToken)
+        {
+            var commande = await _context.RestaurantCommandesEnAttente.AsNoTracking().FirstOrDefaultAsync(
+                c => c.IdRestaurantCommandeEnAttente == payment.IdRestaurantCommandeEnAttente && c.IdSociete == idSociete, cancellationToken)
+                ?? throw new KeyNotFoundException($"Paiement FlexPay restaurant {orderNumber} introuvable pour la société {idSociete}.");
+            if (payment.Status == RestaurantPaymentStatus.FAILED)
+                return new RestaurantFlexPayVerifierResultDto { StatusOnly = StatusOnlyNotPending(0, payment.IdRestaurantPayment, MessagePaiementNonConfirme, true) };
+            if (commande.DateExpiration.HasValue && commande.DateExpiration < DateTime.UtcNow)
+            {
+                var tracked = await _context.RestaurantCommandesEnAttente.FirstAsync(c => c.IdRestaurantCommandeEnAttente == commande.IdRestaurantCommandeEnAttente, cancellationToken);
+                var trackedPayment = await _context.RestaurantPayments.FirstAsync(p => p.IdRestaurantPayment == payment.IdRestaurantPayment, cancellationToken);
+                await _commandeFlexPayService.FailCommandeAsync(tracked, trackedPayment, cancellationToken);
+                return new RestaurantFlexPayVerifierResultDto { StatusOnly = StatusOnlyNotPending(0, payment.IdRestaurantPayment, MessageHoldExpire) };
+            }
+            var info = await ResolveInfoPaiementForSocieteAsync(idSociete, cancellationToken);
+            var check = await _flexPayService.VerifierStatutTransactionAsync(info.ApiToken, orderNumber, cancellationToken);
+            var status = check.Transaction?.Status ?? check.Code;
+            if (FlexPayStatusHelper.ShouldTreatAsPending(status))
+                return new RestaurantFlexPayVerifierResultDto { StatusOnly = new RestaurantFlexPayCallbackProcessResultDto { Success = true, PaymentPending = true, Message = "Paiement en attente de validation Mobile Money.", IdRestaurantReservation = 0, IdRestaurantPayment = payment.IdRestaurantPayment } };
+            var callback = FlexPayVerifyCallbackHelper.BuildSyntheticCallback(check, orderNumber, payment.Montant, payment.CodeDevise, FlexPayStatusHelper.IsSuccess(status) ? "0" : "1");
+            return await WrapVerifierResultAsync(await ProcessCallbackAsync(callback, cancellationToken), idSociete, orderNumber, cancellationToken);
+        }
+
+        private async Task<RestaurantFlexPayCallbackProcessResultDto> ProcessCommandeCallbackAsync(
+            FlexPayCallbackDto callback, RestaurantPayment payment, CancellationToken cancellationToken)
+        {
+            var commande = await _context.RestaurantCommandesEnAttente.FirstOrDefaultAsync(
+                c => c.IdRestaurantCommandeEnAttente == payment.IdRestaurantCommandeEnAttente, cancellationToken);
+            if (commande == null)
+            {
+                if (payment.Status == RestaurantPaymentStatus.SUCCEEDED && payment.IdRestaurantReservation is > 0)
+                    return new RestaurantFlexPayCallbackProcessResultDto { Success = true, AlreadyProcessed = true, Message = "Déjà finalisé (idempotence).", IdRestaurantReservation = payment.IdRestaurantReservation, IdRestaurantPayment = payment.IdRestaurantPayment };
+                return Failure("Commande restaurant associée au paiement introuvable.");
+            }
+            if (!string.Equals(callback.Code, "0", StringComparison.Ordinal))
+            {
+                var user = commande.IdUtilisateur;
+                await _commandeFlexPayService.FailCommandeAsync(commande, payment, cancellationToken);
+                await TryNotifyPaymentFailedAsync(user, callback.OrderNumber!.Trim(), "Paiement refusé par FlexPay.", cancellationToken);
+                return StatusOnlyNotPending(0, payment.IdRestaurantPayment, "Paiement refusé par FlexPay.");
+            }
+            ValidateCallbackAmount(callback, payment);
+            FlexPayCurrencyPolicy.EnsureCallbackCurrencyMatchesExpected(callback.Currency, payment.CodeDevise, "Callback FlexPay restaurant");
+            if (commande.DateExpiration.HasValue && commande.DateExpiration < DateTime.UtcNow)
+            {
+                var user = commande.IdUtilisateur;
+                await _commandeFlexPayService.FailCommandeAsync(commande, payment, cancellationToken);
+                await TryNotifyPaymentFailedAsync(user, callback.OrderNumber!.Trim(), MessageHoldExpire, cancellationToken);
+                return Failure(MessageHoldExpire);
+            }
+            var reservation = await _commandeFlexPayService.FinalizeCommandeSuccessAsync(commande, payment, cancellationToken);
+            await TryNotifyPaymentConfirmedAsync(reservation.IdUtilisateur, callback.OrderNumber, reservation.IdRestaurantReservation, payment.IdRestaurantPayment, cancellationToken);
+            await _reversementAutomatiqueService.TryDeclencherAsync(ReversementAutomatiqueContext.FromRestaurant(payment, reservation), cancellationToken);
+            return new RestaurantFlexPayCallbackProcessResultDto { Success = true, Message = "Réservation restaurant confirmée après callback FlexPay.", IdRestaurantReservation = reservation.IdRestaurantReservation, IdRestaurantPayment = payment.IdRestaurantPayment };
+        }
+
         private async Task<RestaurantFlexPayCallbackProcessResultDto?> TryFinalizeTerminalLocalStateAsync(
             RestaurantReservation reservation,
             RestaurantPayment payment,
@@ -401,6 +489,15 @@ namespace CongoTravel.Services.Restaurant
                         payment,
                         orderNumber,
                         MessagePaiementNonConfirme,
+                        cancellationToken);
+                }
+
+                if (reservation.Status is RestaurantReservationStatus.CANCELLED
+                    or RestaurantReservationStatus.EXPIRED)
+                {
+                    await _reservationService.PurgeNeverConfirmedAsync(
+                        reservation.IdRestaurantReservation,
+                        reservation.IdSociete,
                         cancellationToken);
                 }
 
@@ -488,6 +585,11 @@ namespace CongoTravel.Services.Restaurant
                 };
             }
 
+            await _reservationService.PurgeNeverConfirmedAsync(
+                reservationSnapshot.IdRestaurantReservation,
+                reservationSnapshot.IdSociete,
+                cancellationToken);
+
             if (!alreadyFailed)
             {
                 await TryNotifyPaymentFailedAsync(
@@ -525,10 +627,10 @@ namespace CongoTravel.Services.Restaurant
             var status = await _context.RestaurantReservations
                 .AsNoTracking()
                 .Where(r => r.IdRestaurantReservation == idRestaurantReservation)
-                .Select(r => r.Status)
-                .FirstAsync(cancellationToken);
+                .Select(r => (RestaurantReservationStatus?)r.Status)
+                .FirstOrDefaultAsync(cancellationToken);
 
-            if (status != RestaurantReservationStatus.HOLD)
+            if (status is null || status != RestaurantReservationStatus.HOLD)
                 return (true, null);
 
             try
@@ -552,8 +654,8 @@ namespace CongoTravel.Services.Restaurant
             status = await _context.RestaurantReservations
                 .AsNoTracking()
                 .Where(r => r.IdRestaurantReservation == idRestaurantReservation)
-                .Select(r => r.Status)
-                .FirstAsync(cancellationToken);
+                .Select(r => (RestaurantReservationStatus?)r.Status)
+                .FirstOrDefaultAsync(cancellationToken);
 
             if (status == RestaurantReservationStatus.HOLD)
             {

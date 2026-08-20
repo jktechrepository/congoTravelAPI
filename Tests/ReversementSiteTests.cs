@@ -27,6 +27,7 @@ namespace CongoTravel.Tests
         private static FlexPayOptions EnabledFlexPayOptions() => new()
         {
             Enabled = true,
+            AutoReversementEnabled = true,
             CallbackBaseUrl = "https://api.example.com/api/FlexPay/callback",
             PayOutUrl = "https://backend.flexpay.cd/api/rest/v1/merchantPayOutService",
             PayOutPendingMinutes = 15
@@ -318,10 +319,7 @@ namespace CongoTravel.Tests
                 Statut = true
             };
 
-            var svc = CreateReversementAutomatiqueService(
-                ctx,
-                new FixedReversementMontantResolver(50, "CDF"),
-                Mock.Of<IFlexPayService>());
+            var svc = CreateReversementAutomatiqueService(ctx, Mock.Of<IFlexPayService>());
 
             var triggered = await svc.TryDeclencherApresPaiementElectroniqueAsync(paiement, reservation);
             Assert.False(triggered);
@@ -329,16 +327,24 @@ namespace CongoTravel.Tests
         }
 
         [Fact]
-        public async Task ReversementAutomatiqueService_skips_when_resolver_returns_null()
+        public async Task ReversementAutomatiqueService_skips_when_montant_brut_zero()
         {
-            await using var ctx = BuildDb(nameof(ReversementAutomatiqueService_skips_when_resolver_returns_null));
+            await using var ctx = BuildDb(nameof(ReversementAutomatiqueService_skips_when_montant_brut_zero));
             var (idSociete, idSite) = await SeedSiteAsync(ctx, "243900000012");
             await EnableAutoReversementAsync(ctx, idSociete);
 
-            var paiement = new Paiement { IdPaiement = 2, IdSociete = idSociete, IdSite = idSite, IdUtilisateur = 1 };
+            var paiement = new Paiement
+            {
+                IdPaiement = 2,
+                IdSociete = idSociete,
+                IdSite = idSite,
+                IdUtilisateur = 1,
+                MethodePaiement = "MOBILE_MONEY",
+                MontantPaye = 0
+            };
             var reservation = new Reservation { IdReservation = 11, IdSociete = idSociete, IdSite = idSite, IdUtilisateur = 1 };
 
-            var svc = CreateReversementAutomatiqueService(ctx, new NullReversementMontantResolver(NullLogger<NullReversementMontantResolver>.Instance), Mock.Of<IFlexPayService>());
+            var svc = CreateReversementAutomatiqueService(ctx, Mock.Of<IFlexPayService>());
             var triggered = await svc.TryDeclencherApresPaiementElectroniqueAsync(paiement, reservation);
 
             Assert.False(triggered);
@@ -346,9 +352,9 @@ namespace CongoTravel.Tests
         }
 
         [Fact]
-        public async Task ReversementAutomatiqueService_initiates_payout_when_enabled_and_resolver_returns_amount()
+        public async Task ReversementAutomatiqueService_initiates_payout_when_enabled_and_amount_resolves()
         {
-            await using var ctx = BuildDb(nameof(ReversementAutomatiqueService_initiates_payout_when_enabled_and_resolver_returns_amount));
+            await using var ctx = BuildDb(nameof(ReversementAutomatiqueService_initiates_payout_when_enabled_and_amount_resolves));
             var (idSociete, idSite) = await SeedSiteAsync(ctx, "243900000013");
             await EnableAutoReversementAsync(ctx, idSociete);
 
@@ -364,6 +370,7 @@ namespace CongoTravel.Tests
                 IdSociete = idSociete,
                 IdSite = idSite,
                 IdUtilisateur = 5,
+                MethodePaiement = "MOBILE_MONEY",
                 MontantPaye = 75,
                 CodeDevisePaiement = "USD",
                 Statut = true
@@ -376,14 +383,102 @@ namespace CongoTravel.Tests
                 IdUtilisateur = 5
             };
 
-            var svc = CreateReversementAutomatiqueService(ctx, new FixedReversementMontantResolver(75, "USD"), flexPay.Object);
+            var svc = CreateReversementAutomatiqueService(ctx, flexPay.Object);
             var triggered = await svc.TryDeclencherApresPaiementElectroniqueAsync(paiement, reservation);
 
             Assert.True(triggered);
             var rev = await ctx.ReversementsSite.SingleAsync();
             Assert.Equal(3, rev.IdPaiement);
+            Assert.Equal(ReversementModulePaiement.Transport, rev.ModulePaiement);
+            Assert.Equal(3, rev.IdPaiementSource);
             Assert.Equal(ReversementSiteOrigines.PaiementElectronique, rev.Origine);
             Assert.Equal("FP-AUTO-1", rev.OrderNumber);
+        }
+
+        [Fact]
+        public async Task InitierPourPaiementAsync_allows_same_source_id_across_modules()
+        {
+            await using var ctx = BuildDb(nameof(InitierPourPaiementAsync_allows_same_source_id_across_modules));
+            var (idSociete, idSite) = await SeedSiteAsync(ctx, "243900000020");
+
+            var flexPay = new Mock<IFlexPayService>();
+            flexPay.SetupSequence(f => f.InitierPayOutAsync(
+                    It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                    It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new FlexPayPaymentResponseDto { Code = "0", OrderNumber = "FP-MULTI-TRANSPORT" })
+                .ReturnsAsync(new FlexPayPaymentResponseDto { Code = "0", OrderNumber = "FP-MULTI-EVENEMENT" });
+
+            var service = CreateReversementSiteService(ctx, flexPay.Object);
+
+            var transport = await service.InitierPourPaiementAsync(
+                ReversementModulePaiement.Transport, 5, 10,
+                idSite, idSociete, 1, 1000m, "CDF", "transport",
+                idPaiementTransport: 5, idReservationTransport: 10);
+
+            var evenement = await service.InitierPourPaiementAsync(
+                ReversementModulePaiement.Evenement, 5, 20,
+                idSite, idSociete, 1, 2000m, "CDF", "evenement");
+
+            Assert.NotNull(transport);
+            Assert.NotNull(evenement);
+            Assert.NotEqual(transport!.IdReversementSite, evenement!.IdReversementSite);
+            Assert.Equal(2, await ctx.ReversementsSite.CountAsync());
+            Assert.Equal(ReversementModulePaiement.Transport,
+                await ctx.ReversementsSite.Where(r => r.IdReversementSite == transport.IdReversementSite)
+                    .Select(r => r.ModulePaiement).SingleAsync());
+            Assert.Equal(ReversementModulePaiement.Evenement,
+                await ctx.ReversementsSite.Where(r => r.IdReversementSite == evenement.IdReversementSite)
+                    .Select(r => r.ModulePaiement).SingleAsync());
+        }
+
+        [Fact]
+        public async Task Calculator_null_CodeDeviseFraisPlateforme_uses_payment_currency()
+        {
+            var converter = new Mock<IDeviseMontantConverter>();
+            var result = await ReversementMontantCalculator.ComputeAsync(
+                10000m,
+                "CDF",
+                DateTime.UtcNow,
+                1,
+                new ConfigSociete
+                {
+                    PourcentageReversementSite = 100m,
+                    FraisPlateforme = 500m,
+                    CodeDeviseFraisPlateforme = null
+                },
+                converter.Object);
+
+            Assert.NotNull(result);
+            Assert.Equal(9500m, result!.Montant);
+            converter.Verify(
+                c => c.ConvertAsync(It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()),
+                Times.Never);
+        }
+
+        [Fact]
+        public async Task Calculator_converts_fee_usd_to_cdf()
+        {
+            var converter = new Mock<IDeviseMontantConverter>();
+            converter
+                .Setup(c => c.ConvertAsync(1, 1m, "USD", "CDF", It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((2850m, 2850m));
+
+            var result = await ReversementMontantCalculator.ComputeAsync(
+                10000m,
+                "CDF",
+                DateTime.UtcNow,
+                1,
+                new ConfigSociete
+                {
+                    PourcentageReversementSite = 100m,
+                    FraisPlateforme = 1m,
+                    CodeDeviseFraisPlateforme = "USD"
+                },
+                converter.Object);
+
+            Assert.NotNull(result);
+            Assert.Equal(7150m, result!.Montant);
+            Assert.Equal("CDF", result.CodeDevise);
         }
 
         private static async Task EnableAutoReversementAsync(CongoTravelDbContext ctx, int idSociete)
@@ -392,6 +487,7 @@ namespace CongoTravel.Tests
             {
                 IdSociete = idSociete,
                 AutoReversementPaiementElectronique = true,
+                PourcentageReversementSite = 100m,
                 DateCreation = DateTime.UtcNow
             });
             await ctx.SaveChangesAsync();
@@ -399,34 +495,13 @@ namespace CongoTravel.Tests
 
         private static ReversementAutomatiqueService CreateReversementAutomatiqueService(
             CongoTravelDbContext ctx,
-            IReversementMontantResolver resolver,
             IFlexPayService flexPayService) =>
             new(
                 new ConfigSocieteService(ctx),
-                resolver,
+                new DeviseMontantConverter(ctx),
                 CreateReversementSiteService(ctx, flexPayService),
                 Options.Create(EnabledFlexPayOptions()),
                 NullLogger<ReversementAutomatiqueService>.Instance);
-
-        private sealed class FixedReversementMontantResolver : IReversementMontantResolver
-        {
-            private readonly decimal _montant;
-            private readonly string _devise;
-
-            public FixedReversementMontantResolver(decimal montant, string devise)
-            {
-                _montant = montant;
-                _devise = devise;
-            }
-
-            public Task<ReversementMontantResult?> ResolveAsync(
-                Paiement paiement,
-                Reservation reservation,
-                ConfigSociete config,
-                CancellationToken cancellationToken = default) =>
-                Task.FromResult<ReversementMontantResult?>(
-                    new() { Montant = _montant, CodeDevise = _devise, Motif = "Test auto" });
-        }
 
         private static PaiementElectroniqueReversementMontantResolver CreateResolver(
             IDeviseMontantConverter? converter = null) =>

@@ -11,6 +11,7 @@ namespace CongoTravel.Services
             int idUtilisateur,
             CancellationToken cancellationToken = default);
 
+        /// <summary>Rétrocompatibilité Transport : idempotence sur <c>IdPaiement</c>.</summary>
         Task<ReversementSiteResponseDto?> InitierPourPaiementAsync(
             int idPaiement,
             int idReservation,
@@ -20,6 +21,21 @@ namespace CongoTravel.Services
             decimal montant,
             string codeDevise,
             string? motif,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>Reversement auto multi-module (Transport, Événement, Restaurant, Site touristique).</summary>
+        Task<ReversementSiteResponseDto?> InitierPourPaiementAsync(
+            string modulePaiement,
+            int idPaiementSource,
+            int? idReservationSource,
+            int idSite,
+            int idSociete,
+            int idUtilisateur,
+            decimal montant,
+            string codeDevise,
+            string? motif,
+            int? idPaiementTransport = null,
+            int? idReservationTransport = null,
             CancellationToken cancellationToken = default);
 
         Task<ReversementSiteResponseDto?> GetByIdAsync(

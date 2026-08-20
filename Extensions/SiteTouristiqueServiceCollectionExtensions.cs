@@ -1,4 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using CongoTravel.Services;
 using CongoTravel.Services.SiteTouristique;
 using CongoTravel.Services.SiteTouristique.Strategies;
 
@@ -9,6 +11,7 @@ namespace CongoTravel.Extensions
     {
         public static IServiceCollection AddSiteTouristiqueTicketing(this IServiceCollection services)
         {
+            services.TryAddScoped<IReversementAutomatiqueService, NullReversementAutomatiqueService>();
             services.AddScoped<ISiteTouristiqueHoldExpirationRunner, SiteTouristiqueHoldExpirationRunner>();
             services.AddHostedService<SiteTouristiqueHoldExpirationHostedService>();
 
@@ -26,6 +29,7 @@ namespace CongoTravel.Extensions
 
             services.AddScoped<ISiteTouristiqueReservationConfirmationService, SiteTouristiqueReservationConfirmationService>();
             services.AddScoped<ISiteTouristiqueFlexPayInitiationService, SiteTouristiqueFlexPayInitiationService>();
+            services.AddScoped<ISiteTouristiqueCommandeFlexPayService, SiteTouristiqueCommandeFlexPayService>();
             services.AddScoped<ISiteTouristiqueFlexPayCallbackService, SiteTouristiqueFlexPayCallbackService>();
             services.AddScoped<ISiteTouristiqueDashboardService, SiteTouristiqueDashboardService>();
             services.AddScoped<ISiteTouristiqueLieuService, SiteTouristiqueLieuService>();

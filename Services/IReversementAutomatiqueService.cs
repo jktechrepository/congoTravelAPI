@@ -8,5 +8,9 @@ namespace CongoTravel.Services
             Paiement paiement,
             Reservation reservation,
             CancellationToken cancellationToken = default);
+
+        Task<bool> TryDeclencherAsync(
+            ReversementAutomatiqueContext ctx,
+            CancellationToken cancellationToken = default);
     }
 }

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using CongoTravel.Attributes;
+using CongoTravel.Helpers;
 using CongoTravel.Helpers.Evenement;
 using CongoTravel.Models.DTOs.Evenement;
 using CongoTravel.Models.Evenement;
@@ -32,7 +33,10 @@ namespace CongoTravel.Controllers
             _logger = logger;
         }
 
-        /// <summary>Liste les réservations événement de la société (JWT ou idSociete Super-Admin).</summary>
+        /// <summary>
+        /// Liste les réservations événement de la société (JWT ou idSociete Super-Admin).
+        /// Sans <c>status</c> : uniquement <c>CONFIRMED</c>. Utiliser <c>status=ALL</c> pour tous les statuts.
+        /// </summary>
         [HttpGet]
         [Permission("Evenement.Session.Read")]
         [ProducesResponseType(typeof(IEnumerable<EvenementReservationListItemDto>), 200)]
@@ -51,7 +55,11 @@ namespace CongoTravel.Controllers
                     _currentUserService,
                     idSociete);
 
-                if (!TryParseOptionalStatus(status, out var parsedStatus, out var statusError))
+                if (!SatelliteReservationListStatusParser.TryParse(
+                        status,
+                        EvenementReservationStatus.CONFIRMED,
+                        out var parsedStatus,
+                        out var statusError))
                     return BadRequest(new { message = statusError });
 
                 var filter = new EvenementReservationListFilter
@@ -175,7 +183,10 @@ namespace CongoTravel.Controllers
             }
         }
 
-        /// <summary>Liste les réservations événement d'une société (alias explicite).</summary>
+        /// <summary>
+        /// Liste les réservations événement d'une société (alias explicite).
+        /// Défaut : uniquement <c>CONFIRMED</c> (même règle que <see cref="GetList"/>).
+        /// </summary>
         [HttpGet("societe/{idSociete:int}")]
         [Permission("Evenement.Session.Read")]
         [ProducesResponseType(typeof(IEnumerable<EvenementReservationListItemDto>), 200)]
@@ -188,7 +199,10 @@ namespace CongoTravel.Controllers
                 var effectiveSocieteId = EvenementTenancyGuard.ResolveEffectiveSocieteId(
                     _currentUserService,
                     idSociete);
-                var reservations = await _reservationService.ListAsync(effectiveSocieteId, cancellationToken: cancellationToken);
+                var reservations = await _reservationService.ListAsync(
+                    effectiveSocieteId,
+                    new EvenementReservationListFilter { Status = EvenementReservationStatus.CONFIRMED },
+                    cancellationToken);
                 return Ok(reservations);
             }
             catch (UnauthorizedAccessException)
@@ -516,25 +530,5 @@ namespace CongoTravel.Controllers
             }
         }
 
-        private static bool TryParseOptionalStatus(
-            string? status,
-            out EvenementReservationStatus? parsedStatus,
-            out string? errorMessage)
-        {
-            parsedStatus = null;
-            errorMessage = null;
-
-            if (string.IsNullOrWhiteSpace(status))
-                return true;
-
-            if (Enum.TryParse<EvenementReservationStatus>(status, ignoreCase: true, out var value))
-            {
-                parsedStatus = value;
-                return true;
-            }
-
-            errorMessage = $"Statut invalide '{status}'. Valeurs acceptées : HOLD, CONFIRMED, CANCELLED, EXPIRED.";
-            return false;
-        }
     }
 }

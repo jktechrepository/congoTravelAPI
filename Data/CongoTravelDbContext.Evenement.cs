@@ -18,6 +18,7 @@ namespace CongoTravel.Data
             ConfigureEvenementSessionSeat(modelBuilder);
             ConfigureEvenementReservationLine(modelBuilder);
             ConfigureEvenementTicket(modelBuilder);
+            ConfigureEvenementCommandeEnAttente(modelBuilder);
             ConfigureEvenementPayment(modelBuilder);
             ConfigureEvenementSessionPhoto(modelBuilder);
         }
@@ -272,6 +273,11 @@ namespace CongoTravel.Data
                     .HasForeignKey(e => e.IdEvenementReservationCourante)
                     .OnDelete(DeleteBehavior.SetNull);
 
+                entity.HasOne(e => e.CommandeEnAttenteCourante)
+                    .WithMany()
+                    .HasForeignKey(e => e.IdEvenementCommandeEnAttenteCourante)
+                    .OnDelete(DeleteBehavior.SetNull);
+
                 entity.HasIndex(e => new { e.IdEvenementSession, e.SeatCode })
                     .IsUnique()
                     .HasDatabaseName("IX_EvenementSessionSeats_Session_SeatCode_UQ");
@@ -281,6 +287,9 @@ namespace CongoTravel.Data
 
                 entity.HasIndex(e => e.HoldExpireAtUtc)
                     .HasDatabaseName("IX_EvenementSessionSeats_HoldExpireAtUtc");
+
+                entity.HasIndex(e => e.IdEvenementCommandeEnAttenteCourante)
+                    .HasDatabaseName("IX_EvenementSessionSeats_IdEvenementCommandeEnAttenteCourante");
             });
         }
 
@@ -346,6 +355,54 @@ namespace CongoTravel.Data
             });
         }
 
+        private static void ConfigureEvenementCommandeEnAttente(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<EvenementCommandeEnAttente>(entity =>
+            {
+                entity.ToTable("EvenementCommandesEnAttente");
+                entity.Property(e => e.MethodePaiement).IsRequired().HasMaxLength(50);
+                entity.Property(e => e.MontantTarif).HasColumnType("decimal(18,2)");
+                ConfigureEvenementCodeDevise(entity.Property(e => e.CodeDeviseTarif));
+                entity.Property(e => e.MontantFlexPay).HasColumnType("decimal(18,2)");
+                ConfigureEvenementCodeDevise(entity.Property(e => e.CodeDevisePaiement));
+                entity.Property(e => e.TauxVersDevisePaiement)
+                    .HasColumnType("decimal(18,8)")
+                    .HasDefaultValue(1m);
+                entity.Property(e => e.OrderNumberFlexPay).HasMaxLength(120);
+                entity.Property(e => e.ReferenceFlexPay).HasMaxLength(120);
+                entity.Property(e => e.IdempotencyKey).HasMaxLength(120);
+                entity.Property(e => e.PayloadMetierJson).IsRequired();
+
+                entity.HasOne(e => e.Session)
+                    .WithMany()
+                    .HasForeignKey(e => e.IdEvenementSession)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(e => e.Site)
+                    .WithMany()
+                    .HasForeignKey(e => e.IdSite)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(e => e.PaiementEnAttente)
+                    .WithMany()
+                    .HasForeignKey(e => e.IdPaiementEnAttente)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasIndex(e => e.DateExpiration)
+                    .HasDatabaseName("IX_EvenementCommandesEnAttente_DateExpiration");
+
+                entity.HasIndex(e => e.OrderNumberFlexPay)
+                    .HasDatabaseName("IX_EvenementCommandesEnAttente_OrderNumberFlexPay");
+
+                entity.HasIndex(e => e.IdempotencyKey)
+                    .IsUnique()
+                    .HasDatabaseName("IX_EvenementCommandesEnAttente_Idempotency_UQ");
+
+                entity.HasIndex(e => new { e.IdSociete, e.IdEvenementSession })
+                    .HasDatabaseName("IX_EvenementCommandesEnAttente_Societe_Session");
+            });
+        }
+
         private static void ConfigureEvenementPayment(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<EvenementPayment>(entity =>
@@ -368,6 +425,13 @@ namespace CongoTravel.Data
                 entity.HasOne(e => e.Reservation)
                     .WithMany(r => r.Payments)
                     .HasForeignKey(e => e.IdEvenementReservation)
+                    .IsRequired(false)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(e => e.CommandeEnAttente)
+                    .WithMany()
+                    .HasForeignKey(e => e.IdEvenementCommandeEnAttente)
+                    .IsRequired(false)
                     .OnDelete(DeleteBehavior.Restrict);
 
                 entity.HasOne(e => e.Site)
@@ -385,6 +449,9 @@ namespace CongoTravel.Data
 
                 entity.HasIndex(e => new { e.IdEvenementReservation, e.Status })
                     .HasDatabaseName("IX_EvenementPayments_Reservation_Status");
+
+                entity.HasIndex(e => e.IdEvenementCommandeEnAttente)
+                    .HasDatabaseName("IX_EvenementPayments_IdEvenementCommandeEnAttente");
 
                 entity.HasIndex(e => e.IdSite)
                     .HasDatabaseName("IX_EvenementPayments_IdSite");

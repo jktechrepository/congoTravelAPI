@@ -56,5 +56,15 @@ namespace CongoTravel.Services.SiteTouristique
             int idSiteTouristiqueReservation,
             int idSociete,
             CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Supprime définitivement une réservation jamais confirmée (HOLD/CANCELLED/EXPIRED)
+        /// sans paiement SUCCEEDED — tickets + payments + réservation.
+        /// No-op idempotent si absente ou non éligible.
+        /// </summary>
+        Task<bool> PurgeNeverConfirmedAsync(
+            int idSiteTouristiqueReservation,
+            int idSociete,
+            CancellationToken cancellationToken = default);
     }
 }

@@ -92,10 +92,8 @@ namespace CongoTravel.Tests
             Assert.NotNull(result.StatusOnly);
             Assert.True(result.StatusOnly!.Success);
             Assert.False(result.StatusOnly.PaymentPending);
-            Assert.Equal(EvenementPaymentStatus.FAILED,
-                await ctx.EvenementPayments.Select(p => p.Status).SingleAsync());
-            Assert.Equal(EvenementReservationStatus.CANCELLED,
-                await ctx.EvenementReservations.Select(r => r.Status).SingleAsync());
+            Assert.Empty(await ctx.EvenementPayments.ToListAsync());
+            Assert.Empty(await ctx.EvenementReservations.ToListAsync());
         }
 
         [Fact]
@@ -134,10 +132,8 @@ namespace CongoTravel.Tests
             Assert.NotNull(result.StatusOnly);
             Assert.False(result.StatusOnly!.PaymentPending);
             Assert.Contains("expiré", result.StatusOnly.Message, StringComparison.OrdinalIgnoreCase);
-            Assert.Equal(EvenementPaymentStatus.FAILED,
-                await ctx.EvenementPayments.Select(p => p.Status).SingleAsync());
-            Assert.Equal(EvenementReservationStatus.CANCELLED,
-                await ctx.EvenementReservations.Select(r => r.Status).SingleAsync());
+            Assert.Empty(await ctx.EvenementPayments.ToListAsync());
+            Assert.Empty(await ctx.EvenementReservations.ToListAsync());
             realtime.Verify(
                 n => n.NotifyPaymentFailedAsync(
                     3, orderNumber, It.IsAny<string>(), It.IsAny<CancellationToken>()),
@@ -183,8 +179,8 @@ namespace CongoTravel.Tests
 
             Assert.False(result.IsConfirmSuccess);
             Assert.False(result.StatusOnly!.PaymentPending);
-            Assert.Equal(EvenementPaymentStatus.FAILED,
-                await ctx.EvenementPayments.Select(p => p.Status).SingleAsync());
+            Assert.Empty(await ctx.EvenementPayments.ToListAsync());
+            Assert.Empty(await ctx.EvenementReservations.ToListAsync());
             flexPay.Verify(
                 f => f.VerifierStatutTransactionAsync(
                     It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
@@ -213,8 +209,8 @@ namespace CongoTravel.Tests
             Assert.False(result.IsConfirmSuccess);
             Assert.False(result.StatusOnly!.PaymentPending);
             Assert.Contains("non confirmé", result.StatusOnly.Message, StringComparison.OrdinalIgnoreCase);
-            Assert.Equal(EvenementPaymentStatus.FAILED,
-                await ctx.EvenementPayments.Select(p => p.Status).SingleAsync());
+            Assert.Empty(await ctx.EvenementPayments.ToListAsync());
+            Assert.Empty(await ctx.EvenementReservations.ToListAsync());
             flexPay.Verify(
                 f => f.VerifierStatutTransactionAsync(
                     It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),

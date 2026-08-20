@@ -198,6 +198,50 @@ INSERT IGNORE INTO `__EFMigrationsHistory` (`MigrationId`, `ProductVersion`)
 VALUES ('20260618133404_ReversementAutoPaiementElectronique', '6.0.25');
 
 -- -----------------------------------------------------------------------------
+-- Bloc C2 — Idempotence multi-module (ModulePaiement + IdPaiementSource)
+-- -----------------------------------------------------------------------------
+SET @col_module := (
+    SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = @db AND TABLE_NAME = 'ReversementsSite' AND COLUMN_NAME = 'ModulePaiement'
+);
+
+SET @sql_c2_module := IF(
+    @col_module = 0,
+    'ALTER TABLE `ReversementsSite`
+        ADD COLUMN `ModulePaiement` varchar(30) CHARACTER SET utf8mb4 NULL,
+        ADD COLUMN `IdPaiementSource` int NULL',
+    'SELECT ''Colonnes ModulePaiement/IdPaiementSource déjà présentes'' AS Info'
+);
+
+PREPARE stmt FROM @sql_c2_module;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+UPDATE `ReversementsSite`
+SET `ModulePaiement` = 'Transport',
+    `IdPaiementSource` = `IdPaiement`
+WHERE `IdPaiement` IS NOT NULL
+  AND (`ModulePaiement` IS NULL OR `IdPaiementSource` IS NULL);
+
+SET @idx_module_source := (
+    SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS
+    WHERE TABLE_SCHEMA = @db AND TABLE_NAME = 'ReversementsSite' AND INDEX_NAME = 'IX_ReversementSite_Module_IdPaiementSource'
+);
+
+SET @sql_c2_idx := IF(
+    @idx_module_source = 0,
+    'CREATE UNIQUE INDEX `IX_ReversementSite_Module_IdPaiementSource` ON `ReversementsSite` (`ModulePaiement`, `IdPaiementSource`)',
+    'SELECT ''Index IX_ReversementSite_Module_IdPaiementSource déjà présent'' AS Info'
+);
+
+PREPARE stmt FROM @sql_c2_idx;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+INSERT IGNORE INTO `__EFMigrationsHistory` (`MigrationId`, `ProductVersion`)
+VALUES ('20260820081000_AddReversementSiteModulePaiementSource', '6.0.25');
+
+-- -----------------------------------------------------------------------------
 -- Bloc D — PourcentageReversementSite
 -- -----------------------------------------------------------------------------
 SET @col_pct := (
@@ -313,7 +357,8 @@ WHERE MigrationId IN (
     '20260618133404_ReversementAutoPaiementElectronique',
     '20260618134551_PourcentageReversementSiteConfig',
     '20260618135910_FraisPlateformeConfig',
-    '20260618171505_MontAddPaieElectroniqueConfig'
+    '20260618171505_MontAddPaieElectroniqueConfig',
+    '20260820081000_AddReversementSiteModulePaiementSource'
 )
 ORDER BY MigrationId;
 

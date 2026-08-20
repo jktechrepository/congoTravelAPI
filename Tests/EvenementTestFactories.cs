@@ -37,16 +37,61 @@ namespace CongoTravel.Tests
                 CreateConfirmationService(ctx),
                 NullLogger<EvenementPaymentService>.Instance);
 
+        public static EvenementCommandeFlexPayService CreateCommandeFlexPayService(
+            CongoTravelDbContext ctx,
+            IFlexPayService? flexPayService = null,
+            FlexPayOptions? flexPayOptions = null)
+        {
+            var options = Options.Create(flexPayOptions ?? new FlexPayOptions
+            {
+                Enabled = true,
+                EventEnabled = true,
+                CallbackBaseUrl = "https://api.test.example/api/FlexPay/callback",
+                EventCallbackRelativePath = "/api/events/flexpay/callback"
+            });
+
+            return new EvenementCommandeFlexPayService(
+                ctx,
+                new EvenementInventoryHoldStrategyFactory(
+                    new EvenementGlobalQuotaHoldStrategy(ctx),
+                    new EvenementClassQuotaHoldStrategy(ctx),
+                    new EvenementSeatNumberedHoldStrategy(ctx)),
+                CreateConfirmStrategyFactory(ctx),
+                new EvenementInventoryCancelStrategyFactory(
+                    new EvenementGlobalQuotaCancelStrategy(ctx),
+                    new EvenementClassQuotaCancelStrategy(ctx),
+                    new EvenementSeatNumberedCancelStrategy(ctx)),
+                CreateConfirmationService(ctx),
+                new ConfigSocieteService(ctx),
+                flexPayService ?? Mock.Of<IFlexPayService>(),
+                Mock.Of<IHttpContextAccessor>(),
+                options,
+                Mock.Of<IInfoPaiementResolutionService>(m =>
+                    m.ResolveActiveForSiteAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>())
+                    == Task.FromResult(new InfoPaiementSociete
+                    {
+                        CodeMarchand = "M",
+                        ApiToken = "T",
+                        ActifMobileMoney = true,
+                        ActifCarteBancaire = true
+                    })),
+                Mock.Of<IDeviseMontantConverter>(),
+                NullLogger<EvenementCommandeFlexPayService>.Instance);
+        }
+
         public static EvenementFlexPayCallbackService CreateCallbackService(
             CongoTravelDbContext ctx,
             IFlexPayService? flexPayService = null,
-            IFlexPayRealtimeNotifier? realtimeNotifier = null) =>
+            IFlexPayRealtimeNotifier? realtimeNotifier = null,
+            IReversementAutomatiqueService? reversementAutomatiqueService = null) =>
             new(
                 ctx,
                 flexPayService ?? Mock.Of<IFlexPayService>(),
                 CreateConfirmationService(ctx),
                 CreateReservationService(ctx),
+                CreateCommandeFlexPayService(ctx, flexPayService),
                 realtimeNotifier ?? Mock.Of<IFlexPayRealtimeNotifier>(),
+                reversementAutomatiqueService ?? Mock.Of<IReversementAutomatiqueService>(),
                 NullLogger<EvenementFlexPayCallbackService>.Instance);
 
         public static EvenementReservationService CreateReservationService(CongoTravelDbContext ctx) =>

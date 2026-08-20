@@ -45,7 +45,7 @@ namespace CongoTravel.Services.Restaurant
             var paymentsQuery =
                 from p in _context.RestaurantPayments.AsNoTracking()
                 join r in _context.RestaurantReservations.AsNoTracking()
-                    on p.IdRestaurantReservation equals r.IdRestaurantReservation
+                    on p.IdRestaurantReservation equals (int?)r.IdRestaurantReservation
                 where r.IdSociete == idSociete
                 select p;
 
@@ -123,7 +123,7 @@ namespace CongoTravel.Services.Restaurant
             var topCreneauxRaw = await (
                 from p in _context.RestaurantPayments.AsNoTracking()
                 join r in _context.RestaurantReservations.AsNoTracking()
-                    on p.IdRestaurantReservation equals r.IdRestaurantReservation
+                    on p.IdRestaurantReservation equals (int?)r.IdRestaurantReservation
                 join c in _context.RestaurantCreneaux.AsNoTracking()
                     on r.IdRestaurantCreneau equals c.IdRestaurantCreneau
                 join resto in _context.Restaurants.AsNoTracking()
@@ -189,7 +189,7 @@ namespace CongoTravel.Services.Restaurant
             var paiementsRecents = await (
                 from p in _context.RestaurantPayments.AsNoTracking()
                 join r in _context.RestaurantReservations.AsNoTracking()
-                    on p.IdRestaurantReservation equals r.IdRestaurantReservation
+                    on p.IdRestaurantReservation equals (int?)r.IdRestaurantReservation
                 where r.IdSociete == idSociete
                 orderby p.DateCreation descending
                 select new RestaurantDashboardRecentPaymentDto

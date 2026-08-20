@@ -14,6 +14,7 @@ namespace CongoTravel.Services.SiteTouristique
         private readonly ISiteTouristiqueHoldService _holdService;
         private readonly ISiteTouristiquePaymentService _paymentService;
         private readonly ISiteTouristiqueFlexPayInitiationService _flexPayInitiationService;
+        private readonly ISiteTouristiqueCommandeFlexPayService _commandeFlexPayService;
         private readonly ISiteTouristiqueReservationService _reservationService;
         private readonly ICurrentUserService _currentUserService;
         private readonly ILogger<SiteTouristiqueReservationWithPaiementService> _logger;
@@ -23,6 +24,7 @@ namespace CongoTravel.Services.SiteTouristique
             ISiteTouristiqueHoldService holdService,
             ISiteTouristiquePaymentService paymentService,
             ISiteTouristiqueFlexPayInitiationService flexPayInitiationService,
+            ISiteTouristiqueCommandeFlexPayService commandeFlexPayService,
             ISiteTouristiqueReservationService reservationService,
             ICurrentUserService currentUserService,
             ILogger<SiteTouristiqueReservationWithPaiementService> logger)
@@ -31,6 +33,7 @@ namespace CongoTravel.Services.SiteTouristique
             _holdService = holdService;
             _paymentService = paymentService;
             _flexPayInitiationService = flexPayInitiationService;
+            _commandeFlexPayService = commandeFlexPayService;
             _reservationService = reservationService;
             _currentUserService = currentUserService;
             _logger = logger;
@@ -120,62 +123,8 @@ namespace CongoTravel.Services.SiteTouristique
             var effectiveIdSite = await ResolveEffectiveIdSiteAsync(
                 idSociete, request, requireSite: true, cancellationToken);
 
-            var hold = await _holdService.CreateHoldAsync(
-                request.IdSiteTouristiqueJournee,
-                idSociete,
-                ToHoldRequest(request, effectiveIdSite),
-                cancellationToken);
-
-            await AttachBuyerAsync(hold.IdSiteTouristiqueReservation, cancellationToken);
-
-            try
-            {
-                var initiated = await _flexPayInitiationService.InitiateAsync(
-                    hold.IdSiteTouristiqueReservation,
-                    idSociete,
-                    new SiteTouristiqueInitiateFlexPayRequestDto
-                    {
-                        MethodePaiement = request.Paiement.MethodePaiement,
-                        Phone = request.Paiement.Phone,
-                        IdSite = effectiveIdSite!.Value,
-                        CodeDevisePaiement = request.Paiement.CodeDevisePaiement,
-                        IdempotencyKey = ResolvePaymentIdempotencyKey(request)
-                    },
-                    cancellationToken);
-
-                var reservation = await _reservationService.GetByIdAsync(
-                    hold.IdSiteTouristiqueReservation,
-                    idSociete,
-                    cancellationToken)
-                    ?? throw new KeyNotFoundException(
-                        $"Réservation site touristique {hold.IdSiteTouristiqueReservation} introuvable après initiation FlexPay.");
-
-                return new SiteTouristiqueReservationWithPaiementResponseDto
-                {
-                    Reservation = reservation,
-                    Payment = initiated.Payment,
-                    Tickets = new List<SiteTouristiqueTicketResponseDto>(),
-                    TransactionStatut = "EnAttente",
-                    Message = string.IsNullOrWhiteSpace(initiated.Message)
-                        ? "Paiement FlexPay initié. Hold conservé jusqu'à confirmation ou expiration."
-                        : initiated.Message,
-                    OrderNumber = initiated.OrderNumber,
-                    PaymentUrl = initiated.PaymentUrl,
-                    ReservationExpiresAtUtc = initiated.ReservationExpiresAtUtc,
-                    MontantFlexPay = initiated.MontantFlexPay,
-                    CodeDevisePaiement = initiated.CodeDevisePaiement,
-                    MontantTarif = initiated.MontantTarif,
-                    CodeDeviseTarif = initiated.CodeDeviseTarif,
-                    TauxApplique = initiated.TauxApplique,
-                    FlexPayAccepted = initiated.FlexPayAccepted,
-                    AlreadyInitiated = initiated.AlreadyInitiated
-                };
-            }
-            catch (Exception ex)
-            {
-                await TryRollbackHoldAsync(hold.IdSiteTouristiqueReservation, idSociete, ex, cancellationToken);
-                throw;
-            }
+            return await _commandeFlexPayService.InitiateElectronicAsync(
+                request, idSociete, effectiveIdSite!.Value, cancellationToken);
         }
 
         /// <summary>

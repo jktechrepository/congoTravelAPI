@@ -77,6 +77,16 @@ namespace CongoTravel.Tests
                 hold,
                 payment,
                 flexInit,
+                EvenementTestFactories.CreateCommandeFlexPayService(
+                    ctx,
+                    flexPay ?? Mock.Of<IFlexPayService>(),
+                    flexPayOptions: new CongoTravel.Configuration.FlexPayOptions
+                    {
+                        Enabled = flexEnabled,
+                        EventEnabled = flexEnabled,
+                        CallbackBaseUrl = "https://api.test.example/api/FlexPay/callback",
+                        EventCallbackRelativePath = "/api/events/flexpay/callback"
+                    }),
                 reservation,
                 currentUser ?? MockClientUser().Object,
                 NullLogger<EvenementReservationWithPaiementService>.Instance);
@@ -274,7 +284,10 @@ namespace CongoTravel.Tests
             });
 
             Assert.Equal("EnAttente", result.TransactionStatut);
-            Assert.Equal("HOLD", result.Reservation.Status);
+            Assert.Equal("EN_ATTENTE_PAIEMENT", result.Reservation.Status);
+            Assert.Equal(0, result.Reservation.IdEvenementReservation);
+            Assert.Equal(0, await ctx.EvenementReservations.CountAsync());
+            Assert.Equal(1, await ctx.EvenementCommandesEnAttente.CountAsync());
             Assert.Equal(idSociete, result.Reservation.IdSociete);
             Assert.Equal("PENDING", result.Payment!.Status);
             Assert.Equal("FP-FACADE-001", result.OrderNumber);
@@ -282,6 +295,7 @@ namespace CongoTravel.Tests
             Assert.Empty(result.Tickets);
             Assert.Equal(idSite, result.Reservation.IdSite);
             Assert.Equal(idSite, result.Payment!.IdSite);
+            Assert.Null(await ctx.EvenementPayments.Select(p => p.IdEvenementReservation).SingleAsync());
 
             var quota = await ctx.EvenementSessionGlobalQuotas.SingleAsync();
             Assert.Equal(2, quota.QuantiteHold);
@@ -314,11 +328,11 @@ namespace CongoTravel.Tests
         }
 
         [Fact]
-        public async Task InitiateElectronicAsync_rolls_back_hold_when_flexpay_fails()
+        public async Task InitiateElectronicAsync_rolls_back_commande_when_flexpay_fails()
         {
-            await using var ctx = BuildDb(nameof(InitiateElectronicAsync_rolls_back_hold_when_flexpay_fails));
+            await using var ctx = BuildDb(nameof(InitiateElectronicAsync_rolls_back_commande_when_flexpay_fails));
             var (_, idSite, idSession) = await SeedPublishedSessionWithFlexPayAsync(ctx);
-            // FlexPay événement désactivé → échec après création du hold
+            // FlexPay événement désactivé → échec après création commande + hold inventaire
             var service = CreateService(ctx, Mock.Of<IFlexPayService>(), flexEnabled: false);
 
             await Assert.ThrowsAsync<InvalidOperationException>(() =>
@@ -334,8 +348,8 @@ namespace CongoTravel.Tests
                     }
                 }));
 
-            var reservation = await ctx.EvenementReservations.SingleAsync();
-            Assert.Equal(EvenementReservationStatus.CANCELLED, reservation.Status);
+            Assert.Equal(0, await ctx.EvenementReservations.CountAsync());
+            Assert.Equal(0, await ctx.EvenementCommandesEnAttente.CountAsync());
 
             var quota = await ctx.EvenementSessionGlobalQuotas.SingleAsync();
             Assert.Equal(0, quota.QuantiteHold);

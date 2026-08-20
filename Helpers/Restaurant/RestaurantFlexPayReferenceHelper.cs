@@ -18,5 +18,17 @@ namespace CongoTravel.Helpers.Restaurant
             var raw = $"PENDING-RS-{idRestaurantReservation}-{suffix}";
             return raw.Length <= 100 ? raw : raw[..100];
         }
+
+        public static string BuildMerchantReferenceForCommande(Guid idRestaurantCommandeEnAttente)
+        {
+            var raw = $"RC{idRestaurantCommandeEnAttente:N}"[..20].ToUpperInvariant();
+            return raw;
+        }
+
+        public static string BuildPendingOrderNumberForCommande(Guid idRestaurantCommandeEnAttente)
+        {
+            var raw = $"PENDING-RC-{idRestaurantCommandeEnAttente:N}";
+            return raw.Length <= 100 ? raw : raw[..100];
+        }
     }
 }

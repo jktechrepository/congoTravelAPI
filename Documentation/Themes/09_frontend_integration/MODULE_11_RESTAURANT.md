@@ -74,6 +74,7 @@ flowchart LR
 | Acompte CASH | `POST /api/restaurants/reservations/with-paiement` |
 | Acompte FlexPay | `POST /api/restaurants/reservations/with-paiement-electronique` |
 | Poll | `GET /api/restaurants/flexpay/verifier/{orderNumber}` |
+| Liste résas | `GET /api/restaurants/reservations` — défaut **CONFIRMED** ; `?status=ALL` pour HOLD/CANCELLED/EXPIRED ; abandon/expiration FlexPay **supprime** la résa jamais confirmée |
 | Tickets | `GET /api/restaurants/reservations/{id}` → `tickets[]` ou `GET /api/restaurants/tickets/reservation/{id}` |
 | Entrée | `GET /api/restaurants/tickets/{code}/check` → `POST .../use` |
 | Annulation | `POST /api/restaurants/reservations/{id}/cancel` |
@@ -205,6 +206,8 @@ POST /api/restaurants/creneaux
 
 ### 4.5 Planification multi-plages (V1.1)
 
+`startTime` / `endTime` : chaînes `"HH:mm:ss"` (recommandé) ou `"HH:mm"`. Exemple Swagger :
+
 ```json
 POST /api/restaurants/planifications
 {
@@ -335,7 +338,9 @@ Carte : `methodePaiement: "CARTE_BANCAIRE"` (pas de `phone`) ; utiliser `payment
 | Champ | Usage |
 |-------|--------|
 | `transactionStatut` | `EnAttente` |
-| `reservation.status` | `HOLD` |
+| `reservation.status` | `EN_ATTENTE_PAIEMENT` (pas de ligne réservation métier avant succès FlexPay) |
+| `reservation.idRestaurantReservation` | `0` (placeholder) |
+| Poll / SignalR | via `orderNumber` uniquement |
 | `orderNumber` | poll + SignalR |
 | `paymentUrl` | WebView carte |
 | `reservationExpiresAtUtc` | compte à rebours hold |

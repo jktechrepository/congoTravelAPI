@@ -12,6 +12,7 @@ namespace CongoTravel.Services.Evenement.Strategies
 UPDATE `EvenementSessionSeats`
 SET `SeatStatus` = 'Available',
     `IdEvenementReservationCourante` = NULL,
+    `IdEvenementCommandeEnAttenteCourante` = NULL,
     `HoldExpireAtUtc` = NULL
 WHERE `IdEvenementSessionSeat` = {0}
   AND `SeatStatus` = 'Held'";
@@ -19,7 +20,8 @@ WHERE `IdEvenementSessionSeat` = {0}
         private const string ReleaseSoldSql = @"
 UPDATE `EvenementSessionSeats`
 SET `SeatStatus` = 'Available',
-    `IdEvenementReservationCourante` = NULL
+    `IdEvenementReservationCourante` = NULL,
+    `IdEvenementCommandeEnAttenteCourante` = NULL
 WHERE `IdEvenementSessionSeat` = {0}
   AND `SeatStatus` = 'Sold'";
 
@@ -112,6 +114,7 @@ WHERE `IdEvenementSessionSeat` = {0}
 
             seat.SeatStatus = EvenementSessionSeatStatus.Available;
             seat.IdEvenementReservationCourante = null;
+            seat.IdEvenementCommandeEnAttenteCourante = null;
             seat.HoldExpireAtUtc = null;
             await _context.SaveChangesAsync(cancellationToken);
             return true;
@@ -129,6 +132,7 @@ WHERE `IdEvenementSessionSeat` = {0}
 
             seat.SeatStatus = EvenementSessionSeatStatus.Available;
             seat.IdEvenementReservationCourante = null;
+            seat.IdEvenementCommandeEnAttenteCourante = null;
             await _context.SaveChangesAsync(cancellationToken);
             return true;
         }

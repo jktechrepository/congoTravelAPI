@@ -3520,6 +3520,9 @@ namespace CongoTravel.Migrations
                     b.Property<int?>("IdPaiement")
                         .HasColumnType("int");
 
+                    b.Property<int?>("IdPaiementSource")
+                        .HasColumnType("int");
+
                     b.Property<int?>("IdReservation")
                         .HasColumnType("int");
 
@@ -3535,6 +3538,10 @@ namespace CongoTravel.Migrations
                     b.Property<string>("MessageFlexPay")
                         .HasMaxLength(500)
                         .HasColumnType("varchar(500)");
+
+                    b.Property<string>("ModulePaiement")
+                        .HasMaxLength(30)
+                        .HasColumnType("varchar(30)");
 
                     b.Property<decimal>("Montant")
                         .HasColumnType("decimal(18,2)");
@@ -3587,6 +3594,11 @@ namespace CongoTravel.Migrations
 
                     b.HasIndex("IdSociete", "IdSite", "DateCreation")
                         .HasDatabaseName("IX_ReversementSite_Societe_Site_Date");
+
+                    b.HasIndex("ModulePaiement", "IdPaiementSource")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ReversementSite_Module_IdPaiementSource")
+                        .HasFilter("[ModulePaiement] IS NOT NULL AND [IdPaiementSource] IS NOT NULL");
 
                     b.ToTable("ReversementsSite");
                 });

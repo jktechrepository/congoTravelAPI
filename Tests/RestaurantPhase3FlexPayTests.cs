@@ -46,7 +46,7 @@ namespace CongoTravel.Tests
                 ctx,
                 RestaurantTestFactories.CreateHoldService(ctx),
                 RestaurantTestFactories.CreatePaymentService(ctx),
-                RestaurantTestFactories.CreateFlexPayInitiationService(ctx, flexPay),
+                RestaurantTestFactories.CreateCommandeFlexPayService(ctx, flexPay),
                 RestaurantTestFactories.CreateReservationService(ctx),
                 currentUser ?? MockClientUser().Object,
                 NullLogger<RestaurantReservationWithPaiementService>.Instance);
@@ -74,6 +74,7 @@ namespace CongoTravel.Tests
 
             Assert.NotNull(provider.GetService<IRestaurantFlexPayInitiationService>());
             Assert.NotNull(provider.GetService<IRestaurantFlexPayCallbackService>());
+            Assert.NotNull(provider.GetService<IRestaurantCommandeFlexPayService>());
         }
 
         [Fact]
@@ -98,7 +99,8 @@ namespace CongoTravel.Tests
             });
 
             Assert.Equal("EnAttente", result.TransactionStatut);
-            Assert.Equal("HOLD", result.Reservation.Status);
+            Assert.Equal("EN_ATTENTE_PAIEMENT", result.Reservation.Status);
+            Assert.Equal(0, result.Reservation.IdRestaurantReservation);
             Assert.Equal(idSociete, result.Reservation.IdSociete);
             Assert.Equal("PENDING", result.Payment!.Status);
             Assert.Equal(RestaurantFlexPayConstants.Provider, result.Payment.Provider);
@@ -109,6 +111,8 @@ namespace CongoTravel.Tests
             var payment = await ctx.RestaurantPayments.SingleAsync();
             Assert.Equal(RestaurantPaymentStatus.PENDING, payment.Status);
             Assert.Equal("FP-RST-ELEC-001", payment.ProviderTxRef);
+            Assert.Equal(0, await ctx.RestaurantReservations.CountAsync());
+            Assert.Equal(1, await ctx.RestaurantCommandesEnAttente.CountAsync());
 
             var quota = await ctx.RestaurantCreneauGlobalQuotas
                 .SingleAsync(q => q.IdRestaurantCreneau == idCreneau);
@@ -183,10 +187,8 @@ namespace CongoTravel.Tests
             Assert.False(result.PaymentPending);
             Assert.Equal(idReservation, result.IdRestaurantReservation);
 
-            Assert.Equal(RestaurantPaymentStatus.FAILED,
-                await ctx.RestaurantPayments.Select(p => p.Status).SingleAsync());
-            Assert.Equal(RestaurantReservationStatus.CANCELLED,
-                await ctx.RestaurantReservations.Select(r => r.Status).SingleAsync());
+            Assert.Empty(await ctx.RestaurantPayments.ToListAsync());
+            Assert.Empty(await ctx.RestaurantReservations.ToListAsync());
             Assert.Equal(0, await ctx.RestaurantCreneauGlobalQuotas.Select(q => q.QuantiteHold).SingleAsync());
 
             realtime.Verify(
@@ -267,13 +269,13 @@ namespace CongoTravel.Tests
             var realtime = new Mock<IFlexPayRealtimeNotifier>();
             var runner = new RestaurantHoldExpirationRunner(
                 realtime.Object,
+                RestaurantTestFactories.CreateReservationService(ctx),
+                RestaurantTestFactories.CreateCommandeFlexPayService(ctx),
                 NullLogger<RestaurantHoldExpirationRunner>.Instance);
             await runner.ExpireHoldsAsync(ctx);
 
-            Assert.Equal(RestaurantReservationStatus.EXPIRED,
-                await ctx.RestaurantReservations.Select(r => r.Status).SingleAsync());
-            Assert.Equal(RestaurantPaymentStatus.FAILED,
-                await ctx.RestaurantPayments.Select(p => p.Status).SingleAsync());
+            Assert.Empty(await ctx.RestaurantReservations.ToListAsync());
+            Assert.Empty(await ctx.RestaurantPayments.ToListAsync());
             Assert.Equal(0, await ctx.RestaurantCreneauGlobalQuotas.Select(q => q.QuantiteHold).SingleAsync());
 
             realtime.Verify(

@@ -179,7 +179,16 @@ montantAPaye attendu = tarifs sièges + (montAddPaieElectronique × nombreDePlac
 
 ## Reversement automatique (post-paiement électronique)
 
-Déclenché **après confirmation FlexPay** (`POST /api/FlexPay/callback` avec `code=0`), une fois la réservation et le paiement finalisés — **pas** après `POST reservation_with_paiement_electronique` (initiation seulement).
+Déclenché **après confirmation FlexPay**, une fois la réservation et le paiement finalisés — **pas** à l'initiation.
+
+| Module | Callback succès |
+|--------|-----------------|
+| Transport | `POST /api/FlexPay/callback` (`code=0`) |
+| Événement | `POST /api/events/flexpay/callback` |
+| Restaurant | `POST /api/restaurants/flexpay/callback` |
+| Site touristique | `POST /api/sites-touristiques/flexpay/callback` |
+
+Idempotence auto : `(ModulePaiement, IdPaiementSource)` — un Transport `IdPaiement=5` et un Événement `IdEvenementPayment=5` ne se bloquent pas. Les lignes Transport peuplent aussi `IdPaiement` / `IdReservation` (rétrocompatibilité).
 
 ### Conditions
 
@@ -187,7 +196,7 @@ Déclenché **après confirmation FlexPay** (`POST /api/FlexPay/callback` avec `
 2. `ConfigSociete.AutoReversementPaiementElectronique` = true pour la société
 3. `ConfigSociete.PourcentageReversementSite` > 0 (défaut 100 = totalité du `MontantPaye`)
 4. Optionnel : `ConfigSociete.FraisPlateforme` > 0 avec `CodeDeviseFraisPlateforme` (CDF/USD, ou null = devise du paiement)
-5. Paiement électronique confirmé (`MOBILE_MONEY` ou `CARTE_BANCAIRE`)
+5. Paiement électronique confirmé (Transport : `MOBILE_MONEY` / `CARTE_BANCAIRE` ; satellites : Provider FlexPay + statut `SUCCEEDED`)
 6. Site avec `NumeroMobileMoney` valide
 
 ### Formule de montant
@@ -211,7 +220,7 @@ montantReverse = max(0, partPercent − fraisConverti)
 | 25.50 | USD | 100 | 1.00 | USD | 24.50 |
 | 25.50 | USD | 100 | 1 500 | CDF | 25.50 − frais CDF converti en USD |
 
-Implémentation : [`PaiementElectroniqueReversementMontantResolver`](../../../Services/PaiementElectroniqueReversementMontantResolver.cs)
+Implémentation : [`ReversementMontantCalculator`](../../../Helpers/ReversementMontantCalculator.cs) (Transport via [`PaiementElectroniqueReversementMontantResolver`](../../../Services/PaiementElectroniqueReversementMontantResolver.cs) ; satellites via [`ReversementAutomatiqueContext`](../../../Services/ReversementAutomatiqueContext.cs)).
 
 ### Comportement
 

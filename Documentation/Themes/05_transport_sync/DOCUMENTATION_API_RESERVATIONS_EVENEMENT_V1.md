@@ -24,7 +24,15 @@ GET /api/events/reservations?idSociete={optional}&status={optional}&idEvenementS
 
 Retourne `EvenementReservationListItemDto[]` triés par `dateCreation` desc.
 
-`status` : `HOLD`, `CONFIRMED`, `CANCELLED`, `EXPIRED` (insensible à la casse).
+`status` (insensible à la casse) :
+
+| Valeur | Effet |
+|--------|--------|
+| *(omise / vide)* | **Défaut : `CONFIRMED` uniquement** |
+| `HOLD`, `CONFIRMED`, `CANCELLED`, `EXPIRED` | Filtre explicite |
+| `ALL` | Tous les statuts (audit admin) |
+
+Après abandon FlexPay, refus callback ou expiration HOLD : la réservation **n’est plus en base** (hard-delete des résas jamais confirmées). L’historique immédiat passe par SignalR / logs applicatifs. `status=CANCELLED|EXPIRED` ne retrouve en général que les annulations de résas **déjà confirmées**.
 
 Filtres optionnels `idUtilisateur` / `idClient` : correspondance exacte sur les colonnes acheteur.
 
@@ -34,6 +42,7 @@ Filtres optionnels `idUtilisateur` / `idClient` : correspondance exacte sur les 
 GET /api/events/reservations/societe/{idSociete}
 ```
 
+Même défaut que la liste principale : uniquement `CONFIRMED`.
 ### Liste par session
 
 ```

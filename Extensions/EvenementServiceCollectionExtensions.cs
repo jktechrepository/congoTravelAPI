@@ -1,4 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using CongoTravel.Services;
 using CongoTravel.Services.Evenement;
 using CongoTravel.Services.Evenement.Strategies;
 
@@ -9,6 +11,7 @@ namespace CongoTravel.Extensions
     {
         public static IServiceCollection AddEvenementTicketing(this IServiceCollection services)
         {
+            services.TryAddScoped<IReversementAutomatiqueService, NullReversementAutomatiqueService>();
             services.AddScoped<IEvenementHoldExpirationRunner, EvenementHoldExpirationRunner>();
             services.AddHostedService<EvenementHoldExpirationHostedService>();
 
@@ -29,6 +32,7 @@ namespace CongoTravel.Extensions
 
             services.AddScoped<IEvenementReservationConfirmationService, EvenementReservationConfirmationService>();
             services.AddScoped<IEvenementFlexPayInitiationService, EvenementFlexPayInitiationService>();
+            services.AddScoped<IEvenementCommandeFlexPayService, EvenementCommandeFlexPayService>();
             services.AddScoped<IEvenementFlexPayCallbackService, EvenementFlexPayCallbackService>();
             services.AddScoped<IEvenementDashboardService, EvenementDashboardService>();
             services.AddScoped<IEvenementSessionService, EvenementSessionService>();

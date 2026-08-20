@@ -81,6 +81,7 @@ namespace CongoTravel.Data
         public DbSet<EvenementReservation> EvenementReservations { get; set; }
         public DbSet<EvenementReservationLine> EvenementReservationLines { get; set; }
         public DbSet<EvenementTicket> EvenementTickets { get; set; }
+        public DbSet<EvenementCommandeEnAttente> EvenementCommandesEnAttente { get; set; }
         public DbSet<EvenementPayment> EvenementPayments { get; set; }
         public DbSet<EvenementSessionPhoto> EvenementSessionPhotos { get; set; }
 
@@ -93,6 +94,7 @@ namespace CongoTravel.Data
         public DbSet<SiteTouristiqueReservation> SiteTouristiqueReservations { get; set; }
         public DbSet<SiteTouristiqueReservationLine> SiteTouristiqueReservationLines { get; set; }
         public DbSet<SiteTouristiqueTicket> SiteTouristiqueTickets { get; set; }
+        public DbSet<SiteTouristiqueCommandeEnAttente> SiteTouristiqueCommandesEnAttente { get; set; }
         public DbSet<SiteTouristiquePayment> SiteTouristiquePayments { get; set; }
         public DbSet<SiteTouristiquePlanification> SiteTouristiquePlanifications { get; set; }
         public DbSet<SiteTouristiquePlanifGlobalQuota> SiteTouristiquePlanifGlobalQuotas { get; set; }
@@ -108,6 +110,7 @@ namespace CongoTravel.Data
         public DbSet<RestaurantReservation> RestaurantReservations { get; set; }
         public DbSet<RestaurantReservationLine> RestaurantReservationLines { get; set; }
         public DbSet<RestaurantTicket> RestaurantTickets { get; set; }
+        public DbSet<RestaurantCommandeEnAttente> RestaurantCommandesEnAttente { get; set; }
         public DbSet<RestaurantPayment> RestaurantPayments { get; set; }
         public DbSet<RestaurantPlanification> RestaurantPlanifications { get; set; }
         public DbSet<RestaurantPlanificationPlage> RestaurantPlanificationPlages { get; set; }
@@ -1439,6 +1442,7 @@ namespace CongoTravel.Data
                 entity.Property(e => e.CodeDevise).IsRequired().HasMaxLength(10);
                 entity.Property(e => e.Reference).IsRequired().HasMaxLength(100);
                 entity.Property(e => e.Origine).IsRequired().HasMaxLength(30).HasDefaultValue("Manuel");
+                entity.Property(e => e.ModulePaiement).HasMaxLength(30);
                 entity.HasIndex(e => e.OrderNumber)
                     .IsUnique()
                     .HasDatabaseName("IX_ReversementSite_OrderNumber")
@@ -1447,6 +1451,10 @@ namespace CongoTravel.Data
                     .IsUnique()
                     .HasDatabaseName("IX_ReversementSite_IdPaiement")
                     .HasFilter("[IdPaiement] IS NOT NULL");
+                entity.HasIndex(e => new { e.ModulePaiement, e.IdPaiementSource })
+                    .IsUnique()
+                    .HasDatabaseName("IX_ReversementSite_Module_IdPaiementSource")
+                    .HasFilter("[ModulePaiement] IS NOT NULL AND [IdPaiementSource] IS NOT NULL");
                 entity.HasIndex(e => new { e.IdSociete, e.IdSite, e.DateCreation })
                     .HasDatabaseName("IX_ReversementSite_Societe_Site_Date");
                 entity.HasOne<Site>()

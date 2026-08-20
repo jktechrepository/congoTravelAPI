@@ -18,6 +18,7 @@ namespace CongoTravel.Data
             ConfigureRestaurantReservation(modelBuilder);
             ConfigureRestaurantReservationLine(modelBuilder);
             ConfigureRestaurantTicket(modelBuilder);
+            ConfigureRestaurantCommandeEnAttente(modelBuilder);
             ConfigureRestaurantPayment(modelBuilder);
             ConfigureRestaurantPlanification(modelBuilder);
             ConfigureRestaurantPlanificationPlage(modelBuilder);
@@ -392,6 +393,13 @@ namespace CongoTravel.Data
                 entity.HasOne(e => e.Reservation)
                     .WithMany(r => r.Payments)
                     .HasForeignKey(e => e.IdRestaurantReservation)
+                    .IsRequired(false)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(e => e.CommandeEnAttente)
+                    .WithMany()
+                    .HasForeignKey(e => e.IdRestaurantCommandeEnAttente)
+                    .IsRequired(false)
                     .OnDelete(DeleteBehavior.Restrict);
 
                 entity.HasOne(e => e.Site)
@@ -410,8 +418,36 @@ namespace CongoTravel.Data
                 entity.HasIndex(e => new { e.IdRestaurantReservation, e.Status })
                     .HasDatabaseName("IX_RestaurantPayments_Reservation_Status");
 
+                entity.HasIndex(e => e.IdRestaurantCommandeEnAttente)
+                    .HasDatabaseName("IX_RestaurantPayments_IdRestaurantCommandeEnAttente");
+
                 entity.HasIndex(e => e.IdSite)
                     .HasDatabaseName("IX_RestaurantPayments_IdSite");
+            });
+        }
+
+        private static void ConfigureRestaurantCommandeEnAttente(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<RestaurantCommandeEnAttente>(entity =>
+            {
+                entity.ToTable("RestaurantCommandesEnAttente");
+                entity.Property(e => e.MethodePaiement).IsRequired().HasMaxLength(50);
+                entity.Property(e => e.MontantTarif).HasColumnType("decimal(18,2)");
+                ConfigureRestaurantCodeDevise(entity.Property(e => e.CodeDeviseTarif));
+                entity.Property(e => e.MontantFlexPay).HasColumnType("decimal(18,2)");
+                ConfigureRestaurantCodeDevise(entity.Property(e => e.CodeDevisePaiement));
+                entity.Property(e => e.TauxVersDevisePaiement).HasColumnType("decimal(18,8)").HasDefaultValue(1m);
+                entity.Property(e => e.OrderNumberFlexPay).HasMaxLength(120);
+                entity.Property(e => e.ReferenceFlexPay).HasMaxLength(120);
+                entity.Property(e => e.IdempotencyKey).HasMaxLength(120);
+                entity.Property(e => e.PayloadMetierJson).IsRequired();
+                entity.HasOne(e => e.Creneau).WithMany().HasForeignKey(e => e.IdRestaurantCreneau).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(e => e.Site).WithMany().HasForeignKey(e => e.IdSite).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(e => e.PaiementEnAttente).WithMany().HasForeignKey(e => e.IdPaiementEnAttente).OnDelete(DeleteBehavior.SetNull);
+                entity.HasIndex(e => e.DateExpiration).HasDatabaseName("IX_RestaurantCommandesEnAttente_DateExpiration");
+                entity.HasIndex(e => e.OrderNumberFlexPay).HasDatabaseName("IX_RestaurantCommandesEnAttente_OrderNumberFlexPay");
+                entity.HasIndex(e => e.IdempotencyKey).IsUnique().HasDatabaseName("IX_RestaurantCommandesEnAttente_Idempotency_UQ");
+                entity.HasIndex(e => new { e.IdSociete, e.IdRestaurantCreneau }).HasDatabaseName("IX_RestaurantCommandesEnAttente_Societe_Creneau");
             });
         }
 

@@ -69,6 +69,7 @@ flowchart LR
 | Achat CASH | `POST /api/sites-touristiques/reservations/with-paiement` |
 | Achat FlexPay | `POST /api/sites-touristiques/reservations/with-paiement-electronique` |
 | Poll | `GET /api/sites-touristiques/flexpay/verifier/{orderNumber}` |
+| Liste résas | `GET /api/sites-touristiques/reservations` — défaut **CONFIRMED** ; `?status=ALL` pour HOLD/CANCELLED/EXPIRED ; abandon/expiration FlexPay **supprime** la résa jamais confirmée |
 | Tickets | `GET /api/sites-touristiques/reservations/{id}/tickets` |
 | Entrée | `GET .../tickets/{code}/check` → `POST .../use` |
 
@@ -324,7 +325,9 @@ Carte : `methodePaiement: "CARTE_BANCAIRE"` (pas de `phone`) ; utiliser `payment
 | Champ | Usage |
 |-------|--------|
 | `transactionStatut` | `EnAttente` |
-| `reservation.status` | `HOLD` |
+| `reservation.status` | `EN_ATTENTE_PAIEMENT` (pas de ligne réservation métier avant succès FlexPay) |
+| `reservation.idSiteTouristiqueReservation` | `0` (placeholder) |
+| Poll / SignalR | via `orderNumber` uniquement |
 | `orderNumber` | poll + SignalR |
 | `paymentUrl` | WebView carte |
 | `reservationExpiresAtUtc` | compte à rebours hold |

@@ -44,8 +44,12 @@ namespace CongoTravel.Services.SiteTouristique
 
                 if (existingPayment != null)
                 {
+                    if (existingPayment.IdSiteTouristiqueReservation is null or <= 0)
+                        throw new InvalidOperationException(
+                            "Cette clé d'idempotence est liée à une commande FlexPay en attente.");
+
                     var reservation = await LoadReservationGraphAsync(
-                        existingPayment.IdSiteTouristiqueReservation,
+                        existingPayment.IdSiteTouristiqueReservation.Value,
                         idSociete,
                         cancellationToken);
 

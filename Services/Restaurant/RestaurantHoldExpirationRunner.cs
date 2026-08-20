@@ -13,49 +13,90 @@ namespace CongoTravel.Services.Restaurant
             "Hold expiré. Le paiement n’a pas été confirmé à temps.";
 
         private readonly IFlexPayRealtimeNotifier _flexPayRealtimeNotifier;
+        private readonly IRestaurantReservationService _reservationService;
+        private readonly IRestaurantCommandeFlexPayService _commandeFlexPayService;
         private readonly ILogger<RestaurantHoldExpirationRunner> _logger;
 
         public RestaurantHoldExpirationRunner(
             IFlexPayRealtimeNotifier flexPayRealtimeNotifier,
+            IRestaurantReservationService reservationService,
+            IRestaurantCommandeFlexPayService commandeFlexPayService,
             ILogger<RestaurantHoldExpirationRunner> logger)
         {
             _flexPayRealtimeNotifier = flexPayRealtimeNotifier;
+            _reservationService = reservationService;
+            _commandeFlexPayService = commandeFlexPayService;
             _logger = logger;
         }
 
         public async Task ExpireHoldsAsync(CongoTravelDbContext context, CancellationToken cancellationToken = default)
         {
+            await ExpirePlanACommandesAsync(context, cancellationToken);
+            await ExpireLegacyReservationHoldsAsync(context, cancellationToken);
+        }
+
+        private async Task ExpirePlanACommandesAsync(CongoTravelDbContext context, CancellationToken cancellationToken)
+        {
+            var expired = await context.RestaurantCommandesEnAttente
+                .Where(c => c.DateExpiration != null && c.DateExpiration < DateTime.UtcNow)
+                .ToListAsync(cancellationToken);
+            foreach (var commande in expired)
+            {
+                var payment = await context.RestaurantPayments.FirstOrDefaultAsync(
+                    p => p.IdRestaurantCommandeEnAttente == commande.IdRestaurantCommandeEnAttente
+                         && p.Status == RestaurantPaymentStatus.PENDING, cancellationToken);
+                var order = payment?.ProviderTxRef ?? commande.OrderNumberFlexPay;
+                try { await _commandeFlexPayService.FailCommandeAsync(commande, payment, cancellationToken); }
+                catch (Exception ex) { _logger.LogWarning(ex, "Échec expiration commande restaurant Plan A — Commande={IdCommande}", commande.IdRestaurantCommandeEnAttente); continue; }
+                if (commande.IdUtilisateur is > 0 && !string.IsNullOrWhiteSpace(order))
+                    await _flexPayRealtimeNotifier.NotifyPaymentFailedAsync(commande.IdUtilisateur.Value, order.Trim(), MessageHoldExpire, cancellationToken);
+            }
+        }
+
+        private async Task ExpireLegacyReservationHoldsAsync(CongoTravelDbContext context, CancellationToken cancellationToken)
+        {
             var utcNow = DateTime.UtcNow;
 
-            var expiredHoldIds = await context.RestaurantReservations
+            var expiredHolds = await context.RestaurantReservations
                 .AsNoTracking()
                 .Where(r => r.Status == RestaurantReservationStatus.HOLD
                             && r.ExpiresAtUtc != null
                             && r.ExpiresAtUtc < utcNow)
-                .Select(r => r.IdRestaurantReservation)
+                .Select(r => new { r.IdRestaurantReservation, r.IdSociete })
                 .ToListAsync(cancellationToken);
 
-            if (expiredHoldIds.Count == 0)
+            if (expiredHolds.Count == 0)
             {
                 _logger.LogDebug("Expiration holds restaurant : aucun HOLD expiré en attente.");
                 return;
             }
 
+            var expiredHoldIds = expiredHolds.Select(h => h.IdRestaurantReservation).ToList();
+
             var pendingFlexPay = await (
                 from p in context.RestaurantPayments.AsNoTracking()
                 join r in context.RestaurantReservations.AsNoTracking()
-                    on p.IdRestaurantReservation equals r.IdRestaurantReservation
-                where expiredHoldIds.Contains(p.IdRestaurantReservation)
+                    on p.IdRestaurantReservation equals (int?)r.IdRestaurantReservation
+                where p.IdRestaurantReservation != null
+                      && expiredHoldIds.Contains(p.IdRestaurantReservation.Value)
                       && p.Status == RestaurantPaymentStatus.PENDING
                       && p.Provider == RestaurantFlexPayConstants.Provider
                 select new PendingFlexPayExpireDto(
                     p.IdRestaurantPayment,
-                    p.IdRestaurantReservation,
+                    p.IdRestaurantReservation!.Value,
                     p.ProviderTxRef,
                     r.IdUtilisateur)).ToListAsync(cancellationToken);
 
             await ExpireHoldsInventoryAsync(context, expiredHoldIds, cancellationToken);
             await FailPendingFlexPayAndNotifyAsync(context, pendingFlexPay, cancellationToken);
+
+            foreach (var hold in expiredHolds)
+            {
+                await _reservationService.PurgeNeverConfirmedAsync(
+                    hold.IdRestaurantReservation,
+                    hold.IdSociete,
+                    cancellationToken);
+            }
         }
 
         private async Task ExpireHoldsInventoryAsync(

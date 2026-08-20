@@ -13,7 +13,7 @@ namespace CongoTravel.Services.Restaurant
         private readonly CongoTravelDbContext _context;
         private readonly IRestaurantHoldService _holdService;
         private readonly IRestaurantPaymentService _paymentService;
-        private readonly IRestaurantFlexPayInitiationService _flexPayInitiationService;
+        private readonly IRestaurantCommandeFlexPayService _commandeFlexPayService;
         private readonly IRestaurantReservationService _reservationService;
         private readonly ICurrentUserService _currentUserService;
         private readonly ILogger<RestaurantReservationWithPaiementService> _logger;
@@ -22,7 +22,7 @@ namespace CongoTravel.Services.Restaurant
             CongoTravelDbContext context,
             IRestaurantHoldService holdService,
             IRestaurantPaymentService paymentService,
-            IRestaurantFlexPayInitiationService flexPayInitiationService,
+            IRestaurantCommandeFlexPayService commandeFlexPayService,
             IRestaurantReservationService reservationService,
             ICurrentUserService currentUserService,
             ILogger<RestaurantReservationWithPaiementService> logger)
@@ -30,7 +30,7 @@ namespace CongoTravel.Services.Restaurant
             _context = context;
             _holdService = holdService;
             _paymentService = paymentService;
-            _flexPayInitiationService = flexPayInitiationService;
+            _commandeFlexPayService = commandeFlexPayService;
             _reservationService = reservationService;
             _currentUserService = currentUserService;
             _logger = logger;
@@ -115,61 +115,8 @@ namespace CongoTravel.Services.Restaurant
             var effectiveIdSite = await ResolveEffectiveIdSiteAsync(
                 idSociete, request, requireSite: true, cancellationToken);
 
-            var hold = await _holdService.CreateHoldAsync(
-                request.IdRestaurantCreneau,
-                idSociete,
-                ToHoldRequest(request, effectiveIdSite),
-                cancellationToken);
-
-            await AttachBuyerAsync(hold.IdRestaurantReservation, cancellationToken);
-
-            try
-            {
-                var initiated = await _flexPayInitiationService.InitiateAsync(
-                    hold.IdRestaurantReservation,
-                    idSociete,
-                    new RestaurantInitiateFlexPayRequestDto
-                    {
-                        MethodePaiement = request.Paiement.MethodePaiement,
-                        Phone = request.Paiement.Phone,
-                        IdSite = effectiveIdSite!.Value,
-                        CodeDevisePaiement = request.Paiement.CodeDevisePaiement,
-                        IdempotencyKey = ResolvePaymentIdempotencyKey(request)
-                    },
-                    cancellationToken);
-
-                var reservation = await _reservationService.GetByIdAsync(
-                    hold.IdRestaurantReservation,
-                    idSociete,
-                    cancellationToken)
-                    ?? throw new KeyNotFoundException(
-                        $"Réservation restaurant {hold.IdRestaurantReservation} introuvable après initiation FlexPay.");
-
-                return new RestaurantReservationWithPaiementResponseDto
-                {
-                    Reservation = reservation,
-                    Payment = initiated.Payment,
-                    TransactionStatut = "EnAttente",
-                    Message = string.IsNullOrWhiteSpace(initiated.Message)
-                        ? "Paiement FlexPay initié. Hold conservé jusqu'à confirmation ou expiration."
-                        : initiated.Message,
-                    OrderNumber = initiated.OrderNumber,
-                    PaymentUrl = initiated.PaymentUrl,
-                    ReservationExpiresAtUtc = initiated.ReservationExpiresAtUtc,
-                    MontantFlexPay = initiated.MontantFlexPay,
-                    CodeDevisePaiement = initiated.CodeDevisePaiement,
-                    MontantTarif = initiated.MontantTarif,
-                    CodeDeviseTarif = initiated.CodeDeviseTarif,
-                    TauxApplique = initiated.TauxApplique,
-                    FlexPayAccepted = initiated.FlexPayAccepted,
-                    AlreadyInitiated = initiated.AlreadyInitiated
-                };
-            }
-            catch (Exception ex)
-            {
-                await TryRollbackHoldAsync(hold.IdRestaurantReservation, idSociete, ex, cancellationToken);
-                throw;
-            }
+            return await _commandeFlexPayService.InitiateElectronicAsync(
+                request, idSociete, effectiveIdSite!.Value, cancellationToken);
         }
 
         private async Task<int> ResolvePurchaseSocieteIdAsync(

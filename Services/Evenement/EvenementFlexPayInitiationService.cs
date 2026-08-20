@@ -52,7 +52,14 @@ namespace CongoTravel.Services.Evenement
             EvenementInitiateFlexPayRequestDto request,
             CancellationToken cancellationToken = default)
         {
+            // Plan A : seul chemin électronique = with-paiement-electronique (commande sans réservation).
+            throw new InvalidOperationException(
+                "L'initiation FlexPay sur une réservation HOLD existante n'est plus supportée. " +
+                "Utilisez POST /api/events/reservations/with-paiement-electronique.");
+
+#pragma warning disable CS0162 // Conservé pour référence / rollback temporaire si besoin
             MethodePaiementHelper.EnsureElectronicOnly(request.MethodePaiement);
+#pragma warning restore CS0162
             var methode = MethodePaiementHelper.NormalizeForStorage(request.MethodePaiement);
 
             if (!_flexPayOptions.IsEventEnabled)

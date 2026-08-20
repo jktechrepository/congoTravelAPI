@@ -26,7 +26,9 @@ namespace CongoTravel.Services.Evenement
         private readonly IFlexPayService _flexPayService;
         private readonly IEvenementReservationConfirmationService _confirmationService;
         private readonly IEvenementReservationService _reservationService;
+        private readonly IEvenementCommandeFlexPayService _commandeFlexPayService;
         private readonly IFlexPayRealtimeNotifier _flexPayRealtimeNotifier;
+        private readonly IReversementAutomatiqueService _reversementAutomatiqueService;
         private readonly ILogger<EvenementFlexPayCallbackService> _logger;
 
         public EvenementFlexPayCallbackService(
@@ -34,14 +36,18 @@ namespace CongoTravel.Services.Evenement
             IFlexPayService flexPayService,
             IEvenementReservationConfirmationService confirmationService,
             IEvenementReservationService reservationService,
+            IEvenementCommandeFlexPayService commandeFlexPayService,
             IFlexPayRealtimeNotifier flexPayRealtimeNotifier,
+            IReversementAutomatiqueService reversementAutomatiqueService,
             ILogger<EvenementFlexPayCallbackService> logger)
         {
             _context = context;
             _flexPayService = flexPayService;
             _confirmationService = confirmationService;
             _reservationService = reservationService;
+            _commandeFlexPayService = commandeFlexPayService;
             _flexPayRealtimeNotifier = flexPayRealtimeNotifier;
+            _reversementAutomatiqueService = reversementAutomatiqueService;
             _logger = logger;
         }
 
@@ -56,8 +62,22 @@ namespace CongoTravel.Services.Evenement
             var payment = await FindPaymentAsync(orderNumber, cancellationToken)
                 ?? throw new InvalidOperationException($"Paiement FlexPay événement {orderNumber} introuvable.");
 
+            // Plan A — commande en attente (pas de réservation)
+            if (payment.IdEvenementCommandeEnAttente.HasValue
+                && payment.IdEvenementReservation is null or 0)
+            {
+                return await VerifyCommandeAndFinalizeAsync(
+                    orderNumber.Trim(), payment, idSociete, cancellationToken);
+            }
+
+            if (payment.IdEvenementReservation is null or 0)
+            {
+                throw new KeyNotFoundException(
+                    $"Paiement FlexPay événement {orderNumber} introuvable pour la société {idSociete}.");
+            }
+
             var reservation = await LoadReservationGraphAsync(
-                payment.IdEvenementReservation,
+                payment.IdEvenementReservation.Value,
                 idSociete,
                 cancellationToken);
 
@@ -95,7 +115,7 @@ namespace CongoTravel.Services.Evenement
             {
                 // Recharger : le hold / paiement peut être devenu terminal pendant l’appel FlexPay.
                 reservation = await LoadReservationGraphAsync(
-                    payment.IdEvenementReservation,
+                    payment.IdEvenementReservation!.Value,
                     idSociete,
                     cancellationToken)
                     ?? reservation;
@@ -175,6 +195,13 @@ namespace CongoTravel.Services.Evenement
                         "Callback FlexPay événement — paiement introuvable pour OrderNumber={OrderNumber}",
                         callback.OrderNumber);
                     return Failure("Paiement événement introuvable pour ce orderNumber.");
+                }
+
+                // Plan A : paiement lié à une commande (pas encore de réservation)
+                if (payment.IdEvenementCommandeEnAttente.HasValue
+                    && payment.IdEvenementReservation is null or 0)
+                {
+                    return await ProcessCommandeCallbackAsync(callback, payment, cancellationToken);
                 }
 
                 var reservation = await _context.EvenementReservations
@@ -294,6 +321,10 @@ namespace CongoTravel.Services.Evenement
                             trackedPayment.IdEvenementPayment,
                             cancellationToken);
 
+                        await _reversementAutomatiqueService.TryDeclencherAsync(
+                            ReversementAutomatiqueContext.FromEvenement(trackedPayment, trackedReservation),
+                            cancellationToken);
+
                         return new EvenementFlexPayCallbackProcessResultDto
                         {
                             Success = true,
@@ -368,6 +399,32 @@ namespace CongoTravel.Services.Evenement
                 return Failure("Paiement événement introuvable pour ce orderNumber.");
             }
 
+            if (payment.IdEvenementCommandeEnAttente.HasValue
+                && payment.IdEvenementReservation is null or 0)
+            {
+                var commande = await _context.EvenementCommandesEnAttente
+                    .FirstOrDefaultAsync(
+                        c => c.IdEvenementCommandeEnAttente == payment.IdEvenementCommandeEnAttente.Value,
+                        cancellationToken);
+
+                if (commande == null)
+                {
+                    if (payment.Status != EvenementPaymentStatus.FAILED)
+                    {
+                        payment.Status = EvenementPaymentStatus.FAILED;
+                        payment.DateModification = DateTime.UtcNow;
+                        await _context.SaveChangesAsync(cancellationToken);
+                    }
+
+                    return StatusOnlyNotPending(0, payment.IdEvenementPayment, message, alreadyProcessed: true);
+                }
+
+                var idUtilisateur = commande.IdUtilisateur;
+                await _commandeFlexPayService.FailCommandeAsync(commande, payment, cancellationToken);
+                await TryNotifyPaymentFailedAsync(idUtilisateur, normalized, message, cancellationToken);
+                return StatusOnlyNotPending(0, payment.IdEvenementPayment, message);
+            }
+
             var reservation = await _context.EvenementReservations
                 .AsNoTracking()
                 .FirstOrDefaultAsync(
@@ -385,6 +442,181 @@ namespace CongoTravel.Services.Evenement
                 normalized,
                 message,
                 cancellationToken);
+        }
+
+        private async Task<EvenementFlexPayVerifierResultDto> VerifyCommandeAndFinalizeAsync(
+            string orderNumber,
+            EvenementPayment payment,
+            int idSociete,
+            CancellationToken cancellationToken)
+        {
+            var commande = await _context.EvenementCommandesEnAttente
+                .AsNoTracking()
+                .FirstOrDefaultAsync(
+                    c => c.IdEvenementCommandeEnAttente == payment.IdEvenementCommandeEnAttente
+                         && c.IdSociete == idSociete,
+                    cancellationToken);
+
+            if (commande == null)
+            {
+                throw new KeyNotFoundException(
+                    $"Paiement FlexPay événement {orderNumber} introuvable pour la société {idSociete}.");
+            }
+
+            if (payment.Status == EvenementPaymentStatus.FAILED)
+            {
+                return new EvenementFlexPayVerifierResultDto
+                {
+                    StatusOnly = StatusOnlyNotPending(0, payment.IdEvenementPayment, MessagePaiementNonConfirme, true)
+                };
+            }
+
+            if (commande.DateExpiration.HasValue && commande.DateExpiration.Value < DateTime.UtcNow)
+            {
+                var trackedCmd = await _context.EvenementCommandesEnAttente
+                    .FirstAsync(c => c.IdEvenementCommandeEnAttente == commande.IdEvenementCommandeEnAttente, cancellationToken);
+                var trackedPay = await _context.EvenementPayments
+                    .FirstAsync(p => p.IdEvenementPayment == payment.IdEvenementPayment, cancellationToken);
+                var idUser = trackedCmd.IdUtilisateur;
+                await _commandeFlexPayService.FailCommandeAsync(trackedCmd, trackedPay, cancellationToken);
+                await TryNotifyPaymentFailedAsync(idUser, orderNumber, MessageHoldExpire, cancellationToken);
+                return new EvenementFlexPayVerifierResultDto
+                {
+                    StatusOnly = StatusOnlyNotPending(0, payment.IdEvenementPayment, MessageHoldExpire)
+                };
+            }
+
+            var infoPaiement = await ResolveInfoPaiementForSocieteAsync(idSociete, cancellationToken);
+            var check = await _flexPayService.VerifierStatutTransactionAsync(
+                infoPaiement.ApiToken,
+                orderNumber,
+                cancellationToken);
+
+            var status = check.Transaction?.Status ?? check.Code;
+            if (FlexPayStatusHelper.ShouldTreatAsPending(status))
+            {
+                return new EvenementFlexPayVerifierResultDto
+                {
+                    StatusOnly = new EvenementFlexPayCallbackProcessResultDto
+                    {
+                        Success = true,
+                        PaymentPending = true,
+                        Message = "Paiement en attente de validation Mobile Money.",
+                        IdEvenementReservation = 0,
+                        IdEvenementPayment = payment.IdEvenementPayment
+                    }
+                };
+            }
+
+            var callbackCode = FlexPayStatusHelper.IsSuccess(status) ? "0" : "1";
+            var callback = FlexPayVerifyCallbackHelper.BuildSyntheticCallback(
+                check,
+                orderNumber,
+                payment.Montant,
+                payment.CodeDevise,
+                callbackCode);
+
+            var processResult = await ProcessCallbackAsync(callback, cancellationToken);
+            return await WrapVerifierResultAsync(processResult, idSociete, orderNumber, cancellationToken);
+        }
+
+        private async Task<EvenementFlexPayCallbackProcessResultDto> ProcessCommandeCallbackAsync(
+            FlexPayCallbackDto callback,
+            EvenementPayment payment,
+            CancellationToken cancellationToken)
+        {
+            var commande = await _context.EvenementCommandesEnAttente
+                .FirstOrDefaultAsync(
+                    c => c.IdEvenementCommandeEnAttente == payment.IdEvenementCommandeEnAttente,
+                    cancellationToken);
+
+            if (commande == null)
+            {
+                if (payment.Status == EvenementPaymentStatus.SUCCEEDED
+                    && payment.IdEvenementReservation is > 0)
+                {
+                    return new EvenementFlexPayCallbackProcessResultDto
+                    {
+                        Success = true,
+                        AlreadyProcessed = true,
+                        Message = "Déjà finalisé (idempotence).",
+                        IdEvenementReservation = payment.IdEvenementReservation,
+                        IdEvenementPayment = payment.IdEvenementPayment
+                    };
+                }
+
+                return Failure("Commande événement associée au paiement introuvable.");
+            }
+
+            if (!string.Equals(callback.Code, "0", StringComparison.Ordinal))
+            {
+                var idUser = commande.IdUtilisateur;
+                await _commandeFlexPayService.FailCommandeAsync(commande, payment, cancellationToken);
+                await TryNotifyPaymentFailedAsync(
+                    idUser,
+                    callback.OrderNumber!.Trim(),
+                    "Paiement refusé par FlexPay.",
+                    cancellationToken);
+                return StatusOnlyNotPending(0, payment.IdEvenementPayment, "Paiement refusé par FlexPay.");
+            }
+
+            ValidateCallbackAmountForCommande(callback, payment);
+            FlexPayCurrencyPolicy.EnsureCallbackCurrencyMatchesExpected(
+                callback.Currency,
+                payment.CodeDevise,
+                "Callback FlexPay événement");
+
+            if (commande.DateExpiration.HasValue && commande.DateExpiration.Value < DateTime.UtcNow)
+            {
+                var idUser = commande.IdUtilisateur;
+                await _commandeFlexPayService.FailCommandeAsync(commande, payment, cancellationToken);
+                await TryNotifyPaymentFailedAsync(
+                    idUser, callback.OrderNumber!.Trim(), MessageHoldExpire, cancellationToken);
+                return Failure(MessageHoldExpire);
+            }
+
+            var reservation = await _commandeFlexPayService.FinalizeCommandeSuccessAsync(
+                commande, payment, cancellationToken);
+
+            await TryNotifyPaymentConfirmedAsync(
+                reservation.IdUtilisateur,
+                callback.OrderNumber,
+                reservation.IdEvenementReservation,
+                payment.IdEvenementPayment,
+                cancellationToken);
+
+            await _reversementAutomatiqueService.TryDeclencherAsync(
+                ReversementAutomatiqueContext.FromEvenement(payment, reservation),
+                cancellationToken);
+
+            return new EvenementFlexPayCallbackProcessResultDto
+            {
+                Success = true,
+                Message = "Réservation événement confirmée après callback FlexPay.",
+                IdEvenementReservation = reservation.IdEvenementReservation,
+                IdEvenementPayment = payment.IdEvenementPayment
+            };
+        }
+
+        private void ValidateCallbackAmountForCommande(FlexPayCallbackDto callback, EvenementPayment payment)
+        {
+            if (string.IsNullOrWhiteSpace(callback.Amount))
+                return;
+
+            if (!decimal.TryParse(
+                    callback.Amount,
+                    NumberStyles.Number,
+                    CultureInfo.InvariantCulture,
+                    out var amount))
+            {
+                throw new InvalidOperationException("Montant callback FlexPay invalide.");
+            }
+
+            if (Math.Abs(amount - payment.Montant) > MontantTolerance)
+            {
+                throw new InvalidOperationException(
+                    $"Montant callback ({amount}) ≠ montant paiement ({payment.Montant}).");
+            }
         }
 
         /// <summary>
@@ -406,6 +638,15 @@ namespace CongoTravel.Services.Evenement
                         payment,
                         orderNumber,
                         MessagePaiementNonConfirme,
+                        cancellationToken);
+                }
+
+                if (reservation.Status is EvenementReservationStatus.CANCELLED
+                    or EvenementReservationStatus.EXPIRED)
+                {
+                    await _reservationService.PurgeNeverConfirmedAsync(
+                        reservation.IdEvenementReservation,
+                        reservation.IdSociete,
                         cancellationToken);
                 }
 
@@ -493,6 +734,11 @@ namespace CongoTravel.Services.Evenement
                 };
             }
 
+            await _reservationService.PurgeNeverConfirmedAsync(
+                reservationSnapshot.IdEvenementReservation,
+                reservationSnapshot.IdSociete,
+                cancellationToken);
+
             if (!alreadyFailed)
             {
                 await TryNotifyPaymentFailedAsync(
@@ -526,14 +772,14 @@ namespace CongoTravel.Services.Evenement
             CancellationToken cancellationToken)
         {
             DetachTrackedReservation(idEvenementReservation);
-
             var status = await _context.EvenementReservations
                 .AsNoTracking()
                 .Where(r => r.IdEvenementReservation == idEvenementReservation)
-                .Select(r => r.Status)
-                .FirstAsync(cancellationToken);
+                .Select(r => (EvenementReservationStatus?)r.Status)
+                .FirstOrDefaultAsync(cancellationToken);
 
-            if (status != EvenementReservationStatus.HOLD)
+            // Déjà absente (purge CancelAsync HOLD) ou plus en HOLD → inventaire libéré.
+            if (status is null || status != EvenementReservationStatus.HOLD)
                 return (true, null);
 
             try
@@ -557,8 +803,8 @@ namespace CongoTravel.Services.Evenement
             status = await _context.EvenementReservations
                 .AsNoTracking()
                 .Where(r => r.IdEvenementReservation == idEvenementReservation)
-                .Select(r => r.Status)
-                .FirstAsync(cancellationToken);
+                .Select(r => (EvenementReservationStatus?)r.Status)
+                .FirstOrDefaultAsync(cancellationToken);
 
             if (status == EvenementReservationStatus.HOLD)
             {

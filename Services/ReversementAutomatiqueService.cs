@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Options;
 using CongoTravel.Configuration;
+using CongoTravel.Helpers;
 using CongoTravel.Models;
 using CongoTravel.Services.Repositories;
 
@@ -8,96 +9,121 @@ namespace CongoTravel.Services
     public class ReversementAutomatiqueService : IReversementAutomatiqueService
     {
         private readonly IConfigSocieteRepository _configSocieteRepository;
-        private readonly IReversementMontantResolver _montantResolver;
+        private readonly IDeviseMontantConverter _deviseMontantConverter;
         private readonly IReversementSiteService _reversementSiteService;
         private readonly FlexPayOptions _flexPayOptions;
         private readonly ILogger<ReversementAutomatiqueService> _logger;
 
         public ReversementAutomatiqueService(
             IConfigSocieteRepository configSocieteRepository,
-            IReversementMontantResolver montantResolver,
+            IDeviseMontantConverter deviseMontantConverter,
             IReversementSiteService reversementSiteService,
             IOptions<FlexPayOptions> flexPayOptions,
             ILogger<ReversementAutomatiqueService> logger)
         {
             _configSocieteRepository = configSocieteRepository;
-            _montantResolver = montantResolver;
+            _deviseMontantConverter = deviseMontantConverter;
             _reversementSiteService = reversementSiteService;
             _flexPayOptions = flexPayOptions.Value;
             _logger = logger;
         }
 
-        public async Task<bool> TryDeclencherApresPaiementElectroniqueAsync(
+        public Task<bool> TryDeclencherApresPaiementElectroniqueAsync(
             Paiement paiement,
             Reservation reservation,
+            CancellationToken cancellationToken = default) =>
+            TryDeclencherAsync(
+                ReversementAutomatiqueContext.FromTransport(paiement, reservation),
+                cancellationToken);
+
+        public async Task<bool> TryDeclencherAsync(
+            ReversementAutomatiqueContext ctx,
             CancellationToken cancellationToken = default)
         {
             if (!_flexPayOptions.Enabled || !_flexPayOptions.AutoReversementEnabled)
             {
                 _logger.LogDebug(
-                    "Reversement auto désactivé (FlexPay) — paiement {IdPaiement}",
-                    paiement.IdPaiement);
+                    "Reversement auto désactivé (FlexPay) — module {Module}, paiementSource {IdPaiementSource}",
+                    ctx.ModulePaiement, ctx.IdPaiementSource);
                 return false;
             }
 
-            var config = await _configSocieteRepository.GetOrCreateAsync(paiement.IdSociete, cancellationToken);
+            if (!ctx.EstPaiementElectronique)
+            {
+                _logger.LogDebug(
+                    "Reversement auto ignoré — paiement non électronique (module {Module}, paiementSource {IdPaiementSource})",
+                    ctx.ModulePaiement, ctx.IdPaiementSource);
+                return false;
+            }
+
+            var config = await _configSocieteRepository.GetOrCreateAsync(ctx.IdSociete, cancellationToken);
             if (!config.AutoReversementPaiementElectronique)
             {
                 _logger.LogDebug(
-                    "Reversement auto désactivé pour société {IdSociete} — paiement {IdPaiement}",
-                    paiement.IdSociete, paiement.IdPaiement);
+                    "Reversement auto désactivé pour société {IdSociete} — module {Module}, paiementSource {IdPaiementSource}",
+                    ctx.IdSociete, ctx.ModulePaiement, ctx.IdPaiementSource);
                 return false;
             }
 
-            var montant = await _montantResolver.ResolveAsync(paiement, reservation, config, cancellationToken);
+            var montant = await ReversementMontantCalculator.ComputeAsync(
+                ctx.MontantBrut,
+                ctx.CodeDevisePaiement,
+                ctx.DateReference,
+                ctx.IdSociete,
+                config,
+                _deviseMontantConverter,
+                _logger,
+                ctx.IdPaiementSource,
+                cancellationToken);
+
             if (montant == null || montant.Montant <= 0)
                 return false;
 
-            var idSite = reservation.IdSite ?? paiement.IdSite;
-            if (!idSite.HasValue || idSite.Value <= 0)
+            if (!ctx.IdSite.HasValue || ctx.IdSite.Value <= 0)
             {
                 _logger.LogWarning(
-                    "Reversement auto impossible — IdSite absent (paiement {IdPaiement})",
-                    paiement.IdPaiement);
+                    "Reversement auto impossible — IdSite absent (module {Module}, paiementSource {IdPaiementSource})",
+                    ctx.ModulePaiement, ctx.IdPaiementSource);
                 return false;
             }
 
-            var idUtilisateur = paiement.IdUtilisateur > 0
-                ? paiement.IdUtilisateur
-                : reservation.IdUtilisateur;
+            var idUtilisateur = ctx.IdUtilisateur > 0 ? ctx.IdUtilisateur : 0;
 
             try
             {
                 var result = await _reversementSiteService.InitierPourPaiementAsync(
-                    paiement.IdPaiement,
-                    reservation.IdReservation,
-                    idSite.Value,
-                    paiement.IdSociete,
+                    ctx.ModulePaiement,
+                    ctx.IdPaiementSource,
+                    ctx.IdReservationSource,
+                    ctx.IdSite.Value,
+                    ctx.IdSociete,
                     idUtilisateur,
                     montant.Montant,
                     montant.CodeDevise,
                     montant.Motif,
+                    ctx.IdPaiementTransport,
+                    ctx.IdReservationTransport,
                     cancellationToken);
 
                 if (result == null)
                 {
                     _logger.LogDebug(
-                        "Reversement auto déjà traité (idempotence) — paiement {IdPaiement}",
-                        paiement.IdPaiement);
+                        "Reversement auto déjà traité ou ignoré (idempotence / site) — module {Module}, paiementSource {IdPaiementSource}",
+                        ctx.ModulePaiement, ctx.IdPaiementSource);
                     return true;
                 }
 
                 _logger.LogInformation(
-                    "Reversement auto initié — paiement {IdPaiement}, reversement {IdReversementSite}, statut {Statut}",
-                    paiement.IdPaiement, result.IdReversementSite, result.Statut);
+                    "Reversement auto initié — module {Module}, paiementSource {IdPaiementSource}, reversement {IdReversementSite}, statut {Statut}",
+                    ctx.ModulePaiement, ctx.IdPaiementSource, result.IdReversementSite, result.Statut);
 
                 return result.Statut != Models.Enums.StatutReversementSite.Echec;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex,
-                    "Échec reversement auto après paiement {IdPaiement} — la réservation reste confirmée",
-                    paiement.IdPaiement);
+                    "Échec reversement auto après paiement — module {Module}, paiementSource {IdPaiementSource} — la réservation reste confirmée",
+                    ctx.ModulePaiement, ctx.IdPaiementSource);
                 return false;
             }
         }

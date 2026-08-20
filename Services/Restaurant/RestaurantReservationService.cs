@@ -125,6 +125,7 @@ namespace CongoTravel.Services.Restaurant
                     }
 
                     var fromConfirmed = reservation.Status == RestaurantReservationStatus.CONFIRMED;
+                    var wasHold = reservation.Status == RestaurantReservationStatus.HOLD;
                     var cancelStrategy = _cancelStrategyFactory.GetStrategy(creneau.InventoryMode);
                     await cancelStrategy.ReleaseReservationAsync(
                         new RestaurantInventoryCancelRequest
@@ -137,6 +138,29 @@ namespace CongoTravel.Services.Restaurant
 
                     var ticketsVoided = VoidUnusedTickets(reservation);
                     MarkPaymentsRefunded(reservation);
+
+                    var shouldPurge = wasHold
+                        && reservation.Payments.All(p => p.Status != RestaurantPaymentStatus.SUCCEEDED);
+
+                    if (shouldPurge)
+                    {
+                        reservation.Status = RestaurantReservationStatus.CANCELLED;
+                        reservation.ExpiresAtUtc = null;
+                        reservation.DateModification = DateTime.UtcNow;
+                        var purgedResponse = BuildCancelResponse(reservation, alreadyCancelled: false, ticketsVoided);
+                        HardDeleteTrackedReservation(reservation);
+                        await _context.SaveChangesAsync(cancellationToken);
+
+                        if (transaction != null)
+                            await transaction.CommitAsync(cancellationToken);
+
+                        _logger.LogInformation(
+                            "Réservation restaurant HOLD annulée et purgée — Id={Id}, TicketsVoided={TicketsVoided}",
+                            idRestaurantReservation,
+                            ticketsVoided);
+
+                        return purgedResponse;
+                    }
 
                     reservation.Status = RestaurantReservationStatus.CANCELLED;
                     reservation.ExpiresAtUtc = null;
@@ -167,6 +191,81 @@ namespace CongoTravel.Services.Restaurant
                         await transaction.DisposeAsync();
                 }
             });
+        }
+
+        public async Task<bool> PurgeNeverConfirmedAsync(
+            int idRestaurantReservation,
+            int idSociete,
+            CancellationToken cancellationToken = default)
+        {
+            DetachTrackedReservation(idRestaurantReservation);
+
+            var reservation = await _context.RestaurantReservations
+                .Include(r => r.Lines)
+                    .ThenInclude(l => l.Tickets)
+                .Include(r => r.Payments)
+                .FirstOrDefaultAsync(
+                    r => r.IdRestaurantReservation == idRestaurantReservation && r.IdSociete == idSociete,
+                    cancellationToken);
+
+            if (reservation == null)
+                return false;
+
+            if (reservation.Status == RestaurantReservationStatus.CONFIRMED)
+            {
+                _logger.LogWarning(
+                    "Purge refusée — réservation restaurant {Id} encore CONFIRMED.",
+                    idRestaurantReservation);
+                return false;
+            }
+
+            if (reservation.Status is not (
+                    RestaurantReservationStatus.HOLD
+                    or RestaurantReservationStatus.CANCELLED
+                    or RestaurantReservationStatus.EXPIRED))
+            {
+                _logger.LogWarning(
+                    "Purge refusée — réservation restaurant {Id} statut {Status} non éligible.",
+                    idRestaurantReservation,
+                    reservation.Status);
+                return false;
+            }
+
+            if (reservation.Payments.Any(p => p.Status == RestaurantPaymentStatus.SUCCEEDED))
+            {
+                _logger.LogWarning(
+                    "Purge refusée — réservation restaurant {Id} a un paiement SUCCEEDED.",
+                    idRestaurantReservation);
+                return false;
+            }
+
+            var orderNumbers = reservation.Payments
+                .Select(p => p.ProviderTxRef)
+                .Where(r => !string.IsNullOrWhiteSpace(r))
+                .Distinct()
+                .ToList();
+
+            HardDeleteTrackedReservation(reservation);
+            await _context.SaveChangesAsync(cancellationToken);
+
+            _logger.LogInformation(
+                "Réservation restaurant jamais confirmée purgée — Id={Id}, Orders={Orders}",
+                idRestaurantReservation,
+                string.Join(',', orderNumbers));
+
+            return true;
+        }
+
+        private void HardDeleteTrackedReservation(Models.Restaurant.RestaurantReservation reservation)
+        {
+            var tickets = reservation.Lines.SelectMany(l => l.Tickets).ToList();
+            if (tickets.Count > 0)
+                _context.RestaurantTickets.RemoveRange(tickets);
+
+            if (reservation.Payments.Count > 0)
+                _context.RestaurantPayments.RemoveRange(reservation.Payments);
+
+            _context.RestaurantReservations.Remove(reservation);
         }
 
         private static void EnsureCancellable(Models.Restaurant.RestaurantReservation reservation)

@@ -44,8 +44,15 @@ namespace CongoTravel.Services.Restaurant
 
                 if (existingPayment != null)
                 {
+                    if (!existingPayment.IdRestaurantReservation.HasValue)
+                    {
+                        throw new InvalidOperationException(
+                            "Ce paiement électronique n'est pas encore lié à une réservation. " +
+                            "Utilisez la vérification FlexPay (orderNumber) plutôt que la confirmation cash.");
+                    }
+
                     var reservation = await LoadReservationGraphAsync(
-                        existingPayment.IdRestaurantReservation,
+                        existingPayment.IdRestaurantReservation.Value,
                         idSociete,
                         cancellationToken);
 

@@ -12,8 +12,9 @@ namespace CongoTravel.Models.SiteTouristique
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int IdSiteTouristiquePayment { get; set; }
 
-        [Required]
-        public int IdSiteTouristiqueReservation { get; set; }
+        public int? IdSiteTouristiqueReservation { get; set; }
+
+        public Guid? IdSiteTouristiqueCommandeEnAttente { get; set; }
 
         /// <summary>Site marchand / bénéficiaire (miroir Transport Paiement.IdSite).</summary>
         public int? IdSite { get; set; }
@@ -68,6 +69,10 @@ namespace CongoTravel.Models.SiteTouristique
         [JsonIgnore]
         [ValidateNever]
         public SiteTouristiqueReservation? Reservation { get; set; }
+
+        [JsonIgnore]
+        [ValidateNever]
+        public SiteTouristiqueCommandeEnAttente? CommandeEnAttente { get; set; }
 
         [JsonIgnore]
         [ValidateNever]

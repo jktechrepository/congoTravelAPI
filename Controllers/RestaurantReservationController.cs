@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using CongoTravel.Attributes;
+using CongoTravel.Helpers;
 using CongoTravel.Helpers.Restaurant;
 using CongoTravel.Models.DTOs.Restaurant;
 using CongoTravel.Models.Restaurant;
@@ -32,6 +33,10 @@ namespace CongoTravel.Controllers
             _logger = logger;
         }
 
+        /// <summary>
+        /// Liste les réservations restaurant de la société (JWT ou idSociete Super-Admin).
+        /// Sans <c>status</c> : uniquement <c>CONFIRMED</c>. Utiliser <c>status=ALL</c> pour tous les statuts.
+        /// </summary>
         [HttpGet]
         [Permission("Restaurant.Etablissement.Read")]
         [ProducesResponseType(typeof(IEnumerable<RestaurantReservationListItemDto>), 200)]
@@ -51,7 +56,11 @@ namespace CongoTravel.Controllers
                     _currentUserService,
                     idSociete);
 
-                if (!TryParseOptionalStatus(status, out var parsedStatus, out var statusError))
+                if (!SatelliteReservationListStatusParser.TryParse(
+                        status,
+                        RestaurantReservationStatus.CONFIRMED,
+                        out var parsedStatus,
+                        out var statusError))
                     return BadRequest(new { message = statusError });
 
                 var filter = new RestaurantReservationListFilter
@@ -240,24 +249,5 @@ namespace CongoTravel.Controllers
             }
         }
 
-        private static bool TryParseOptionalStatus(
-            string? status,
-            out RestaurantReservationStatus? parsed,
-            out string? error)
-        {
-            parsed = null;
-            error = null;
-            if (string.IsNullOrWhiteSpace(status))
-                return true;
-
-            if (Enum.TryParse<RestaurantReservationStatus>(status.Trim(), ignoreCase: true, out var value))
-            {
-                parsed = value;
-                return true;
-            }
-
-            error = $"Statut invalide : {status}. Valeurs : HOLD, CONFIRMED, CANCELLED, EXPIRED.";
-            return false;
-        }
     }
 }

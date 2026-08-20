@@ -12,8 +12,10 @@ namespace CongoTravel.Models.Evenement
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int IdEvenementPayment { get; set; }
 
-        [Required]
-        public int IdEvenementReservation { get; set; }
+        public int? IdEvenementReservation { get; set; }
+
+        /// <summary>Commande FlexPay en attente (Plan A) — exclusif de <see cref="IdEvenementReservation"/> tant que PENDING.</summary>
+        public Guid? IdEvenementCommandeEnAttente { get; set; }
 
         /// <summary>Site marchand / bénéficiaire (miroir Transport Paiement.IdSite).</summary>
         public int? IdSite { get; set; }
@@ -68,6 +70,10 @@ namespace CongoTravel.Models.Evenement
         [JsonIgnore]
         [ValidateNever]
         public EvenementReservation? Reservation { get; set; }
+
+        [JsonIgnore]
+        [ValidateNever]
+        public EvenementCommandeEnAttente? CommandeEnAttente { get; set; }
 
         [JsonIgnore]
         [ValidateNever]

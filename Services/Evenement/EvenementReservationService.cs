@@ -264,6 +264,32 @@ namespace CongoTravel.Services.Evenement
                         ? MarkPendingFlexPayPaymentsFailed(reservation)
                         : Array.Empty<(string OrderNumber, int UserId)>();
 
+                    var shouldPurge = wasHold
+                        && reservation.Payments.All(p => p.Status != EvenementPaymentStatus.SUCCEEDED);
+
+                    EvenementCancelReservationResponseDto response;
+                    if (shouldPurge)
+                    {
+                        reservation.Status = EvenementReservationStatus.CANCELLED;
+                        reservation.ExpiresAtUtc = null;
+                        reservation.DateModification = DateTime.UtcNow;
+                        response = BuildCancelResponse(reservation, alreadyCancelled: false, ticketsVoided);
+                        HardDeleteTrackedReservation(reservation);
+                        await _context.SaveChangesAsync(cancellationToken);
+
+                        if (transaction != null)
+                            await transaction.CommitAsync(cancellationToken);
+
+                        await TryNotifyFlexPayFailedAsync(flexPayFailedOrders, cancellationToken);
+
+                        _logger.LogInformation(
+                            "Réservation événement HOLD annulée et purgée — Id={Id}, TicketsVoided={TicketsVoided}",
+                            idEvenementReservation,
+                            ticketsVoided);
+
+                        return response;
+                    }
+
                     reservation.Status = EvenementReservationStatus.CANCELLED;
                     reservation.ExpiresAtUtc = null;
                     reservation.DateModification = DateTime.UtcNow;
@@ -295,6 +321,81 @@ namespace CongoTravel.Services.Evenement
                         await transaction.DisposeAsync();
                 }
             });
+        }
+
+        public async Task<bool> PurgeNeverConfirmedAsync(
+            int idEvenementReservation,
+            int idSociete,
+            CancellationToken cancellationToken = default)
+        {
+            DetachTrackedReservation(idEvenementReservation);
+
+            var reservation = await _context.EvenementReservations
+                .Include(r => r.Lines)
+                    .ThenInclude(l => l.Tickets)
+                .Include(r => r.Payments)
+                .FirstOrDefaultAsync(
+                    r => r.IdEvenementReservation == idEvenementReservation && r.IdSociete == idSociete,
+                    cancellationToken);
+
+            if (reservation == null)
+                return false;
+
+            if (reservation.Status == EvenementReservationStatus.CONFIRMED)
+            {
+                _logger.LogWarning(
+                    "Purge refusée — réservation événement {Id} encore CONFIRMED.",
+                    idEvenementReservation);
+                return false;
+            }
+
+            if (reservation.Status is not (
+                    EvenementReservationStatus.HOLD
+                    or EvenementReservationStatus.CANCELLED
+                    or EvenementReservationStatus.EXPIRED))
+            {
+                _logger.LogWarning(
+                    "Purge refusée — réservation événement {Id} statut {Status} non éligible.",
+                    idEvenementReservation,
+                    reservation.Status);
+                return false;
+            }
+
+            if (reservation.Payments.Any(p => p.Status == EvenementPaymentStatus.SUCCEEDED))
+            {
+                _logger.LogWarning(
+                    "Purge refusée — réservation événement {Id} a un paiement SUCCEEDED.",
+                    idEvenementReservation);
+                return false;
+            }
+
+            var orderNumbers = reservation.Payments
+                .Select(p => p.ProviderTxRef)
+                .Where(r => !string.IsNullOrWhiteSpace(r))
+                .Distinct()
+                .ToList();
+
+            HardDeleteTrackedReservation(reservation);
+            await _context.SaveChangesAsync(cancellationToken);
+
+            _logger.LogInformation(
+                "Réservation événement jamais confirmée purgée — Id={Id}, Orders={Orders}",
+                idEvenementReservation,
+                string.Join(',', orderNumbers));
+
+            return true;
+        }
+
+        private void HardDeleteTrackedReservation(Models.Evenement.EvenementReservation reservation)
+        {
+            var tickets = reservation.Lines.SelectMany(l => l.Tickets).ToList();
+            if (tickets.Count > 0)
+                _context.EvenementTickets.RemoveRange(tickets);
+
+            if (reservation.Payments.Count > 0)
+                _context.EvenementPayments.RemoveRange(reservation.Payments);
+
+            _context.EvenementReservations.Remove(reservation);
         }
 
         private static void EnsureCancellable(Models.Evenement.EvenementReservation reservation)

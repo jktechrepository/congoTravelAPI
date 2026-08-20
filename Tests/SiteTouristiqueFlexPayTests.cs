@@ -23,9 +23,9 @@ namespace CongoTravel.Tests
                 .Options);
 
         [Fact]
-        public async Task InitiateAsync_converts_tarif_usd_to_paiement_cdf()
+        public async Task InitiateAsync_on_existing_hold_is_refused_plan_a()
         {
-            await using var ctx = BuildDb(nameof(InitiateAsync_converts_tarif_usd_to_paiement_cdf));
+            await using var ctx = BuildDb(nameof(InitiateAsync_on_existing_hold_is_refused_plan_a));
             var (idSociete, idSite, idReservation) =
                 await SiteTouristiqueTestFactories.SeedHoldWithFlexPayConfigAsync(ctx, quantity: 2);
             ctx.TauxChanges.Add(new TauxChange
@@ -43,26 +43,16 @@ namespace CongoTravel.Tests
             var flexApi = SiteTouristiqueTestFactories.CreateFlexPayApiMock("FP-ST-CDF-001");
             var service = SiteTouristiqueTestFactories.CreateFlexPayInitiationService(ctx, flexApi.Object);
 
-            var result = await service.InitiateAsync(idReservation, idSociete, new SiteTouristiqueInitiateFlexPayRequestDto
-            {
-                MethodePaiement = "MOBILE_MONEY",
-                Phone = "243900000001",
-                IdSite = idSite,
-                CodeDevisePaiement = "CDF"
-            });
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                service.InitiateAsync(idReservation, idSociete, new SiteTouristiqueInitiateFlexPayRequestDto
+                {
+                    MethodePaiement = "MOBILE_MONEY",
+                    Phone = "243900000001",
+                    IdSite = idSite,
+                    CodeDevisePaiement = "CDF"
+                }));
 
-            Assert.Equal(40m, result.MontantTarif);
-            Assert.Equal("USD", result.CodeDeviseTarif);
-            Assert.Equal(112000m, result.MontantFlexPay);
-            Assert.Equal("CDF", result.CodeDevisePaiement);
-            Assert.Equal(2800m, result.TauxApplique);
-            Assert.Equal(112000m, result.Payment.Montant);
-            Assert.Equal("CDF", result.Payment.CodeDevise);
-
-            flexApi.Verify(f => f.InitierPaiementMobileMoneyAsync(
-                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), "243900000001",
-                112000m, "CDF", It.IsAny<string>(),
-                It.IsAny<CancellationToken>()), Times.Once);
+            Assert.Contains("Plan A", ex.Message);
         }
 
         [Fact]
@@ -111,8 +101,7 @@ namespace CongoTravel.Tests
                     CodeDevisePaiement = "USD"
                 }));
 
-            Assert.Contains("USD", ex.Message);
-            Assert.Contains("MOBILE_MONEY", ex.Message);
+            Assert.Contains("Plan A", ex.Message);
         }
     }
 

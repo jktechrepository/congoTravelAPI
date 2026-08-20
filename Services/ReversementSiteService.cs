@@ -51,11 +51,13 @@ namespace CongoTravel.Services
                 ReversementSiteOrigines.Manuel,
                 idPaiement: null,
                 idReservation: null,
+                modulePaiement: null,
+                idPaiementSource: null,
                 enforceManualPendingCheck: true,
                 throwOnFlexPayFailure: true,
                 cancellationToken);
 
-        public async Task<ReversementSiteResponseDto?> InitierPourPaiementAsync(
+        public Task<ReversementSiteResponseDto?> InitierPourPaiementAsync(
             int idPaiement,
             int idReservation,
             int idSite,
@@ -64,13 +66,53 @@ namespace CongoTravel.Services
             decimal montant,
             string codeDevise,
             string? motif,
+            CancellationToken cancellationToken = default) =>
+            InitierPourPaiementAsync(
+                ReversementModulePaiement.Transport,
+                idPaiement,
+                idReservation,
+                idSite,
+                idSociete,
+                idUtilisateur,
+                montant,
+                codeDevise,
+                motif,
+                idPaiementTransport: idPaiement,
+                idReservationTransport: idReservation,
+                cancellationToken);
+
+        public async Task<ReversementSiteResponseDto?> InitierPourPaiementAsync(
+            string modulePaiement,
+            int idPaiementSource,
+            int? idReservationSource,
+            int idSite,
+            int idSociete,
+            int idUtilisateur,
+            decimal montant,
+            string codeDevise,
+            string? motif,
+            int? idPaiementTransport = null,
+            int? idReservationTransport = null,
             CancellationToken cancellationToken = default)
         {
-            var existing = await _context.ReversementsSite.AsNoTracking()
-                .FirstOrDefaultAsync(r => r.IdPaiement == idPaiement, cancellationToken);
+            var module = string.IsNullOrWhiteSpace(modulePaiement)
+                ? ReversementModulePaiement.Transport
+                : modulePaiement.Trim();
+
+            var existing = await FindExistingAutoReversementAsync(
+                module, idPaiementSource, idPaiementTransport, cancellationToken);
 
             if (existing != null)
                 return MapToDto(existing);
+
+            var idPaiement = idPaiementTransport
+                ?? (string.Equals(module, ReversementModulePaiement.Transport, StringComparison.Ordinal)
+                    ? idPaiementSource
+                    : (int?)null);
+            var idReservation = idReservationTransport
+                ?? (string.Equals(module, ReversementModulePaiement.Transport, StringComparison.Ordinal)
+                    ? idReservationSource
+                    : null);
 
             try
             {
@@ -84,6 +126,8 @@ namespace CongoTravel.Services
                     ReversementSiteOrigines.PaiementElectronique,
                     idPaiement,
                     idReservation,
+                    module,
+                    idPaiementSource,
                     enforceManualPendingCheck: false,
                     throwOnFlexPayFailure: false,
                     cancellationToken);
@@ -93,10 +137,34 @@ namespace CongoTravel.Services
                 || ex.Message.Contains("Mobile Money", StringComparison.OrdinalIgnoreCase))
             {
                 _logger.LogWarning(ex,
-                    "Reversement auto ignoré — site {IdSite} sans NumeroMobileMoney valide (paiement {IdPaiement})",
-                    idSite, idPaiement);
+                    "Reversement auto ignoré — site {IdSite} sans NumeroMobileMoney valide (module {Module}, paiementSource {IdPaiementSource})",
+                    idSite, module, idPaiementSource);
                 return null;
             }
+        }
+
+        private async Task<ReversementSite?> FindExistingAutoReversementAsync(
+            string modulePaiement,
+            int idPaiementSource,
+            int? idPaiementTransport,
+            CancellationToken cancellationToken)
+        {
+            var byModule = await _context.ReversementsSite.AsNoTracking()
+                .FirstOrDefaultAsync(
+                    r => r.ModulePaiement == modulePaiement && r.IdPaiementSource == idPaiementSource,
+                    cancellationToken);
+            if (byModule != null)
+                return byModule;
+
+            // Lignes historiques Transport : IdPaiement renseigné, ModulePaiement encore null.
+            if (string.Equals(modulePaiement, ReversementModulePaiement.Transport, StringComparison.Ordinal))
+            {
+                var transportId = idPaiementTransport ?? idPaiementSource;
+                return await _context.ReversementsSite.AsNoTracking()
+                    .FirstOrDefaultAsync(r => r.IdPaiement == transportId, cancellationToken);
+            }
+
+            return null;
         }
 
         private async Task<ReversementSiteResponseDto> InitierCoreAsync(
@@ -109,6 +177,8 @@ namespace CongoTravel.Services
             string origine,
             int? idPaiement,
             int? idReservation,
+            string? modulePaiement,
+            int? idPaiementSource,
             bool enforceManualPendingCheck,
             bool throwOnFlexPayFailure,
             CancellationToken cancellationToken)
@@ -170,6 +240,8 @@ namespace CongoTravel.Services
                 IdUtilisateur = idUtilisateur,
                 IdPaiement = idPaiement,
                 IdReservation = idReservation,
+                ModulePaiement = string.IsNullOrWhiteSpace(modulePaiement) ? null : modulePaiement.Trim(),
+                IdPaiementSource = idPaiementSource,
                 Origine = origine,
                 NumeroMobileMoney = phone,
                 Montant = montant,
@@ -335,6 +407,8 @@ namespace CongoTravel.Services
             IdReversementSite = entity.IdReversementSite,
             IdPaiement = entity.IdPaiement,
             IdReservation = entity.IdReservation,
+            ModulePaiement = entity.ModulePaiement,
+            IdPaiementSource = entity.IdPaiementSource,
             Origine = entity.Origine,
             IdSite = entity.IdSite,
             IdSociete = entity.IdSociete,

@@ -58,16 +58,15 @@ namespace CongoTravel.Tests
                 RestaurantTestFactories.CreateCancelStrategyFactory(ctx),
                 NullLogger<RestaurantReservationService>.Instance);
 
-            var flexInit = RestaurantTestFactories.CreateFlexPayInitiationService(
+            var commandeFlexPay = RestaurantTestFactories.CreateCommandeFlexPayService(
                 ctx,
-                Mock.Of<IFlexPayService>(),
-                enabled: false);
+                Mock.Of<IFlexPayService>());
 
             return new RestaurantReservationWithPaiementService(
                 ctx,
                 hold,
                 payment,
-                flexInit,
+                commandeFlexPay,
                 reservation,
                 currentUser ?? MockClientUser().Object,
                 NullLogger<RestaurantReservationWithPaiementService>.Instance);
@@ -338,6 +337,7 @@ namespace CongoTravel.Tests
 
             Assert.Equal("CANCELLED", cancel.Reservation.Status);
             Assert.False(cancel.AlreadyCancelled);
+            Assert.Empty(await ctx.RestaurantReservations.ToListAsync());
 
             var quota = await ctx.RestaurantCreneauGlobalQuotas
                 .SingleAsync(q => q.IdRestaurantCreneau == idCreneau);
@@ -367,11 +367,12 @@ namespace CongoTravel.Tests
 
             var runner = new RestaurantHoldExpirationRunner(
                 Mock.Of<IFlexPayRealtimeNotifier>(),
+                RestaurantTestFactories.CreateReservationService(ctx),
+                RestaurantTestFactories.CreateCommandeFlexPayService(ctx),
                 NullLogger<RestaurantHoldExpirationRunner>.Instance);
             await runner.ExpireHoldsAsync(ctx);
 
-            await ctx.Entry(reservation).ReloadAsync();
-            Assert.Equal(Models.Restaurant.Enums.RestaurantReservationStatus.EXPIRED, reservation.Status);
+            Assert.Empty(await ctx.RestaurantReservations.ToListAsync());
 
             var quota = await ctx.RestaurantCreneauGlobalQuotas
                 .SingleAsync(q => q.IdRestaurantCreneau == idCreneau);

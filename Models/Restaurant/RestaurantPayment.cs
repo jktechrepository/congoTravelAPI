@@ -12,8 +12,9 @@ namespace CongoTravel.Models.Restaurant
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int IdRestaurantPayment { get; set; }
 
-        [Required]
-        public int IdRestaurantReservation { get; set; }
+        public int? IdRestaurantReservation { get; set; }
+
+        public Guid? IdRestaurantCommandeEnAttente { get; set; }
 
         /// <summary>Site marchand / bénéficiaire.</summary>
         public int? IdSite { get; set; }
@@ -64,6 +65,10 @@ namespace CongoTravel.Models.Restaurant
         [JsonIgnore]
         [ValidateNever]
         public RestaurantReservation? Reservation { get; set; }
+
+        [JsonIgnore]
+        [ValidateNever]
+        public RestaurantCommandeEnAttente? CommandeEnAttente { get; set; }
 
         [JsonIgnore]
         [ValidateNever]

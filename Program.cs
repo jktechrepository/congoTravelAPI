@@ -91,6 +91,9 @@ builder.Services.AddControllers()
         // DateOnly : "yyyy-MM-dd" (+ ISO datetime en lecture) — évite 400 Swagger sur dateVisite / dateService
         options.JsonSerializerOptions.Converters.Add(new DateOnlyJsonConverter());
         options.JsonSerializerOptions.Converters.Add(new NullableDateOnlyJsonConverter());
+        // TimeOnly : "HH:mm:ss" (+ "HH:mm" / ISO en lecture) — évite 400 Swagger sur startTime / endTime planifications
+        options.JsonSerializerOptions.Converters.Add(new TimeOnlyJsonConverter());
+        options.JsonSerializerOptions.Converters.Add(new NullableTimeOnlyJsonConverter());
     });
 
 // ═══════════════════════════════════════════════════════════════════════════════════

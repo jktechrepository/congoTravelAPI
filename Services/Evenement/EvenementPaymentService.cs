@@ -44,8 +44,15 @@ namespace CongoTravel.Services.Evenement
 
                 if (existingPayment != null)
                 {
+                    if (!existingPayment.IdEvenementReservation.HasValue)
+                    {
+                        throw new InvalidOperationException(
+                            "Ce paiement électronique n'est pas encore lié à une réservation. " +
+                            "Utilisez la vérification FlexPay (orderNumber) plutôt que la confirmation cash.");
+                    }
+
                     var reservation = await LoadReservationGraphAsync(
-                        existingPayment.IdEvenementReservation,
+                        existingPayment.IdEvenementReservation.Value,
                         idSociete,
                         cancellationToken);
 

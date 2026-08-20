@@ -262,6 +262,31 @@ namespace CongoTravel.Services.SiteTouristique
                         ? MarkPendingFlexPayPaymentsFailed(reservation)
                         : Array.Empty<(string OrderNumber, int UserId)>();
 
+                    var shouldPurge = wasHold
+                        && reservation.Payments.All(p => p.Status != SiteTouristiquePaymentStatus.SUCCEEDED);
+
+                    if (shouldPurge)
+                    {
+                        reservation.Status = SiteTouristiqueReservationStatus.CANCELLED;
+                        reservation.ExpiresAtUtc = null;
+                        reservation.DateModification = DateTime.UtcNow;
+                        var purgedResponse = BuildCancelResponse(reservation, alreadyCancelled: false, ticketsVoided);
+                        HardDeleteTrackedReservation(reservation);
+                        await _context.SaveChangesAsync(cancellationToken);
+
+                        if (transaction != null)
+                            await transaction.CommitAsync(cancellationToken);
+
+                        await TryNotifyFlexPayFailedAsync(flexPayFailedOrders, cancellationToken);
+
+                        _logger.LogInformation(
+                            "Réservation site touristique HOLD annulée et purgée — Id={Id}, TicketsVoided={TicketsVoided}",
+                            idSiteTouristiqueReservation,
+                            ticketsVoided);
+
+                        return purgedResponse;
+                    }
+
                     reservation.Status = SiteTouristiqueReservationStatus.CANCELLED;
                     reservation.ExpiresAtUtc = null;
                     reservation.DateModification = DateTime.UtcNow;
@@ -293,6 +318,81 @@ namespace CongoTravel.Services.SiteTouristique
                         await transaction.DisposeAsync();
                 }
             });
+        }
+
+        public async Task<bool> PurgeNeverConfirmedAsync(
+            int idSiteTouristiqueReservation,
+            int idSociete,
+            CancellationToken cancellationToken = default)
+        {
+            DetachTrackedReservation(idSiteTouristiqueReservation);
+
+            var reservation = await _context.SiteTouristiqueReservations
+                .Include(r => r.Lines)
+                    .ThenInclude(l => l.Tickets)
+                .Include(r => r.Payments)
+                .FirstOrDefaultAsync(
+                    r => r.IdSiteTouristiqueReservation == idSiteTouristiqueReservation && r.IdSociete == idSociete,
+                    cancellationToken);
+
+            if (reservation == null)
+                return false;
+
+            if (reservation.Status == SiteTouristiqueReservationStatus.CONFIRMED)
+            {
+                _logger.LogWarning(
+                    "Purge refusée — réservation site touristique {Id} encore CONFIRMED.",
+                    idSiteTouristiqueReservation);
+                return false;
+            }
+
+            if (reservation.Status is not (
+                    SiteTouristiqueReservationStatus.HOLD
+                    or SiteTouristiqueReservationStatus.CANCELLED
+                    or SiteTouristiqueReservationStatus.EXPIRED))
+            {
+                _logger.LogWarning(
+                    "Purge refusée — réservation site touristique {Id} statut {Status} non éligible.",
+                    idSiteTouristiqueReservation,
+                    reservation.Status);
+                return false;
+            }
+
+            if (reservation.Payments.Any(p => p.Status == SiteTouristiquePaymentStatus.SUCCEEDED))
+            {
+                _logger.LogWarning(
+                    "Purge refusée — réservation site touristique {Id} a un paiement SUCCEEDED.",
+                    idSiteTouristiqueReservation);
+                return false;
+            }
+
+            var orderNumbers = reservation.Payments
+                .Select(p => p.ProviderTxRef)
+                .Where(r => !string.IsNullOrWhiteSpace(r))
+                .Distinct()
+                .ToList();
+
+            HardDeleteTrackedReservation(reservation);
+            await _context.SaveChangesAsync(cancellationToken);
+
+            _logger.LogInformation(
+                "Réservation site touristique jamais confirmée purgée — Id={Id}, Orders={Orders}",
+                idSiteTouristiqueReservation,
+                string.Join(',', orderNumbers));
+
+            return true;
+        }
+
+        private void HardDeleteTrackedReservation(Models.SiteTouristique.SiteTouristiqueReservation reservation)
+        {
+            var tickets = reservation.Lines.SelectMany(l => l.Tickets).ToList();
+            if (tickets.Count > 0)
+                _context.SiteTouristiqueTickets.RemoveRange(tickets);
+
+            if (reservation.Payments.Count > 0)
+                _context.SiteTouristiquePayments.RemoveRange(reservation.Payments);
+
+            _context.SiteTouristiqueReservations.Remove(reservation);
         }
 
         private static void EnsureCancellable(Models.SiteTouristique.SiteTouristiqueReservation reservation)

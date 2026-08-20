@@ -26,7 +26,9 @@ namespace CongoTravel.Services.SiteTouristique
         private readonly IFlexPayService _flexPayService;
         private readonly ISiteTouristiqueReservationConfirmationService _confirmationService;
         private readonly ISiteTouristiqueReservationService _reservationService;
+        private readonly ISiteTouristiqueCommandeFlexPayService _commandeFlexPayService;
         private readonly IFlexPayRealtimeNotifier _flexPayRealtimeNotifier;
+        private readonly IReversementAutomatiqueService _reversementAutomatiqueService;
         private readonly ILogger<SiteTouristiqueFlexPayCallbackService> _logger;
 
         public SiteTouristiqueFlexPayCallbackService(
@@ -34,14 +36,18 @@ namespace CongoTravel.Services.SiteTouristique
             IFlexPayService flexPayService,
             ISiteTouristiqueReservationConfirmationService confirmationService,
             ISiteTouristiqueReservationService reservationService,
+            ISiteTouristiqueCommandeFlexPayService commandeFlexPayService,
             IFlexPayRealtimeNotifier flexPayRealtimeNotifier,
+            IReversementAutomatiqueService reversementAutomatiqueService,
             ILogger<SiteTouristiqueFlexPayCallbackService> logger)
         {
             _context = context;
             _flexPayService = flexPayService;
             _confirmationService = confirmationService;
             _reservationService = reservationService;
+            _commandeFlexPayService = commandeFlexPayService;
             _flexPayRealtimeNotifier = flexPayRealtimeNotifier;
+            _reversementAutomatiqueService = reversementAutomatiqueService;
             _logger = logger;
         }
 
@@ -56,8 +62,12 @@ namespace CongoTravel.Services.SiteTouristique
             var payment = await FindPaymentAsync(orderNumber, cancellationToken)
                 ?? throw new InvalidOperationException($"Paiement FlexPay site touristique {orderNumber} introuvable.");
 
+            if (payment.IdSiteTouristiqueCommandeEnAttente.HasValue
+                && payment.IdSiteTouristiqueReservation is null or 0)
+                return await VerifyCommandeAndFinalizeAsync(orderNumber.Trim(), payment, idSociete, cancellationToken);
+
             var reservation = await LoadReservationGraphAsync(
-                payment.IdSiteTouristiqueReservation,
+                payment.IdSiteTouristiqueReservation!.Value,
                 idSociete,
                 cancellationToken);
 
@@ -95,7 +105,7 @@ namespace CongoTravel.Services.SiteTouristique
             {
                 // Recharger : le hold / paiement peut être devenu terminal pendant l’appel FlexPay.
                 reservation = await LoadReservationGraphAsync(
-                    payment.IdSiteTouristiqueReservation,
+                    payment.IdSiteTouristiqueReservation!.Value,
                     idSociete,
                     cancellationToken)
                     ?? reservation;
@@ -176,6 +186,10 @@ namespace CongoTravel.Services.SiteTouristique
                         callback.OrderNumber);
                     return Failure("Paiement site touristique introuvable pour ce orderNumber.");
                 }
+
+                if (payment.IdSiteTouristiqueCommandeEnAttente.HasValue
+                    && payment.IdSiteTouristiqueReservation is null or 0)
+                    return await ProcessCommandeCallbackAsync(callback, payment, cancellationToken);
 
                 var reservation = await _context.SiteTouristiqueReservations
                     .Include(r => r.Lines)
@@ -294,6 +308,10 @@ namespace CongoTravel.Services.SiteTouristique
                             trackedPayment.IdSiteTouristiquePayment,
                             cancellationToken);
 
+                        await _reversementAutomatiqueService.TryDeclencherAsync(
+                            ReversementAutomatiqueContext.FromSiteTouristique(trackedPayment, trackedReservation),
+                            cancellationToken);
+
                         return new SiteTouristiqueFlexPayCallbackProcessResultDto
                         {
                             Success = true,
@@ -368,6 +386,18 @@ namespace CongoTravel.Services.SiteTouristique
                 return Failure("Paiement site touristique introuvable pour ce orderNumber.");
             }
 
+            if (payment.IdSiteTouristiqueCommandeEnAttente.HasValue
+                && payment.IdSiteTouristiqueReservation is null or 0)
+            {
+                var commande = await _context.SiteTouristiqueCommandesEnAttente.FirstOrDefaultAsync(
+                    c => c.IdSiteTouristiqueCommandeEnAttente == payment.IdSiteTouristiqueCommandeEnAttente.Value, cancellationToken);
+                if (commande == null) return StatusOnlyNotPending(0, payment.IdSiteTouristiquePayment, message, true);
+                var user = commande.IdUtilisateur;
+                await _commandeFlexPayService.FailCommandeAsync(commande, payment, cancellationToken);
+                await TryNotifyPaymentFailedAsync(user, normalized, message, cancellationToken);
+                return StatusOnlyNotPending(0, payment.IdSiteTouristiquePayment, message);
+            }
+
             var reservation = await _context.SiteTouristiqueReservations
                 .AsNoTracking()
                 .FirstOrDefaultAsync(
@@ -391,6 +421,59 @@ namespace CongoTravel.Services.SiteTouristique
         /// Sort du poll si l’état local est déjà terminal (FAILED, CANCELLED, EXPIRED, hold périmé).
         /// Ne renvoie jamais <c>paymentPending: true</c>.
         /// </summary>
+        private async Task<SiteTouristiqueFlexPayVerifierResultDto> VerifyCommandeAndFinalizeAsync(
+            string orderNumber, SiteTouristiquePayment payment, int idSociete, CancellationToken cancellationToken)
+        {
+            var commande = await _context.SiteTouristiqueCommandesEnAttente.AsNoTracking().FirstOrDefaultAsync(
+                c => c.IdSiteTouristiqueCommandeEnAttente == payment.IdSiteTouristiqueCommandeEnAttente
+                     && c.IdSociete == idSociete, cancellationToken)
+                ?? throw new KeyNotFoundException($"Paiement FlexPay site touristique {orderNumber} introuvable pour la société {idSociete}.");
+            if (payment.Status == SiteTouristiquePaymentStatus.FAILED)
+                return new() { StatusOnly = StatusOnlyNotPending(0, payment.IdSiteTouristiquePayment, MessagePaiementNonConfirme, true) };
+            if (commande.DateExpiration.HasValue && commande.DateExpiration < DateTime.UtcNow)
+            {
+                await _commandeFlexPayService.FailCommandeAsync(commande, payment, cancellationToken);
+                await TryNotifyPaymentFailedAsync(commande.IdUtilisateur, orderNumber, MessageHoldExpire, cancellationToken);
+                return new() { StatusOnly = StatusOnlyNotPending(0, payment.IdSiteTouristiquePayment, MessageHoldExpire) };
+            }
+            var info = await ResolveInfoPaiementForSocieteAsync(idSociete, cancellationToken);
+            var check = await _flexPayService.VerifierStatutTransactionAsync(info.ApiToken, orderNumber, cancellationToken);
+            var status = check.Transaction?.Status ?? check.Code;
+            if (FlexPayStatusHelper.ShouldTreatAsPending(status))
+                return new() { StatusOnly = new SiteTouristiqueFlexPayCallbackProcessResultDto { Success = true, PaymentPending = true, Message = "Paiement en attente de validation Mobile Money.", IdSiteTouristiqueReservation = 0, IdSiteTouristiquePayment = payment.IdSiteTouristiquePayment } };
+            var callback = FlexPayVerifyCallbackHelper.BuildSyntheticCallback(check, orderNumber, payment.Montant, payment.CodeDevise, FlexPayStatusHelper.IsSuccess(status) ? "0" : "1");
+            return await WrapVerifierResultAsync(await ProcessCallbackAsync(callback, cancellationToken), idSociete, orderNumber, cancellationToken);
+        }
+
+        private async Task<SiteTouristiqueFlexPayCallbackProcessResultDto> ProcessCommandeCallbackAsync(
+            FlexPayCallbackDto callback, SiteTouristiquePayment payment, CancellationToken cancellationToken)
+        {
+            var commande = await _context.SiteTouristiqueCommandesEnAttente.FirstOrDefaultAsync(
+                c => c.IdSiteTouristiqueCommandeEnAttente == payment.IdSiteTouristiqueCommandeEnAttente, cancellationToken);
+            if (commande == null)
+                return payment.Status == SiteTouristiquePaymentStatus.SUCCEEDED && payment.IdSiteTouristiqueReservation is > 0
+                    ? new() { Success = true, AlreadyProcessed = true, Message = "Déjà finalisé (idempotence).", IdSiteTouristiqueReservation = payment.IdSiteTouristiqueReservation, IdSiteTouristiquePayment = payment.IdSiteTouristiquePayment }
+                    : Failure("Commande site touristique associée au paiement introuvable.");
+            if (!string.Equals(callback.Code, "0", StringComparison.Ordinal))
+            {
+                await _commandeFlexPayService.FailCommandeAsync(commande, payment, cancellationToken);
+                await TryNotifyPaymentFailedAsync(commande.IdUtilisateur, callback.OrderNumber!.Trim(), "Paiement refusé par FlexPay.", cancellationToken);
+                return StatusOnlyNotPending(0, payment.IdSiteTouristiquePayment, "Paiement refusé par FlexPay.");
+            }
+            ValidateCallbackAmount(callback, payment);
+            FlexPayCurrencyPolicy.EnsureCallbackCurrencyMatchesExpected(callback.Currency, payment.CodeDevise, "Callback FlexPay site touristique");
+            if (commande.DateExpiration.HasValue && commande.DateExpiration < DateTime.UtcNow)
+            {
+                await _commandeFlexPayService.FailCommandeAsync(commande, payment, cancellationToken);
+                await TryNotifyPaymentFailedAsync(commande.IdUtilisateur, callback.OrderNumber!.Trim(), MessageHoldExpire, cancellationToken);
+                return Failure(MessageHoldExpire);
+            }
+            var reservation = await _commandeFlexPayService.FinalizeCommandeSuccessAsync(commande, payment, cancellationToken);
+            await TryNotifyPaymentConfirmedAsync(reservation.IdUtilisateur, callback.OrderNumber, reservation.IdSiteTouristiqueReservation, payment.IdSiteTouristiquePayment, cancellationToken);
+            await _reversementAutomatiqueService.TryDeclencherAsync(ReversementAutomatiqueContext.FromSiteTouristique(payment, reservation), cancellationToken);
+            return new() { Success = true, Message = "Réservation site touristique confirmée après callback FlexPay.", IdSiteTouristiqueReservation = reservation.IdSiteTouristiqueReservation, IdSiteTouristiquePayment = payment.IdSiteTouristiquePayment };
+        }
+
         private async Task<SiteTouristiqueFlexPayCallbackProcessResultDto?> TryFinalizeTerminalLocalStateAsync(
             SiteTouristiqueReservation reservation,
             SiteTouristiquePayment payment,
@@ -406,6 +489,15 @@ namespace CongoTravel.Services.SiteTouristique
                         payment,
                         orderNumber,
                         MessagePaiementNonConfirme,
+                        cancellationToken);
+                }
+
+                if (reservation.Status is SiteTouristiqueReservationStatus.CANCELLED
+                    or SiteTouristiqueReservationStatus.EXPIRED)
+                {
+                    await _reservationService.PurgeNeverConfirmedAsync(
+                        reservation.IdSiteTouristiqueReservation,
+                        reservation.IdSociete,
                         cancellationToken);
                 }
 
@@ -493,6 +585,11 @@ namespace CongoTravel.Services.SiteTouristique
                 };
             }
 
+            await _reservationService.PurgeNeverConfirmedAsync(
+                reservationSnapshot.IdSiteTouristiqueReservation,
+                reservationSnapshot.IdSociete,
+                cancellationToken);
+
             if (!alreadyFailed)
             {
                 await TryNotifyPaymentFailedAsync(
@@ -530,10 +627,10 @@ namespace CongoTravel.Services.SiteTouristique
             var status = await _context.SiteTouristiqueReservations
                 .AsNoTracking()
                 .Where(r => r.IdSiteTouristiqueReservation == idSiteTouristiqueReservation)
-                .Select(r => r.Status)
-                .FirstAsync(cancellationToken);
+                .Select(r => (SiteTouristiqueReservationStatus?)r.Status)
+                .FirstOrDefaultAsync(cancellationToken);
 
-            if (status != SiteTouristiqueReservationStatus.HOLD)
+            if (status is null || status != SiteTouristiqueReservationStatus.HOLD)
                 return (true, null);
 
             try
@@ -557,8 +654,8 @@ namespace CongoTravel.Services.SiteTouristique
             status = await _context.SiteTouristiqueReservations
                 .AsNoTracking()
                 .Where(r => r.IdSiteTouristiqueReservation == idSiteTouristiqueReservation)
-                .Select(r => r.Status)
-                .FirstAsync(cancellationToken);
+                .Select(r => (SiteTouristiqueReservationStatus?)r.Status)
+                .FirstOrDefaultAsync(cancellationToken);
 
             if (status == SiteTouristiqueReservationStatus.HOLD)
             {

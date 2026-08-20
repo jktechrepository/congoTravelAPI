@@ -47,6 +47,16 @@ namespace CongoTravel.Services.Restaurant
             int idRestaurantReservation,
             int idSociete,
             CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Supprime définitivement une réservation jamais confirmée (HOLD/CANCELLED/EXPIRED)
+        /// sans paiement SUCCEEDED — tickets + payments + réservation.
+        /// No-op idempotent si absente ou non éligible.
+        /// </summary>
+        Task<bool> PurgeNeverConfirmedAsync(
+            int idRestaurantReservation,
+            int idSociete,
+            CancellationToken cancellationToken = default);
     }
 
     public interface IRestaurantReservationWithPaiementService

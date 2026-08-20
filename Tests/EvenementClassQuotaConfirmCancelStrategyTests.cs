@@ -156,6 +156,7 @@ namespace CongoTravel.Tests
 
             Assert.False(result.AlreadyCancelled);
             Assert.Equal("CANCELLED", result.Reservation.Status);
+            Assert.Empty(await ctx.EvenementReservations.ToListAsync());
 
             var vipQuota = await ctx.EvenementSessionClassQuotas.SingleAsync(q => q.IdEvenementSessionClassQuota == vipQuotaId);
             var stdQuota = await ctx.EvenementSessionClassQuotas.SingleAsync(q => q.IdEvenementSessionClassQuota == stdQuotaId);

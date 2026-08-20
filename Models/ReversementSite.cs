@@ -18,6 +18,18 @@ namespace CongoTravel.Models
 
         public int? IdReservation { get; set; }
 
+        /// <summary>
+        /// Module source du paiement auto (<see cref="Enums.SocieteActiviteType"/>).
+        /// Null pour les reversements manuels / lignes historiques.
+        /// </summary>
+        [MaxLength(30)]
+        public string? ModulePaiement { get; set; }
+
+        /// <summary>
+        /// Id du paiement dans la table du module (<c>IdPaiement</c>, <c>IdEvenementPayment</c>, etc.).
+        /// </summary>
+        public int? IdPaiementSource { get; set; }
+
         [MaxLength(30)]
         public string Origine { get; set; } = ReversementSiteOrigines.Manuel;
 

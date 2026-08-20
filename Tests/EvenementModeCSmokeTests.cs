@@ -29,8 +29,10 @@ namespace CongoTravel.Tests
                 options.UseInMemoryDatabase(nameof(AddEvenementTicketing_registers_core_services)));
             services.AddScoped<CongoTravel.Services.Repositories.IConfigSocieteRepository, ConfigSocieteService>();
             services.AddScoped<IInfoPaiementResolutionService, InfoPaiementResolutionService>();
+            services.AddScoped<IDeviseMontantConverter, DeviseMontantConverter>();
             services.AddSingleton<IOptions<FlexPayOptions>>(Options.Create(new FlexPayOptions()));
             services.AddSingleton(Mock.Of<IFlexPayService>());
+            services.AddSingleton(Mock.Of<IFlexPayRealtimeNotifier>());
             services.AddSingleton(Mock.Of<IHttpContextAccessor>());
             services.AddEvenementTicketing();
 

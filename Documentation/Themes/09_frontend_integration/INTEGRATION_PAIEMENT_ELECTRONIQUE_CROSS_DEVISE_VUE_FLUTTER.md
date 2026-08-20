@@ -35,8 +35,8 @@ Permettre à l’utilisateur de :
 |--------|-------|
 | Initiation FlexPay cross-devise (4 domaines) | Paiement cash |
 | Affichage montants tarif / paiement / taux | Remboursement |
-| Preview taux avant POST | Reversement PayOut |
-| Gestion erreurs devise / taux / canal | Configuration admin des taux |
+| Preview taux avant POST | Configuration admin des taux |
+| | **Reversement PayOut / `FraisPlateforme`** : aucun champ à afficher au client ; le frais réduit uniquement le montant reversé au site après confirmation FlexPay |
 
 ### Personas
 
@@ -129,7 +129,7 @@ flowchart TD
 | Restaurant | `POST /api/restaurants/reservations/with-paiement-electronique` | `GET /api/restaurants/flexpay/verifier/{orderNumber}` | idem |
 | Site touristique | `POST /api/sites-touristiques/reservations/with-paiement-electronique` | `GET /api/sites-touristiques/flexpay/verifier/{orderNumber}` | idem |
 
-> **Important** : le parcours front documenté est **`with-paiement-electronique`** (hold + initiation en un appel). Ne pas appeler de route `{id}/flexpay/initiate` depuis le front.
+> **Important** : le parcours front documenté est **`with-paiement-electronique`** (commande en attente + hold inventaire + FlexPay, **sans** réservation métier avant succès — parité Transport). Ne pas appeler `{id}/flexpay/initiate` (refusé). Poll / SignalR uniquement via `orderNumber`.
 
 ---
 
@@ -297,7 +297,7 @@ Tarif session : **20 USD / ticket**, achat **2 tickets** → `montantTarif` = 40
 ```json
 {
   "transactionStatut": "EnAttente",
-  "reservation": { "status": "HOLD", "idEvenementReservation": 501 },
+  "reservation": { "status": "EN_ATTENTE_PAIEMENT", "idEvenementReservation": 0 },
   "tickets": [],
   "orderNumber": "FP-EVT-00042",
   "montantTarif": 40,
@@ -371,7 +371,7 @@ Acompte : tarif créneau en **USD**, 1 couvert à **50 USD** (acompte 20 % = 10 
 ```json
 {
   "transactionStatut": "EnAttente",
-  "reservation": { "status": "HOLD" },
+  "reservation": { "status": "EN_ATTENTE_PAIEMENT", "idRestaurantReservation": 0 },
   "tickets": [],
   "orderNumber": "FP-RST-00018",
   "montantTarif": 10,
@@ -411,7 +411,7 @@ Journée publiée : **20 USD / personne**, 2 billets.
 ```json
 {
   "transactionStatut": "EnAttente",
-  "reservation": { "status": "HOLD" },
+  "reservation": { "status": "EN_ATTENTE_PAIEMENT", "idSiteTouristiqueReservation": 0 },
   "tickets": [],
   "orderNumber": "FP-ST-00007",
   "montantTarif": 40,

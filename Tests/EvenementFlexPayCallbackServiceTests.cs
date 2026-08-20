@@ -85,11 +85,8 @@ namespace CongoTravel.Tests
             Assert.False(result.PaymentPending);
             Assert.Equal(idReservation, result.IdEvenementReservation);
 
-            var payment = await ctx.EvenementPayments.SingleAsync();
-            Assert.Equal(EvenementPaymentStatus.FAILED, payment.Status);
-
-            var reservation = await ctx.EvenementReservations.SingleAsync();
-            Assert.Equal(EvenementReservationStatus.CANCELLED, reservation.Status);
+            Assert.Empty(await ctx.EvenementPayments.ToListAsync());
+            Assert.Empty(await ctx.EvenementReservations.ToListAsync());
             Assert.Equal(0, await ctx.EvenementSessionGlobalQuotas.Select(q => q.QuantiteHold).SingleAsync());
         }
 
@@ -146,10 +143,8 @@ namespace CongoTravel.Tests
             });
 
             Assert.False(result.Success);
-            var payment = await ctx.EvenementPayments.SingleAsync();
-            Assert.Equal(EvenementPaymentStatus.FAILED, payment.Status);
-            Assert.Equal(EvenementReservationStatus.CANCELLED,
-                await ctx.EvenementReservations.Select(r => r.Status).SingleAsync());
+            Assert.Empty(await ctx.EvenementPayments.ToListAsync());
+            Assert.Empty(await ctx.EvenementReservations.ToListAsync());
         }
 
         [Fact]
@@ -211,10 +206,8 @@ namespace CongoTravel.Tests
 
             Assert.True(result.Success);
             Assert.False(result.PaymentPending);
-            Assert.Equal(EvenementPaymentStatus.FAILED,
-                await ctx.EvenementPayments.Select(p => p.Status).SingleAsync());
-            Assert.Equal(EvenementReservationStatus.CANCELLED,
-                await ctx.EvenementReservations.Select(r => r.Status).SingleAsync());
+            Assert.Empty(await ctx.EvenementPayments.ToListAsync());
+            Assert.Empty(await ctx.EvenementReservations.ToListAsync());
             Assert.Equal(0, await ctx.EvenementSessionGlobalQuotas.Select(q => q.QuantiteHold).SingleAsync());
             realtime.Verify(
                 n => n.NotifyPaymentFailedAsync(
@@ -244,10 +237,8 @@ namespace CongoTravel.Tests
 
             Assert.True(result.Success);
             Assert.False(result.PaymentPending);
-            Assert.Equal(EvenementReservationStatus.CANCELLED,
-                await ctx.EvenementReservations.AsNoTracking().Select(r => r.Status).SingleAsync());
-            Assert.Equal(EvenementPaymentStatus.FAILED,
-                await ctx.EvenementPayments.AsNoTracking().Select(p => p.Status).SingleAsync());
+            Assert.Empty(await ctx.EvenementReservations.AsNoTracking().ToListAsync());
+            Assert.Empty(await ctx.EvenementPayments.AsNoTracking().ToListAsync());
             Assert.Equal(0, await ctx.EvenementSessionGlobalQuotas.Select(q => q.QuantiteHold).SingleAsync());
         }
 

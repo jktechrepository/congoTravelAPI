@@ -28,6 +28,8 @@ namespace CongoTravel.Models.DTOs.ReversementSite
         public int IdReversementSite { get; set; }
         public int? IdPaiement { get; set; }
         public int? IdReservation { get; set; }
+        public string? ModulePaiement { get; set; }
+        public int? IdPaiementSource { get; set; }
         public string Origine { get; set; } = string.Empty;
         public int IdSite { get; set; }
         public int IdSociete { get; set; }

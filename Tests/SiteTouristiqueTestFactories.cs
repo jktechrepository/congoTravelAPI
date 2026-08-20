@@ -184,16 +184,55 @@ namespace CongoTravel.Tests
             return (idSociete, idReservation, orderNumber);
         }
 
+        public static SiteTouristiqueCommandeFlexPayService CreateCommandeFlexPayService(
+            CongoTravelDbContext ctx,
+            IFlexPayService? flexPayService = null,
+            FlexPayOptions? flexPayOptions = null) =>
+            new(
+                ctx,
+                new SiteTouristiqueInventoryHoldStrategyFactory(
+                    new SiteTouristiqueGlobalQuotaHoldStrategy(ctx),
+                    new SiteTouristiqueClassQuotaHoldStrategy(ctx)),
+                new SiteTouristiqueInventoryCancelStrategyFactory(
+                    new SiteTouristiqueGlobalQuotaCancelStrategy(ctx),
+                    new SiteTouristiqueClassQuotaCancelStrategy(ctx)),
+                CreateConfirmationService(ctx),
+                new ConfigSocieteService(ctx),
+                flexPayService ?? Mock.Of<IFlexPayService>(),
+                Mock.Of<IHttpContextAccessor>(),
+                Options.Create(flexPayOptions ?? new FlexPayOptions
+                {
+                    Enabled = true,
+                    SiteTouristiqueEnabled = true,
+                    CallbackBaseUrl = "https://api.test.example/api/FlexPay/callback",
+                    SiteTouristiqueCallbackRelativePath = "/api/sites-touristiques/flexpay/callback"
+                }),
+                Mock.Of<IInfoPaiementResolutionService>(m =>
+                    m.ResolveActiveForSiteAsync(
+                        It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>())
+                    == Task.FromResult(new InfoPaiementSociete
+                    {
+                        CodeMarchand = "M",
+                        ApiToken = "T",
+                        ActifMobileMoney = true,
+                        ActifCarteBancaire = true
+                    })),
+                Mock.Of<IDeviseMontantConverter>(),
+                NullLogger<SiteTouristiqueCommandeFlexPayService>.Instance);
+
         public static SiteTouristiqueFlexPayCallbackService CreateCallbackService(
             CongoTravelDbContext ctx,
             IFlexPayService? flexPayService = null,
-            IFlexPayRealtimeNotifier? realtimeNotifier = null) =>
+            IFlexPayRealtimeNotifier? realtimeNotifier = null,
+            IReversementAutomatiqueService? reversementAutomatiqueService = null) =>
             new(
                 ctx,
                 flexPayService ?? Mock.Of<IFlexPayService>(),
                 CreateConfirmationService(ctx),
                 CreateReservationService(ctx),
+                CreateCommandeFlexPayService(ctx, flexPayService),
                 realtimeNotifier ?? Mock.Of<IFlexPayRealtimeNotifier>(),
+                reversementAutomatiqueService ?? Mock.Of<IReversementAutomatiqueService>(),
                 NullLogger<SiteTouristiqueFlexPayCallbackService>.Instance);
 
         public static SiteTouristiqueFlexPayInitiationService CreateFlexPayInitiationService(
