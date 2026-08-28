@@ -57,10 +57,10 @@ namespace CongoTravel.Tests
                 NullLogger<SiteTouristiqueReservationService>.Instance);
 
         public static SiteTouristiqueLieuPhotoService CreateLieuPhotoService(CongoTravelDbContext ctx) =>
-            new(ctx, NullLogger<SiteTouristiqueLieuPhotoService>.Instance);
+            PhotoStorageTestFactory.CreateSitePhotoService(ctx);
 
         public static SiteTouristiqueLieuService CreateLieuService(CongoTravelDbContext ctx) =>
-            new(ctx, CreateLieuPhotoService(ctx), NullLogger<SiteTouristiqueLieuService>.Instance);
+            PhotoStorageTestFactory.CreateSiteLieuService(ctx);
 
         public static Site CreateSiteEntity(
             int idSociete,

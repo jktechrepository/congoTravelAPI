@@ -35,7 +35,7 @@ Le backend expose `heureDepart` en **string** `HH:mm:ss`, pas en objet.
 }
 ```
 
-Les listes / détail (`VoyageResponseDto`) exposent aussi des champs dérivés (non persistés sur `Voyage`) : `nomSociete`, **`logoSociete`** (depuis `Societe.Logo` via le véhicule), `aliasVehicule`, `photosVehicules`, **`poidsBagageParKiloOffert`** (depuis `ConfigSociete`, kg offerts ; 0 = aucun), etc.
+Les listes / détail (`VoyageResponseDto`) exposent aussi des champs dérivés (non persistés sur `Voyage`) : `nomSociete`, **`logoSociete`** (depuis `Societe.Logo` via le véhicule), `aliasVehicule`, `photosVehicules` (**`photoUrl`** préféré — [MODULE_13](MODULE_13_PHOTOS_STOCKAGE_S3.md) · [guide](INTEGRATION_PHOTOS_S3_VUE_FLUTTER.md) ; JWT requis pour `/content`), **`poidsBagageParKiloOffert`** (depuis `ConfigSociete`, kg offerts ; 0 = aucun), etc.
 
 ---
 

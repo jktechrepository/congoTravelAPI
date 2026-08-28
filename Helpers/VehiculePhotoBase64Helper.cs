@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Http;
+
 namespace CongoTravel.Helpers
 {
     public static class VehiculePhotoBase64Helper
@@ -55,7 +57,48 @@ namespace CongoTravel.Helpers
                 throw new ArgumentException("Contenu base64 invalide.");
             }
 
-            if (bytes.Length == 0)
+            return ValidateBytes(bytes, contentType, suggestedFileName);
+        }
+
+        /// <summary>Valide un fichier multipart (JPG/PNG, ≤ 1 Mo).</summary>
+        public static async Task<(byte[] Bytes, string Extension, string ContentType)> ParseAndValidateFileAsync(
+            IFormFile file,
+            string? suggestedFileName = null,
+            CancellationToken cancellationToken = default)
+        {
+            if (file == null || file.Length == 0)
+                throw new ArgumentException("Le fichier photo est obligatoire.");
+
+            if (file.Length > MaxImageBytes)
+                throw new InvalidOperationException($"Fichier trop volumineux. Taille maximum : {MaxImageBytes / (1024 * 1024)} Mo.");
+
+            await using var stream = file.OpenReadStream();
+            using var memory = new MemoryStream(capacity: (int)Math.Min(file.Length, MaxImageBytes));
+            await stream.CopyToAsync(memory, cancellationToken);
+            var bytes = memory.ToArray();
+
+            var fileName = string.IsNullOrWhiteSpace(suggestedFileName) ? file.FileName : suggestedFileName;
+            string? contentType = null;
+            if (!string.IsNullOrWhiteSpace(file.ContentType))
+            {
+                var ct = file.ContentType.Trim().ToLowerInvariant();
+                if (ct is "image/jpeg" or "image/jpg")
+                    contentType = "image/jpeg";
+                else if (ct == "image/png")
+                    contentType = "image/png";
+                else if (ct is not "application/octet-stream")
+                    throw new InvalidOperationException("Type d'image non autorisé. Formats acceptés : JPG, PNG.");
+            }
+
+            return ValidateBytes(bytes, contentType, fileName);
+        }
+
+        public static (byte[] Bytes, string Extension, string ContentType) ValidateBytes(
+            byte[] bytes,
+            string? contentType,
+            string? suggestedFileName = null)
+        {
+            if (bytes == null || bytes.Length == 0)
                 throw new ArgumentException("La photo est vide.");
 
             if (bytes.Length > MaxImageBytes)
@@ -71,6 +114,9 @@ namespace CongoTravel.Helpers
                 ".png" => "image/png",
                 _ => "application/octet-stream"
             };
+
+            if (contentType is not ("image/jpeg" or "image/png"))
+                throw new InvalidOperationException("Type d'image non autorisé. Formats acceptés : JPG, PNG.");
 
             return (bytes, extension, contentType);
         }

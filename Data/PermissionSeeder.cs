@@ -481,6 +481,15 @@ namespace CongoTravel.Data
                 new Permission { Nom = "Restaurant.Dashboard.Read", Categorie = "Restaurant", Action = "Dashboard.Read", Description = "Consulter le dashboard réservation restaurant", Statut = true },
                 new Permission { Nom = "Restaurant.Ticket.Check", Categorie = "Restaurant", Action = "Ticket.Check", Description = "Vérifier un ticket restaurant (contrôle entrée)", Statut = true },
                 new Permission { Nom = "Restaurant.Ticket.Use", Categorie = "Restaurant", Action = "Ticket.Use", Description = "Marquer un ticket restaurant comme utilisé", Statut = true },
+
+                // HÔTEL (Phases 1–5 catalogue, allotments, réservations et dashboard)
+                new Permission { Nom = "Hotel.Etablissement.Read", Categorie = "Hotel", Action = "Etablissement.Read", Description = "Lister / consulter établissements hôtel", Statut = true },
+                new Permission { Nom = "Hotel.Etablissement.Write", Categorie = "Hotel", Action = "Etablissement.Write", Description = "Créer, modifier ou publier un hôtel", Statut = true },
+                new Permission { Nom = "Hotel.RoomType.Read", Categorie = "Hotel", Action = "RoomType.Read", Description = "Lister / consulter types de chambres", Statut = true },
+                new Permission { Nom = "Hotel.RoomType.Write", Categorie = "Hotel", Action = "RoomType.Write", Description = "Créer, modifier ou publier des types de chambres", Statut = true },
+                new Permission { Nom = "Hotel.Hold.Create", Categorie = "Hotel", Action = "Hold.Create", Description = "Créer un hold multi-nuit hôtel", Statut = true },
+                new Permission { Nom = "Hotel.Reservation.Confirm", Categorie = "Hotel", Action = "Reservation.Confirm", Description = "Confirmer l'acompte ou annuler une réservation hôtel", Statut = true },
+                new Permission { Nom = "Hotel.Dashboard.Read", Categorie = "Hotel", Action = "Dashboard.Read", Description = "Consulter le dashboard réservation hôtel", Statut = true },
             };
         }
 
@@ -583,7 +592,8 @@ namespace CongoTravel.Data
                     p.Categorie == "Sync" ||
                     p.Categorie == "Evenement" ||
                     p.Categorie == "SiteTouristique" ||
-                    p.Categorie == "Restaurant"
+                    p.Categorie == "Restaurant" ||
+                    p.Categorie == "Hotel"
                 ).ToList();
 
                 // Vérifier les permissions déjà assignées
@@ -661,7 +671,8 @@ namespace CongoTravel.Data
                     p.Categorie == "Sync" ||
                     p.Categorie == "Evenement" ||
                     p.Categorie == "SiteTouristique" ||
-                    p.Categorie == "Restaurant"
+                    p.Categorie == "Restaurant" ||
+                    p.Categorie == "Hotel"
                 ).ToList();
 
                 // Vérifier les permissions déjà assignées
@@ -727,6 +738,10 @@ namespace CongoTravel.Data
                     p.Nom == "SiteTouristique.Ticket.Check" ||
                     p.Nom == "SiteTouristique.Ticket.Use" ||
                     p.Nom == "Restaurant.Etablissement.Read" ||
+                    p.Nom == "Hotel.Etablissement.Read" ||
+                    p.Nom == "Hotel.RoomType.Read" ||
+                    p.Nom == "Hotel.Hold.Create" ||
+                    p.Nom == "Hotel.Reservation.Confirm" ||
                     p.Nom == "Restaurant.Hold.Create" ||
                     p.Nom == "Restaurant.Reservation.Confirm" ||
                     p.Nom == "Restaurant.Ticket.Check" ||
@@ -818,6 +833,10 @@ namespace CongoTravel.Data
                     p.Nom == "SiteTouristique.Ticket.Check" ||
                     p.Nom == "SiteTouristique.Dashboard.Read" ||
                     p.Nom == "Restaurant.Etablissement.Read" ||
+                    p.Nom == "Hotel.Etablissement.Read" ||
+                    p.Nom == "Hotel.RoomType.Read" ||
+                    p.Nom == "Hotel.Reservation.Confirm" ||
+                    p.Nom == "Hotel.Dashboard.Read" ||
                     p.Nom == "Restaurant.Reservation.Confirm" ||
                     p.Nom == "Restaurant.Ticket.Check" ||
                     p.Nom == "Restaurant.Dashboard.Read"
@@ -878,6 +897,10 @@ namespace CongoTravel.Data
                     p.Nom == "SiteTouristique.Reservation.Confirm" ||
                     // Restaurant : même pattern Client
                     p.Nom == "Restaurant.Etablissement.Read" ||
+                    p.Nom == "Hotel.Etablissement.Read" ||
+                    p.Nom == "Hotel.RoomType.Read" ||
+                    p.Nom == "Hotel.Hold.Create" ||
+                    p.Nom == "Hotel.Reservation.Confirm" ||
                     p.Nom == "Restaurant.Hold.Create" ||
                     p.Nom == "Restaurant.Reservation.Confirm"
                 ).ToList();

@@ -73,6 +73,22 @@ namespace CongoTravel.Tests
         }
 
         [Fact]
+        public void EnsureCanSell_throws_when_vente_en_ligne_desactivee()
+        {
+            var session = new EvenementSession
+            {
+                Status = EvenementSessionStatus.Published,
+                StartAtUtc = DateTime.UtcNow.AddHours(1),
+                EndAtUtc = DateTime.UtcNow.AddHours(5),
+                VenteEnLigneActive = false
+            };
+
+            var ex = Assert.Throws<InvalidOperationException>(() =>
+                EvenementSessionSalesEligibilityHelper.EnsureCanSell(session, DateTime.UtcNow));
+            Assert.Contains("Vente en ligne désactivée", ex.Message);
+        }
+
+        [Fact]
         public void EnsureCanSell_throws_when_session_ended()
         {
             var session = new EvenementSession

@@ -58,18 +58,23 @@ namespace CongoTravel.Controllers
 
         /// <summary>
         /// Secours : vérifie le statut chez FlexPay et finalise la réservation HOLD si succès.
+        /// <paramref name="idSociete"/> optionnel (query) ; absent → société du JWT.
         /// </summary>
         [HttpGet("verifier/{orderNumber}")]
         [Authorize]
         [Permission("Evenement.Reservation.Confirm")]
         [ProducesResponseType(typeof(EvenementConfirmPaymentResponseDto), 200)]
         [ProducesResponseType(typeof(EvenementFlexPayCallbackProcessResultDto), 200)]
-        public async Task<IActionResult> Verifier(string orderNumber)
+        public async Task<IActionResult> Verifier(
+            string orderNumber,
+            [FromQuery] int? idSociete = null)
         {
             try
             {
-                var idSociete = EvenementTenancyGuard.ResolveEffectiveSocieteId(_currentUserService);
-                var result = await _callbackService.VerifyAndFinalizeAsync(orderNumber, idSociete);
+                var effectiveSocieteId = EvenementTenancyGuard.ResolveEffectiveSocieteIdForFlexPayVerifier(
+                    _currentUserService,
+                    idSociete);
+                var result = await _callbackService.VerifyAndFinalizeAsync(orderNumber, effectiveSocieteId);
                 if (result.IsConfirmSuccess)
                     return Ok(result.ConfirmPayment);
                 return Ok(result.StatusOnly);

@@ -20,6 +20,7 @@ namespace CongoTravel.Helpers
                 DateEmissionBillet = paiement.DateEmissionBillet,
                 IdBilletEmis = paiement.IdBilletEmis,
                 IdReservation = paiement.IdReservation,
+                IdReservationAllerRetour = paiement.IdReservationAllerRetour,
                 IdSociete = paiement.IdSociete,
                 IdSite = paiement.IdSite,
                 EstComplet = paiement.EstComplet,

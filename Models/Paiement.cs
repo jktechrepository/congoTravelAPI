@@ -127,6 +127,11 @@ namespace CongoTravel.Models
         public int? IdReservation { get; set; }
 
         /// <summary>
+        /// Agrégat aller-retour (null = paiement single-leg). Pour AR, <see cref="IdReservation"/> pointe vers l'aller.
+        /// </summary>
+        public int? IdReservationAllerRetour { get; set; }
+
+        /// <summary>
         /// Identifiant de la société (pour le multi-tenant)
         /// </summary>
         [Required]
@@ -168,6 +173,11 @@ namespace CongoTravel.Models
         [ValidateNever]
         [ForeignKey("IdReservation")]
         public virtual Reservation? Reservation { get; set; }
+
+        [JsonIgnore]
+        [ValidateNever]
+        [ForeignKey(nameof(IdReservationAllerRetour))]
+        public virtual ReservationAllerRetour? ReservationAllerRetour { get; set; }
 
         /// <summary>
         /// Société à laquelle appartient le paiement

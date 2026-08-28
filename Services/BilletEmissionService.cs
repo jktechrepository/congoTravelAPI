@@ -151,6 +151,83 @@ namespace CongoTravel.Services
         }
 
         /// <summary>
+        /// Émet les billets pour une réservation déjà allouée (ex. leg retour d'un aller-retour).
+        /// Ne vérifie pas <see cref="Paiement.IdBilletEmis"/>.
+        /// </summary>
+        public async Task<IReadOnlyList<Billet>> EmitBilletsPourReservationAsync(
+            int idReservation,
+            int idSociete,
+            int? idSite)
+        {
+            var reservation = await _context.Reservations
+                .Include(r => r.Voyage)
+                .FirstOrDefaultAsync(r => r.IdReservation == idReservation)
+                ?? throw new InvalidOperationException($"Réservation {idReservation} introuvable.");
+
+            var config = await _configSocieteRepository.GetOrCreateAsync(
+                reservation.Voyage?.IdSociete ?? idSociete);
+
+            var passagers = await _context.ReservationPassengers
+                .Where(p => p.IdReservation == reservation.IdReservation)
+                .OrderBy(p => p.IdReservationPassenger)
+                .ToListAsync();
+
+            if (passagers.Count == 0)
+                throw new InvalidOperationException(
+                    $"Aucun passager pour la réservation {idReservation}.");
+
+            foreach (var p in passagers)
+            {
+                if (await _context.Billets.AnyAsync(b => b.IdReservationPassenger == p.IdReservationPassenger))
+                    throw new InvalidOperationException(
+                        $"Un billet existe déjà pour le passager {p.IdReservationPassenger}.");
+            }
+
+            var passengerIds = passagers.Select(p => p.IdReservationPassenger).ToList();
+            var allocations = await _context.VoyageSeatAllocations
+                .Include(a => a.Siege)
+                .Where(a => a.IdVoyage == reservation.IdVoyage && passengerIds.Contains(a.IdReservationPassenger))
+                .ToListAsync();
+
+            if (allocations.Count != passagers.Count)
+                throw new InvalidOperationException(
+                    $"Attribution de sièges incomplète pour la réservation {reservation.IdReservation} ({allocations.Count}/{passagers.Count}).");
+
+            var orderedAllocations = passengerIds
+                .Select(pid => allocations.First(a => a.IdReservationPassenger == pid))
+                .ToList();
+
+            var results = new List<Billet>();
+            foreach (var alloc in orderedAllocations)
+            {
+                var passenger = passagers.First(p => p.IdReservationPassenger == alloc.IdReservationPassenger);
+                var qrCode = await _qrCodeService.GenerateUniqueQrCodeAsync(idSociete, reservation.IdReservation);
+
+                var billet = new Billet
+                {
+                    IdReservation = reservation.IdReservation,
+                    IdReservationPassenger = passenger.IdReservationPassenger,
+                    IdSiege = alloc.IdSiege,
+                    CodeSiege = alloc.Siege?.CodeSiege,
+                    IdClient = passenger.IdClient ?? reservation.IdClient,
+                    QrCode = qrCode,
+                    DateGeneration = DateTime.UtcNow,
+                    IdSociete = idSociete,
+                    IdSite = idSite
+                };
+                ApplyBilletValidityFromConfig(billet, reservation.Voyage, config.DureeValiditeBilletJours);
+                results.Add(await _billetRepository.CreateAsync(billet));
+            }
+
+            _logger.LogInformation(
+                "{Count} billet(s) émis pour réservation {IdReservation}",
+                results.Count,
+                idReservation);
+
+            return results;
+        }
+
+        /// <summary>
         /// Émet les billets puis retourne le premier (compatibilité callers mono-billet).
         /// </summary>
         public async Task<Billet> EmitreBilletAsync(Paiement paiement)

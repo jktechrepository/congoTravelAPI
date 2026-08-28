@@ -6,6 +6,7 @@ using CongoTravel.Models;
 using CongoTravel.Models.DTOs.Devise;
 using CongoTravel.Models.DTOs.TauxChange;
 using CongoTravel.Attributes;
+using CongoTravel.Helpers;
 using CongoTravel.Services.Repositories;
 
 namespace CongoTravel.Controllers
@@ -312,7 +313,7 @@ namespace CongoTravel.Controllers
         [HttpGet("taux-change")]
         public async Task<IActionResult> GetTaux([FromQuery] int idSociete, [FromQuery] string source, [FromQuery] string cible)
         {
-            if (!_currentUserService.IsSuperAdmin && _currentUserService.SocieteId != idSociete)
+            if (!DeviseTenancyGuard.CanReadDeviseDataForSociete(_currentUserService, idSociete))
                 return Forbid();
 
             var src = source.Trim().ToUpperInvariant();
@@ -336,7 +337,7 @@ namespace CongoTravel.Controllers
             [FromQuery] decimal montant,
             [FromQuery] DateTime? datePaiement)
         {
-            if (!_currentUserService.IsSuperAdmin && _currentUserService.SocieteId != idSociete)
+            if (!DeviseTenancyGuard.CanReadDeviseDataForSociete(_currentUserService, idSociete))
                 return Forbid();
 
             if (montant < 0)

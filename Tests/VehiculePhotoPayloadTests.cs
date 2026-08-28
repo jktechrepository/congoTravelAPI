@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using CongoTravel.Data;
+using CongoTravel.Helpers;
 using CongoTravel.Models;
 using CongoTravel.Models.DTOs;
 using CongoTravel.Models.DTOs.Mapping;
@@ -102,8 +103,8 @@ namespace CongoTravel.Tests
 
             Assert.Single(dto.Photos);
             Assert.Equal(7, dto.Photos[0].IdPhotoVehicule);
-            Assert.StartsWith("data:image/jpeg;base64,", dto.Photos[0].PhotoBase64);
-            Assert.Contains(Convert.ToBase64String(bytes), dto.Photos[0].PhotoBase64);
+            Assert.Equal(CongoTravelPhotoUrlBuilder.ForVehicule(42, 7), dto.Photos[0].PhotoUrl);
+            Assert.True(string.IsNullOrEmpty(dto.Photos[0].PhotoBase64));
         }
 
         [Fact]
@@ -158,7 +159,10 @@ namespace CongoTravel.Tests
             Assert.NotNull(loaded!.Photos);
             Assert.Single(loaded.Photos);
             Assert.Single(dto.Photos);
-            Assert.StartsWith("data:image/png;base64,", dto.Photos[0].PhotoBase64);
+            Assert.Equal(
+                CongoTravelPhotoUrlBuilder.ForVehicule(vh.IdVehicule, dto.Photos[0].IdPhotoVehicule),
+                dto.Photos[0].PhotoUrl);
+            Assert.True(string.IsNullOrEmpty(dto.Photos[0].PhotoBase64));
         }
 
         [Fact]
@@ -208,7 +212,8 @@ namespace CongoTravel.Tests
             var dto = mapper.Map<VoyageResponseDto>(voyage);
 
             Assert.Single(dto.PhotosVehicules);
-            Assert.StartsWith("data:image/jpeg;base64,", dto.PhotosVehicules[0].PhotoBase64);
+            Assert.Equal(CongoTravelPhotoUrlBuilder.ForVehicule(42, 1), dto.PhotosVehicules[0].PhotoUrl);
+            Assert.True(string.IsNullOrEmpty(dto.PhotosVehicules[0].PhotoBase64));
             Assert.Equal(42, dto.IdVehicule);
             Assert.Equal("Congo Travel", dto.NomSociete);
             Assert.Equal("https://cdn.example/logo.png", dto.LogoSociete);

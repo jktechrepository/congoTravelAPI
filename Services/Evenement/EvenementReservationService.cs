@@ -50,6 +50,25 @@ namespace CongoTravel.Services.Evenement
                 .ToList();
         }
 
+        public async Task<IReadOnlyList<EvenementReservationListItemDto>> ListByClientAsync(
+            int idClient,
+            EvenementReservationListFilter? filter = null,
+            CancellationToken cancellationToken = default)
+        {
+            if (idClient <= 0)
+                throw new ArgumentException("idClient doit être strictement positif.", nameof(idClient));
+
+            var merged = filter ?? new EvenementReservationListFilter();
+            merged.IdClient = idClient;
+            // Pas de tenant société : toutes les réservations de ce client.
+            var reservations = await BuildListQuery(idSociete: null, merged)
+                .ToListAsync(cancellationToken);
+
+            return reservations
+                .Select(EvenementReservationMapper.ToListItemDto)
+                .ToList();
+        }
+
         public async Task<EvenementReservationResponseDto?> GetByReferenceAsync(
             string reference,
             int idSociete,
@@ -513,12 +532,13 @@ namespace CongoTravel.Services.Evenement
         }
 
         private IQueryable<Models.Evenement.EvenementReservation> BuildListQuery(
-            int idSociete,
+            int? idSociete,
             EvenementReservationListFilter? filter)
         {
-            var query = _context.EvenementReservations
-                .AsNoTracking()
-                .Where(r => r.IdSociete == idSociete);
+            var query = _context.EvenementReservations.AsNoTracking();
+
+            if (idSociete.HasValue)
+                query = query.Where(r => r.IdSociete == idSociete.Value);
 
             if (filter?.Status.HasValue == true)
                 query = query.Where(r => r.Status == filter.Status.Value);

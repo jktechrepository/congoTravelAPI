@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using CongoTravel.Attributes;
 using CongoTravel.Helpers.SiteTouristique;
@@ -304,6 +305,7 @@ namespace CongoTravel.Controllers
         [ProducesResponseType(404)]
         public async Task<ActionResult<IEnumerable<SiteTouristiqueLieuPhotoDto>>> GetPhotos(
             int id,
+            [FromQuery] bool includePhotoBase64 = false,
             CancellationToken cancellationToken = default)
         {
             try
@@ -312,8 +314,12 @@ namespace CongoTravel.Controllers
                 if (lieu == null)
                     return NotFound(new { message = $"Lieu {id} introuvable." });
 
-                var photos = await _photoService.GetByLieuIdAsync(id, lieu.IdSociete, cancellationToken);
-                return Ok(photos.Select(SiteTouristiqueLieuMapper.ToPhotoDto).ToList());
+                var photos = await _photoService.GetByLieuIdAsync(
+                    id,
+                    lieu.IdSociete,
+                    cancellationToken,
+                    includePhotoBase64);
+                return Ok(photos.Select(p => SiteTouristiqueLieuMapper.ToPhotoDto(p, includePhotoBase64)).ToList());
             }
             catch (KeyNotFoundException ex)
             {
@@ -330,8 +336,56 @@ namespace CongoTravel.Controllers
             }
         }
 
-        /// <summary>Ajoute une photo à un lieu (max 3).</summary>
+        /// <summary>Stream binaire d'une photo de lieu.</summary>
+        [HttpGet("{id:int}/photos/{photoId:int}/content")]
+        [AllowAnonymous]
+        [Produces("image/jpeg", "image/png")]
+        [ProducesResponseType(200)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> GetPhotoContent(
+            int id,
+            int photoId,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var lieu = await ResolveLieuForPublicReadAsync(id, cancellationToken);
+                if (lieu == null)
+                    return NotFound(new { message = $"Lieu {id} introuvable." });
+
+                var payload = await _photoService.GetContentAsync(
+                    id,
+                    lieu.IdSociete,
+                    photoId,
+                    cancellationToken);
+                if (payload == null)
+                    return NotFound(new { message = $"Photo {photoId} introuvable pour le lieu {id}." });
+
+                Response.Headers.CacheControl = "private, max-age=300";
+                return File(payload.Content, payload.ContentType);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+            catch (FileNotFoundException)
+            {
+                return NotFound(new { message = $"Contenu photo {photoId} introuvable." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur GET content photo {PhotoId} lieu {Id}", photoId, id);
+                return StatusCode(500, new { message = "Une erreur interne est survenue." });
+            }
+        }
+
+        /// <summary>Ajoute une photo à un lieu (max 3) — JSON photoBase64.</summary>
         [HttpPost("{id:int}/photos")]
+        [Consumes("application/json")]
         [Permission("SiteTouristique.Lieu.Write")]
         [ProducesResponseType(typeof(SiteTouristiqueLieuPhotoDto), 201)]
         [ProducesResponseType(400)]
@@ -369,6 +423,105 @@ namespace CongoTravel.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Erreur POST photo lieu site touristique {Id}", id);
+                return StatusCode(500, new { message = "Une erreur interne est survenue." });
+            }
+        }
+
+        /// <summary>Ajoute une photo à un lieu (max 3) — multipart file.</summary>
+        [HttpPost("{id:int}/photos")]
+        [Consumes("multipart/form-data")]
+        [Permission("SiteTouristique.Lieu.Write")]
+        [ProducesResponseType(typeof(SiteTouristiqueLieuPhotoDto), 201)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
+        public async Task<ActionResult<SiteTouristiqueLieuPhotoDto>> AddPhotoMultipart(
+            int id,
+            [FromForm] IFormFile file,
+            [FromForm] int? ordre = null,
+            [FromForm] string? fileName = null,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var idSociete = SiteTouristiqueTenancyGuard.ResolveEffectiveSocieteId(_currentUserService);
+                var photo = await _photoService.AddPhotoFromFileAsync(
+                    id,
+                    idSociete,
+                    file,
+                    ordre,
+                    fileName,
+                    cancellationToken);
+                return CreatedAtAction(
+                    nameof(GetPhotos),
+                    new { id },
+                    SiteTouristiqueLieuMapper.ToPhotoDto(photo));
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur POST photo multipart lieu site touristique {Id}", id);
+                return StatusCode(500, new { message = "Une erreur interne est survenue." });
+            }
+        }
+
+        /// <summary>Remplace toute la galerie photos (0–3 fichiers multipart). Liste vide = vider.</summary>
+        [HttpPut("{id:int}/photos")]
+        [Consumes("multipart/form-data")]
+        [Permission("SiteTouristique.Lieu.Write")]
+        [ProducesResponseType(typeof(IEnumerable<SiteTouristiqueLieuPhotoDto>), 200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
+        public async Task<ActionResult<IEnumerable<SiteTouristiqueLieuPhotoDto>>> ReplacePhotos(
+            int id,
+            [FromForm] List<IFormFile>? files,
+            [FromForm] List<int>? ordres = null,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var idSociete = SiteTouristiqueTenancyGuard.ResolveEffectiveSocieteId(_currentUserService);
+                var photos = await _photoService.ReplaceAllFromFilesAsync(
+                    id,
+                    idSociete,
+                    files ?? new List<IFormFile>(),
+                    ordres,
+                    cancellationToken);
+                return Ok(photos.Select(p => SiteTouristiqueLieuMapper.ToPhotoDto(p)).ToList());
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur PUT photos multipart lieu site touristique {Id}", id);
                 return StatusCode(500, new { message = "Une erreur interne est survenue." });
             }
         }

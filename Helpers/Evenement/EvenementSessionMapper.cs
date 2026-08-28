@@ -7,7 +7,9 @@ namespace CongoTravel.Helpers.Evenement
 {
     public static class EvenementSessionMapper
     {
-        public static EvenementSessionListItemDto ToListItemDto(EvenementSession session)
+        public static EvenementSessionListItemDto ToListItemDto(
+            EvenementSession session,
+            bool includePhotoBase64 = false)
         {
             var dto = new EvenementSessionListItemDto
             {
@@ -25,6 +27,9 @@ namespace CongoTravel.Helpers.Evenement
                 TypeEvenement = session.TypeEvenement.ToString(),
                 NomOrganisateur = session.NomOrganisateur,
                 TelephoneOrganisateur = session.TelephoneOrganisateur,
+                NumeroMobileMoneyOrganisateur = session.NumeroMobileMoneyOrganisateur,
+                VenteEnLigneActive = session.VenteEnLigneActive,
+                AutoReversementOrganisateur = session.AutoReversementOrganisateur,
                 MailOrganisateur = session.MailOrganisateur,
                 LogoOrganisateur = session.LogoOrganisateur,
                 Ville = session.Ville,
@@ -35,7 +40,7 @@ namespace CongoTravel.Helpers.Evenement
                 Status = session.Status.ToString(),
                 DateCreation = session.DateCreation,
                 DateModification = session.DateModification,
-                PhotoCouverture = ResolveCoverPhoto(session)
+                PhotoCouverture = ResolveCoverPhoto(session, includePhotoBase64)
             };
 
             ApplyPriceSummary(session, out var prixMin, out var prixMax, out var codeDevise);
@@ -45,7 +50,9 @@ namespace CongoTravel.Helpers.Evenement
             return dto;
         }
 
-        public static EvenementSessionResponseDto ToResponseDto(EvenementSession session)
+        public static EvenementSessionResponseDto ToResponseDto(
+            EvenementSession session,
+            bool includePhotoBase64 = false)
         {
             var dto = new EvenementSessionResponseDto
             {
@@ -63,6 +70,9 @@ namespace CongoTravel.Helpers.Evenement
                 TypeEvenement = session.TypeEvenement.ToString(),
                 NomOrganisateur = session.NomOrganisateur,
                 TelephoneOrganisateur = session.TelephoneOrganisateur,
+                NumeroMobileMoneyOrganisateur = session.NumeroMobileMoneyOrganisateur,
+                VenteEnLigneActive = session.VenteEnLigneActive,
+                AutoReversementOrganisateur = session.AutoReversementOrganisateur,
                 MailOrganisateur = session.MailOrganisateur,
                 LogoOrganisateur = session.LogoOrganisateur,
                 Ville = session.Ville,
@@ -73,7 +83,7 @@ namespace CongoTravel.Helpers.Evenement
                 Status = session.Status.ToString(),
                 DateCreation = session.DateCreation,
                 DateModification = session.DateModification,
-                PhotoCouverture = ResolveCoverPhoto(session)
+                PhotoCouverture = ResolveCoverPhoto(session, includePhotoBase64)
             };
 
             ApplyPriceSummary(session, out var prixMin, out var prixMax, out var codeDevise);
@@ -107,21 +117,23 @@ namespace CongoTravel.Helpers.Evenement
                 dto.Photos = session.Photos
                     .Where(p => p.Statut)
                     .OrderBy(p => p.Ordre)
-                    .Select(ToPhotoDto)
+                    .Select(p => ToPhotoDto(p, includePhotoBase64))
                     .ToList();
             }
 
             return dto;
         }
 
-        private static EvenementSessionPhotoDto? ResolveCoverPhoto(EvenementSession session)
+        private static EvenementSessionPhotoDto? ResolveCoverPhoto(
+            EvenementSession session,
+            bool includePhotoBase64 = false)
         {
             var cover = session.Photos?
                 .Where(p => p.Statut)
                 .OrderBy(p => p.Ordre)
                 .FirstOrDefault();
 
-            return cover == null ? null : ToPhotoDto(cover);
+            return cover == null ? null : ToPhotoDto(cover, includePhotoBase64);
         }
 
         private static void ApplyPriceSummary(
@@ -230,19 +242,21 @@ namespace CongoTravel.Helpers.Evenement
             dto.IsSoldOut = dto.PlacesRestantes == 0;
         }
 
-        public static EvenementSessionPhotoDto ToPhotoDto(EvenementSessionPhoto photo)
+        public static EvenementSessionPhotoDto ToPhotoDto(
+            EvenementSessionPhoto photo,
+            bool includePhotoBase64 = false)
         {
-            var contentType = string.IsNullOrWhiteSpace(photo.TypeMIME)
-                ? "image/jpeg"
-                : photo.TypeMIME!;
-
             return new EvenementSessionPhotoDto
             {
                 IdEvenementSessionPhoto = photo.IdEvenementSessionPhoto,
                 IdEvenementSession = photo.IdEvenementSession,
-                PhotoBase64 = photo.PhotoData.Length > 0
-                    ? VehiculePhotoBase64Helper.ToDataUrl(photo.PhotoData, contentType)
-                    : string.Empty,
+                PhotoUrl = CongoTravelPhotoUrlBuilder.ForEvenementSession(
+                    photo.IdEvenementSession,
+                    photo.IdEvenementSessionPhoto),
+                PhotoBase64 = PhotoContentHelper.EncodeBase64IfRequested(
+                    photo.PhotoData,
+                    photo.TypeMIME,
+                    includePhotoBase64),
                 Ordre = photo.Ordre,
                 OriginalFileName = photo.OriginalFileName,
                 TypeMIME = photo.TypeMIME,

@@ -1,5 +1,6 @@
 using CongoTravel.Models;
 using CongoTravel.Models.Evenement;
+using CongoTravel.Models.Hotel;
 using CongoTravel.Models.Restaurant;
 using CongoTravel.Models.SiteTouristique;
 using Microsoft.EntityFrameworkCore;
@@ -45,6 +46,7 @@ namespace CongoTravel.Data
         public DbSet<TypeVehicule> TypeVehicules { get; set; }
         public DbSet<Voyage> Voyages { get; set; }
         public DbSet<Reservation> Reservations { get; set; }
+        public DbSet<ReservationAllerRetour> ReservationsAllerRetour { get; set; }
         public DbSet<Billet> Billets { get; set; }
         public DbSet<BilletEmbarquement> BilletEmbarquements { get; set; }
         public DbSet<FeuilleDeRoute> FeuilleDeRoutes { get; set; }
@@ -117,6 +119,24 @@ namespace CongoTravel.Data
         public DbSet<RestaurantPlanifPlageGlobalQuota> RestaurantPlanifPlageGlobalQuotas { get; set; }
         public DbSet<RestaurantPlanifPlageZoneQuota> RestaurantPlanifPlageZoneQuotas { get; set; }
         public DbSet<RestaurantPlanifGenerationLog> RestaurantPlanifGenerationLogs { get; set; }
+
+        public DbSet<Hotel> Hotels { get; set; }
+        public DbSet<HotelRoomType> HotelRoomTypes { get; set; }
+        public DbSet<HotelRoom> HotelRooms { get; set; }
+        public DbSet<HotelRoomAssignment> HotelRoomAssignments { get; set; }
+        public DbSet<HotelExtra> HotelExtras { get; set; }
+        public DbSet<HotelReservationExtra> HotelReservationExtras { get; set; }
+        public DbSet<HotelPhoto> HotelPhotos { get; set; }
+        public DbSet<HotelNightAllotment> HotelNightAllotments { get; set; }
+        public DbSet<HotelNight> HotelNights { get; set; }
+        public DbSet<HotelPlanification> HotelPlanifications { get; set; }
+        public DbSet<HotelPlanificationLigne> HotelPlanificationLignes { get; set; }
+        public DbSet<HotelPlanifGlobalQuota> HotelPlanifGlobalQuotas { get; set; }
+        public DbSet<HotelPlanifGenerationLog> HotelPlanifGenerationLogs { get; set; }
+        public DbSet<HotelReservation> HotelReservations { get; set; }
+        public DbSet<HotelReservationLine> HotelReservationLines { get; set; }
+        public DbSet<HotelPayment> HotelPayments { get; set; }
+        public DbSet<HotelCommandeEnAttente> HotelCommandesEnAttente { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -583,7 +603,8 @@ namespace CongoTravel.Data
 
             modelBuilder.Entity<PhotoVehicule>(entity =>
             {
-                entity.Property(e => e.PhotoData).IsRequired().HasColumnType("mediumblob");
+                entity.Property(e => e.PhotoData).IsRequired(false).HasColumnType("mediumblob");
+                entity.Property(e => e.StorageKey).HasMaxLength(500);
                 entity.Property(e => e.Ordre).IsRequired();
                 entity.Property(e => e.Statut).IsRequired();
             });
@@ -683,12 +704,14 @@ namespace CongoTravel.Data
                 entity.Property(e => e.DureeHoldEvenementMinutes).HasDefaultValue(15);
                 entity.Property(e => e.DureeHoldSiteTouristiqueMinutes).HasDefaultValue(15);
                 entity.Property(e => e.DureeHoldRestaurantMinutes).HasDefaultValue(15);
+                entity.Property(e => e.DureeHoldHotelMinutes).HasDefaultValue(15);
                 entity.Property(e => e.ReaffectationActive).HasDefaultValue(true);
                 entity.Property(e => e.ReservationIsActif).HasDefaultValue(true);
                 entity.Property(e => e.ActiviteTransport).HasDefaultValue(true);
                 entity.Property(e => e.ActiviteEvenement).HasDefaultValue(true);
                 entity.Property(e => e.ActiviteSiteTouristique).HasDefaultValue(true);
                 entity.Property(e => e.ActiviteRestaurant).HasDefaultValue(true);
+                entity.Property(e => e.ActiviteHotel).HasDefaultValue(true);
                 entity.Property(e => e.AutoReversementPaiementElectronique).HasDefaultValue(false);
                 entity.Property(e => e.PourcentageReversementSite).HasColumnType("decimal(18,2)").HasDefaultValue(100m);
                 entity.Property(e => e.FraisPlateforme).HasColumnType("decimal(18,2)").HasDefaultValue(0m);
@@ -830,6 +853,36 @@ namespace CongoTravel.Data
             modelBuilder.Entity<Reservation>()
                 .HasIndex(r => r.IdSite)
                 .HasDatabaseName("IX_Reservations_IdSite");
+
+            modelBuilder.Entity<Reservation>()
+                .HasOne(r => r.ReservationAllerRetour)
+                .WithMany(a => a.Reservations)
+                .HasForeignKey(r => r.IdReservationAllerRetour)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Reservation>()
+                .HasIndex(r => r.IdReservationAllerRetour)
+                .HasDatabaseName("IX_Reservations_IdReservationAllerRetour");
+
+            modelBuilder.Entity<ReservationAllerRetour>(entity =>
+            {
+                entity.ToTable("ReservationsAllerRetour");
+                entity.Property(e => e.Statut).IsRequired().HasMaxLength(30);
+                entity.Property(e => e.Origine).IsRequired().HasMaxLength(20);
+                entity.HasIndex(e => e.IdSociete).HasDatabaseName("IX_ReservationsAllerRetour_IdSociete");
+                entity.HasIndex(e => e.Statut).HasDatabaseName("IX_ReservationsAllerRetour_Statut");
+                // Scalars only : pas de FK SQL vers Voyage/Reservation/Paiement (évite cycles 1-1).
+                entity.Ignore(e => e.VoyageAller);
+                entity.Ignore(e => e.VoyageRetour);
+                entity.Ignore(e => e.ReservationAller);
+                entity.Ignore(e => e.ReservationRetour);
+                entity.Ignore(e => e.Paiement);
+                entity.Ignore(e => e.Societe);
+                entity.Ignore(e => e.Client);
+                entity.Ignore(e => e.Utilisateur);
+                entity.Ignore(e => e.Site);
+            });
 
             // Configuration Siege (référentiel véhicule)
             modelBuilder.Entity<Siege>()
@@ -1293,6 +1346,9 @@ namespace CongoTravel.Data
                 .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<Paiement>()
+                .Ignore(p => p.ReservationAllerRetour);
+
+            modelBuilder.Entity<Paiement>()
                 .HasOne(p => p.Utilisateur)
                 .WithMany()
                 .HasForeignKey(p => p.IdUtilisateur)
@@ -1385,6 +1441,7 @@ namespace CongoTravel.Data
                 entity.Property(e => e.CodeDeviseVoyage).IsRequired().HasMaxLength(3);
                 entity.Property(e => e.CodeDevisePaiement).IsRequired().HasMaxLength(3);
                 entity.Property(e => e.PayloadMetierJson).IsRequired();
+                entity.Property(e => e.TypeCommande).IsRequired().HasMaxLength(20).HasDefaultValue("Single");
                 entity.HasIndex(e => e.OrderNumberFlexPay)
                     .IsUnique()
                     .HasDatabaseName("IX_CommandesReservationEnAttente_OrderNumber");
@@ -1540,6 +1597,7 @@ namespace CongoTravel.Data
             ConfigureEvenementEntities(modelBuilder);
             ConfigureSiteTouristiqueEntities(modelBuilder);
             ConfigureRestaurantEntities(modelBuilder);
+            ConfigureHotelEntities(modelBuilder);
         }
 
         /// <summary>Code site réservé à l'initialisation (unique par société).</summary>

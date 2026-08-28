@@ -204,8 +204,7 @@ namespace CongoTravel.Tests
         {
             await using var ctx = BuildDb(nameof(CreateDraftAsync_creates_class_quota_session));
             var (idSociete, idSite, idClasseVip, idClasseStd) = await SeedClassesAsync(ctx);
-            var service = new EvenementSessionService(
-                ctx, new EvenementSessionPhotoService(ctx, Microsoft.Extensions.Logging.Abstractions.NullLogger<EvenementSessionPhotoService>.Instance), Microsoft.Extensions.Logging.Abstractions.NullLogger<EvenementSessionService>.Instance);
+            var service = PhotoStorageTestFactory.CreateEvenementSessionService(ctx);
 
             var created = await service.CreateDraftAsync(new EvenementCreateSessionRequestDto
             {
@@ -233,8 +232,7 @@ namespace CongoTravel.Tests
         {
             await using var ctx = BuildDb(nameof(PublishAsync_publishes_class_quota_session));
             var (idSociete, idSite, idClasse, _) = await SeedClassesAsync(ctx);
-            var service = new EvenementSessionService(
-                ctx, new EvenementSessionPhotoService(ctx, Microsoft.Extensions.Logging.Abstractions.NullLogger<EvenementSessionPhotoService>.Instance), Microsoft.Extensions.Logging.Abstractions.NullLogger<EvenementSessionService>.Instance);
+            var service = PhotoStorageTestFactory.CreateEvenementSessionService(ctx);
 
             var draft = await service.CreateDraftAsync(new EvenementCreateSessionRequestDto
             {
@@ -258,8 +256,7 @@ namespace CongoTravel.Tests
         {
             await using var ctx = BuildDb(nameof(CreateDraftAsync_rejects_duplicate_classe_in_class_quotas));
             var (idSociete, idSite, idClasse, _) = await SeedClassesAsync(ctx);
-            var service = new EvenementSessionService(
-                ctx, new EvenementSessionPhotoService(ctx, Microsoft.Extensions.Logging.Abstractions.NullLogger<EvenementSessionPhotoService>.Instance), Microsoft.Extensions.Logging.Abstractions.NullLogger<EvenementSessionService>.Instance);
+            var service = PhotoStorageTestFactory.CreateEvenementSessionService(ctx);
 
             await Assert.ThrowsAsync<InvalidOperationException>(() =>
                 service.CreateDraftAsync(new EvenementCreateSessionRequestDto

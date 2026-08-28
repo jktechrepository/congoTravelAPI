@@ -34,19 +34,22 @@ namespace CongoTravel.Models.DTOs
         public bool Statut { get; set; } = true;
 
         /// <summary>
-        /// Photos optionnelles (0 à 3). Chaque entrée : photoBase64, ordre optionnel (1-3), fileName optionnel.
-        /// Accepte aussi un tableau de chaînes base64 (voir <see cref="AddPhotoVehiculeDtoListJsonConverter"/>).
+        /// LEGACY / déprécié — photos embarquées en photoBase64.
+        /// Préférer : créer le véhicule sans photos, puis POST/PUT multipart
+        /// <c>/api/Vehicule/{id}/photos</c> (champ <c>file</c> ou <c>files</c>).
+        /// Conservé pour compatibilité clients existants (0 à 3 entrées).
         /// </summary>
         [JsonConverter(typeof(AddPhotoVehiculeDtoListJsonConverter))]
         public List<AddPhotoVehiculeDto>? Photos { get; set; }
 
         /// <summary>
-        /// Ancien champ unique (legacy). Converti en une entrée <see cref="Photos"/> si <c>photos</c> est absent.
+        /// LEGACY — ancien champ unique. Converti en une entrée <see cref="Photos"/> si <c>photos</c> est absent.
+        /// Préférer multipart sur <c>/api/Vehicule/{id}/photos</c>.
         /// </summary>
         [JsonPropertyName("photo")]
         public string? LegacyPhoto { get; set; }
 
-        /// <summary>Alias « images » (certains clients front).</summary>
+        /// <summary>LEGACY — alias « images ». Préférer multipart.</summary>
         [JsonPropertyName("images")]
         [JsonConverter(typeof(AddPhotoVehiculeDtoListJsonConverter))]
         public List<AddPhotoVehiculeDto>? Images

@@ -26,6 +26,12 @@ namespace CongoTravel.Services
         public DateTime DateReference { get; init; } = DateTime.UtcNow;
         public bool EstPaiementElectronique { get; init; }
 
+        /// <summary>Override bénéficiaire PayOut (module Événement : MM organisateur).</summary>
+        public string? NumeroMobileMoneyBeneficiaireOverride { get; init; }
+
+        /// <summary>Gate reversement session ; null = pas de gate session (Transport, etc.).</summary>
+        public bool? AutoReversementSessionAutorise { get; init; }
+
         /// <summary>Rétrocompatibilité Transport : peupler aussi <c>IdPaiement</c> / <c>IdReservation</c>.</summary>
         public int? IdPaiementTransport { get; init; }
         public int? IdReservationTransport { get; init; }
@@ -55,7 +61,8 @@ namespace CongoTravel.Services
 
         public static ReversementAutomatiqueContext FromEvenement(
             EvenementPayment payment,
-            EvenementReservation reservation) =>
+            EvenementReservation reservation,
+            EvenementSession? session = null) =>
             new()
             {
                 ModulePaiement = ReversementModulePaiement.Evenement,
@@ -69,7 +76,10 @@ namespace CongoTravel.Services
                 DateReference = payment.DateModification ?? payment.DateCreation,
                 EstPaiementElectronique =
                     string.Equals(payment.Provider, EvenementFlexPayConstants.Provider, StringComparison.OrdinalIgnoreCase)
-                    && payment.Status == EvenementPaymentStatus.SUCCEEDED
+                    && payment.Status == EvenementPaymentStatus.SUCCEEDED,
+                NumeroMobileMoneyBeneficiaireOverride =
+                    EvenementSessionOrganizerPayoutHelper.TryResolveNormalizedMobileMoney(session),
+                AutoReversementSessionAutorise = session?.AutoReversementOrganisateur
             };
 
         public static ReversementAutomatiqueContext FromRestaurant(

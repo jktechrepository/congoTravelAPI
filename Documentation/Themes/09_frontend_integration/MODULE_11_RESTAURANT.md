@@ -12,6 +12,8 @@
 > Changelog 15 août 2026 : [CHANGELOG_2026-08-15_RESTAURANT_ET_SITE_TOURISTIQUE.md](CHANGELOG_2026-08-15_RESTAURANT_ET_SITE_TOURISTIQUE.md)  
 > Pattern SignalR (adapter les routes) : [INTEGRATION_SIGNALR_EVENEMENT_FLEXPAY.md](INTEGRATION_SIGNALR_EVENEMENT_FLEXPAY.md)  
 > Déploiement SQL : [`Scripts/README_DEPLOIEMENT_RESTAURANT_V1.md`](../../../Scripts/README_DEPLOIEMENT_RESTAURANT_V1.md)
+>
+> **Photos** : préférer [`MODULE_13_PHOTOS_STOCKAGE_S3.md`](MODULE_13_PHOTOS_STOCKAGE_S3.md) + [`INTEGRATION_PHOTOS_S3_VUE_FLUTTER.md`](INTEGRATION_PHOTOS_S3_VUE_FLUTTER.md) (`photoUrl` + multipart). `photos[]` base64 à la création = **legacy déprécié**.
 
 Ce guide permet de brancher :
 
@@ -137,14 +139,16 @@ Puis : `PUT /api/restaurants/etablissements/{id}/publish`.
 `idSite` = guichet FlexPay / caisse de la société.  
 `acomptePourcentDefaut` : utilisé pour le calcul d’acompte si le créneau n’a pas de `montantAcompte` fixe.
 
-List/detail : `photoCouverture` + `photos[]` (max **3**).
+List/detail : `photoCouverture` + `photos[]` (max **3**) — afficher **`photoUrl`** ([MODULE_13](MODULE_13_PHOTOS_STOCKAGE_S3.md)).
 
-**CRUD photos** :
+**CRUD photos** (préférer multipart — [guide S3](INTEGRATION_PHOTOS_S3_VUE_FLUTTER.md)) :
 
 | Méthode | Route |
 |---------|-------|
 | GET | `/api/restaurants/etablissements/{id}/photos` |
-| POST | `/api/restaurants/etablissements/{id}/photos` |
+| GET | `/api/restaurants/etablissements/{id}/photos/{photoId}/content` |
+| POST | `/api/restaurants/etablissements/{id}/photos` (JSON legacy **ou** multipart) |
+| PUT | `/api/restaurants/etablissements/{id}/photos` (replace-all multipart) |
 | PUT | `/api/restaurants/etablissements/{id}/photos/{photoId}/ordre` |
 | DELETE | `/api/restaurants/etablissements/{id}/photos/{photoId}` |
 
@@ -264,6 +268,8 @@ Idempotence : ignore si créneau déjà présent (`idRestaurant` + `dateService`
 - `GET /api/restaurants/creneaux/{id}/availability` — stock live avant acompte.
 
 Champs UI utiles : `nom`, `dateService`, `startAtUtc` / `endAtUtc`, `inventoryMode`, `idSite` guichet.
+
+Sur la réponse **availability** : `idSociete`, `nomSociete` — préremplir `GET /api/Devise/taux-change?idSociete=...` avant FlexPay cross-devise sans rappeler le détail créneau.
 
 **Achat Client** : réservation rattachée à la **société du restaurant**, pas à `utilisateur.idSociete` du JWT client.
 

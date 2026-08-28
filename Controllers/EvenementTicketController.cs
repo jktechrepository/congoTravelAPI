@@ -15,15 +15,18 @@ namespace CongoTravel.Controllers
     public class EvenementTicketController : ControllerBase
     {
         private readonly IEvenementTicketService _ticketService;
+        private readonly IEvenementReservationService _reservationService;
         private readonly ICurrentUserService _currentUserService;
         private readonly ILogger<EvenementTicketController> _logger;
 
         public EvenementTicketController(
             IEvenementTicketService ticketService,
+            IEvenementReservationService reservationService,
             ICurrentUserService currentUserService,
             ILogger<EvenementTicketController> logger)
         {
             _ticketService = ticketService;
+            _reservationService = reservationService;
             _currentUserService = currentUserService;
             _logger = logger;
         }
@@ -96,7 +99,10 @@ namespace CongoTravel.Controllers
             }
         }
 
-        /// <summary>Liste les tickets d'une réservation pour une société.</summary>
+        /// <summary>
+        /// Liste les tickets d'une réservation pour une société.
+        /// Client voyageur : <paramref name="idSociete"/> = organisateur autorisé ; ownership JWT vérifiée.
+        /// </summary>
         [HttpGet("societe/{idSociete:int}/reservation/{idEvenementReservation:int}")]
         [Permission("Evenement.Session.Read")]
         [ProducesResponseType(typeof(IEnumerable<EvenementTicketListItemDto>), 200)]
@@ -108,15 +114,15 @@ namespace CongoTravel.Controllers
         {
             try
             {
-                var effectiveSocieteId = EvenementTenancyGuard.ResolveEffectiveSocieteId(
+                var effectiveSocieteId = EvenementTenancyGuard.ResolveEffectiveSocieteIdForFlexPayVerifier(
                     _currentUserService,
                     idSociete);
-                var tickets = await _ticketService.ListBySocieteAndReservationAsync(
-                    effectiveSocieteId,
-                    idEvenementReservation,
-                    cancellationToken);
 
-                if (tickets == null)
+                var reservation = await _reservationService.GetByIdAsync(
+                    idEvenementReservation,
+                    effectiveSocieteId,
+                    cancellationToken);
+                if (reservation == null)
                 {
                     return NotFound(new
                     {
@@ -124,7 +130,17 @@ namespace CongoTravel.Controllers
                     });
                 }
 
-                return Ok(tickets);
+                EvenementTenancyGuard.EnsureClientOwnsReservation(
+                    _currentUserService,
+                    reservation.IdUtilisateur,
+                    reservation.IdClient);
+
+                var tickets = await _ticketService.ListBySocieteAndReservationAsync(
+                    effectiveSocieteId,
+                    idEvenementReservation,
+                    cancellationToken);
+
+                return Ok(tickets ?? Array.Empty<EvenementTicketListItemDto>());
             }
             catch (UnauthorizedAccessException)
             {
@@ -141,20 +157,40 @@ namespace CongoTravel.Controllers
             }
         }
 
-        /// <summary>Liste les tickets d'une réservation (société JWT).</summary>
+        /// <summary>
+        /// Liste les tickets d'une réservation.
+        /// Client : passer <c>?idSociete=</c> organisateur si JWT ≠ organisateur.
+        /// </summary>
         [HttpGet("reservation/{idEvenementReservation:int}")]
         [Permission("Evenement.Session.Read")]
         [ProducesResponseType(typeof(IEnumerable<EvenementTicketListItemDto>), 200)]
+        [ProducesResponseType(404)]
         public async Task<ActionResult<IEnumerable<EvenementTicketListItemDto>>> GetByReservation(
             int idEvenementReservation,
+            [FromQuery] int? idSociete = null,
             CancellationToken cancellationToken = default)
         {
             try
             {
-                var idSociete = EvenementTenancyGuard.ResolveEffectiveSocieteId(_currentUserService);
+                var effectiveSocieteId = EvenementTenancyGuard.ResolveEffectiveSocieteIdForFlexPayVerifier(
+                    _currentUserService,
+                    idSociete);
+
+                var reservation = await _reservationService.GetByIdAsync(
+                    idEvenementReservation,
+                    effectiveSocieteId,
+                    cancellationToken);
+                if (reservation == null)
+                    return NotFound(new { message = $"Réservation {idEvenementReservation} introuvable." });
+
+                EvenementTenancyGuard.EnsureClientOwnsReservation(
+                    _currentUserService,
+                    reservation.IdUtilisateur,
+                    reservation.IdClient);
+
                 var tickets = await _ticketService.ListByReservationAsync(
                     idEvenementReservation,
-                    idSociete,
+                    effectiveSocieteId,
                     cancellationToken);
                 return Ok(tickets);
             }

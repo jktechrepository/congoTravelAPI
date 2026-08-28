@@ -6,7 +6,9 @@ namespace CongoTravel.Helpers.SiteTouristique
 {
     public static class SiteTouristiqueLieuMapper
     {
-        public static SiteTouristiqueLieuListItemDto ToListItemDto(SiteTouristiqueLieu lieu) =>
+        public static SiteTouristiqueLieuListItemDto ToListItemDto(
+            SiteTouristiqueLieu lieu,
+            bool includePhotoBase64 = false) =>
             new()
             {
                 IdSiteTouristique = lieu.IdSiteTouristique,
@@ -27,10 +29,12 @@ namespace CongoTravel.Helpers.SiteTouristique
                 Status = lieu.Status.ToString(),
                 DateCreation = lieu.DateCreation,
                 DateModification = lieu.DateModification,
-                PhotoCouverture = ResolveCoverPhoto(lieu)
+                PhotoCouverture = ResolveCoverPhoto(lieu, includePhotoBase64)
             };
 
-        public static SiteTouristiqueLieuResponseDto ToResponseDto(SiteTouristiqueLieu lieu)
+        public static SiteTouristiqueLieuResponseDto ToResponseDto(
+            SiteTouristiqueLieu lieu,
+            bool includePhotoBase64 = false)
         {
             var dto = new SiteTouristiqueLieuResponseDto
             {
@@ -53,7 +57,7 @@ namespace CongoTravel.Helpers.SiteTouristique
                 DateCreation = lieu.DateCreation,
                 DateModification = lieu.DateModification,
                 JourneesCount = lieu.Journees?.Count ?? 0,
-                PhotoCouverture = ResolveCoverPhoto(lieu)
+                PhotoCouverture = ResolveCoverPhoto(lieu, includePhotoBase64)
             };
 
             if (lieu.Photos != null && lieu.Photos.Count > 0)
@@ -61,26 +65,28 @@ namespace CongoTravel.Helpers.SiteTouristique
                 dto.Photos = lieu.Photos
                     .Where(p => p.Statut)
                     .OrderBy(p => p.Ordre)
-                    .Select(ToPhotoDto)
+                    .Select(p => ToPhotoDto(p, includePhotoBase64))
                     .ToList();
             }
 
             return dto;
         }
 
-        public static SiteTouristiqueLieuPhotoDto ToPhotoDto(SiteTouristiqueLieuPhoto photo)
+        public static SiteTouristiqueLieuPhotoDto ToPhotoDto(
+            SiteTouristiqueLieuPhoto photo,
+            bool includePhotoBase64 = false)
         {
-            var contentType = string.IsNullOrWhiteSpace(photo.TypeMIME)
-                ? "image/jpeg"
-                : photo.TypeMIME!;
-
             return new SiteTouristiqueLieuPhotoDto
             {
                 IdSiteTouristiqueLieuPhoto = photo.IdSiteTouristiqueLieuPhoto,
                 IdSiteTouristique = photo.IdSiteTouristique,
-                PhotoBase64 = photo.PhotoData.Length > 0
-                    ? VehiculePhotoBase64Helper.ToDataUrl(photo.PhotoData, contentType)
-                    : string.Empty,
+                PhotoUrl = CongoTravelPhotoUrlBuilder.ForSiteTouristiqueLieu(
+                    photo.IdSiteTouristique,
+                    photo.IdSiteTouristiqueLieuPhoto),
+                PhotoBase64 = PhotoContentHelper.EncodeBase64IfRequested(
+                    photo.PhotoData,
+                    photo.TypeMIME,
+                    includePhotoBase64),
                 Ordre = photo.Ordre,
                 OriginalFileName = photo.OriginalFileName,
                 TypeMIME = photo.TypeMIME,
@@ -91,14 +97,16 @@ namespace CongoTravel.Helpers.SiteTouristique
             };
         }
 
-        private static SiteTouristiqueLieuPhotoDto? ResolveCoverPhoto(SiteTouristiqueLieu lieu)
+        private static SiteTouristiqueLieuPhotoDto? ResolveCoverPhoto(
+            SiteTouristiqueLieu lieu,
+            bool includePhotoBase64 = false)
         {
             var cover = lieu.Photos?
                 .Where(p => p.Statut)
                 .OrderBy(p => p.Ordre)
                 .FirstOrDefault();
 
-            return cover == null ? null : ToPhotoDto(cover);
+            return cover == null ? null : ToPhotoDto(cover, includePhotoBase64);
         }
     }
 }

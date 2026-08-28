@@ -19,10 +19,10 @@ namespace CongoTravel.Tests
                 .Options);
 
         private static EvenementSessionPhotoService CreatePhotoService(CongoTravelDbContext ctx) =>
-            new(ctx, NullLogger<EvenementSessionPhotoService>.Instance);
+            PhotoStorageTestFactory.CreateEvenementPhotoService(ctx);
 
         private static EvenementSessionService CreateSessionService(CongoTravelDbContext ctx) =>
-            new(ctx, CreatePhotoService(ctx), NullLogger<EvenementSessionService>.Instance);
+            PhotoStorageTestFactory.CreateEvenementSessionService(ctx);
 
         private static string TinyJpegBase64() => Convert.ToBase64String(new byte[] { 0xFF, 0xD8, 0xFF, 0xD9 });
 
@@ -105,7 +105,11 @@ namespace CongoTravel.Tests
             }, idSociete);
 
             Assert.Equal(2, created.Photos.Count);
-            Assert.All(created.Photos, p => Assert.StartsWith("data:image/jpeg;base64,", p.PhotoBase64));
+            Assert.All(created.Photos, p =>
+            {
+                Assert.False(string.IsNullOrWhiteSpace(p.PhotoUrl));
+                Assert.True(string.IsNullOrEmpty(p.PhotoBase64));
+            });
         }
 
         [Fact]

@@ -53,6 +53,12 @@ namespace CongoTravel.Models
         [MaxLength(20)]
         public string Origine { get; set; } = Enums.OrigineOperation.Default;
 
+        /// <summary>FK agrégat aller-retour (null = single-leg).</summary>
+        public int? IdReservationAllerRetour { get; set; }
+
+        /// <summary>Leg dans l'agrégat AR : Aller / Retour (null = single-leg).</summary>
+        public Enums.ReservationAllerRetourLeg? AllerRetourLeg { get; set; }
+
         // Attributs Techniques
         [JsonIgnore]
         public DateTime DateCreation { get; set; } = DateTime.Now;
@@ -84,5 +90,10 @@ namespace CongoTravel.Models
         [JsonIgnore]
         [ValidateNever]
         public ICollection<ReservationPassenger>? Passagers { get; set; }
+
+        [JsonIgnore]
+        [ValidateNever]
+        [ForeignKey(nameof(IdReservationAllerRetour))]
+        public ReservationAllerRetour? ReservationAllerRetour { get; set; }
     }
 }

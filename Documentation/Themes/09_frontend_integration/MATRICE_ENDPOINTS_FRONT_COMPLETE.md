@@ -164,6 +164,10 @@
 | `/api/Reservation/reservation_with_paiement` | POST | **Actif** | Non | Caissier | Guichet |
 | `/api/Reservation/reservation_with_paiement_electronique` | POST | **Actif** | Non | Caissier, Client | FlexPay |
 | `/api/Reservation/with-passengers-and-paiement` | POST | **Actif** | Non | Caissier | Alias même handler |
+| `/api/Reservation/reservation_aller_retour_with_paiement` | POST | **Actif** | Non | Caissier | Aller-retour cash — [MODULE_12](MODULE_12_TRANSPORT_ALLER_RETOUR.md) |
+| `/api/Reservation/reservation_aller_retour_with_paiement_electronique` | POST | **Actif** | Non | Caissier, Client | Aller-retour FlexPay — MODULE_12 |
+| `/api/Reservation/aller-retour/{id}` | GET | **Actif** | Non | Caissier, Client | Détail dossier AR |
+| `/api/Reservation/aller-retour/{id}/cancel` | POST | **Actif** | Non | Caissier, Admin | Annulation atomique 2 legs |
 | `/api/Paiement` | GET | **Actif** | Non | Admin, Caissier | |
 | `/api/Paiement` | POST | **Actif** | Non | Caissier | |
 | `/api/Paiement/create` | POST | **Absent** | Oui | — | Utiliser `POST /api/Paiement` |
@@ -228,9 +232,9 @@
 | `/api/Devise/devises/{id}` | GET | **Actif** | Non | Admin, Financier | |
 | `/api/Devise/devises/{id}` | PUT | **Actif** | Non | Super-Admin | |
 | `/api/Devise/societe/{idSociete}/devise-principale/{code}` | PUT | **Actif** | Non | Admin | |
-| `/api/Devise/taux-change` | GET | **Actif** | Non | Admin, Financier | |
+| `/api/Devise/taux-change` | GET | **Actif** | Non | Admin, Financier, Client | |
 | `/api/Devise/taux-change` | POST | **Actif** | Non | Super-Admin | |
-| `/api/Devise/preview-conversion` | POST | **Breaking** | Oui | Admin | Backend : **GET** + query params |
+| `/api/Devise/preview-conversion` | POST | **Breaking** | Oui | Admin, Client | Backend : **GET** + query params |
 | `/api/Facture` | GET | **Supprimé** | Oui | — | Remplacé par Reservation/Paiement |
 | `/api/Facture` | POST | **Supprimé** | Oui | — | — |
 | `/api/PlainteClient` | GET | **Actif** | Non | Admin, Client | |

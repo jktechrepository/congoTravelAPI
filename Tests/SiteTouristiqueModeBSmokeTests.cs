@@ -195,7 +195,9 @@ namespace CongoTravel.Tests
             var availability = await availabilityService.GetJourneeAvailabilityAsync(
                 published.IdSiteTouristiqueJournee,
                 idSociete);
-            Assert.Equal(10, availability!.ClassQuotas!.Single().QuantiteDisponible);
+            Assert.Equal(idSociete, availability!.IdSociete);
+            Assert.Equal("ST Societe", availability.NomSociete);
+            Assert.Equal(10, availability.ClassQuotas!.Single().QuantiteDisponible);
             Assert.Equal(0, availability.ClassQuotas.Single().QuantiteHold);
         }
     }

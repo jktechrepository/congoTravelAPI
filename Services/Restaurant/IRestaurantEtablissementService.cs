@@ -13,20 +13,24 @@ namespace CongoTravel.Services.Restaurant
         Task<RestaurantEtablissementResponseDto?> GetByIdAsync(
             int idRestaurant,
             int? idSociete = null,
-            CancellationToken cancellationToken = default);
+            CancellationToken cancellationToken = default,
+            bool includePhotoBase64 = false);
 
         Task<RestaurantEtablissementResponseDto?> GetPublishedByIdAsync(
             int idRestaurant,
-            CancellationToken cancellationToken = default);
+            CancellationToken cancellationToken = default,
+            bool includePhotoBase64 = false);
 
         Task<IReadOnlyList<RestaurantEtablissementListItemDto>> ListAsync(
             int idSociete,
             RestaurantEtablissementListFilter? filter = null,
-            CancellationToken cancellationToken = default);
+            CancellationToken cancellationToken = default,
+            bool includePhotoBase64 = false);
 
         Task<IReadOnlyList<RestaurantEtablissementListItemDto>> ListPublishedGlobalAsync(
             RestaurantEtablissementListFilter? filter = null,
-            CancellationToken cancellationToken = default);
+            CancellationToken cancellationToken = default,
+            bool includePhotoBase64 = false);
 
         Task<RestaurantEtablissementResponseDto?> UpdateAsync(
             int idRestaurant,

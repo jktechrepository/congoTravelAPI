@@ -48,6 +48,9 @@ namespace CongoTravel.Models
         /// <summary>Durée du hold réservation restaurant (minutes) ; indépendant des holds transport / événement / site touristique.</summary>
         public int DureeHoldRestaurantMinutes { get; set; } = 15;
 
+        /// <summary>Durée du hold réservation hôtel (minutes).</summary>
+        public int DureeHoldHotelMinutes { get; set; } = 15;
+
         public bool ReaffectationActive { get; set; } = true;
 
         /// <summary>Si false, bloque les créations de réservation (hold / with-paiement) pour cette société.</summary>
@@ -64,6 +67,9 @@ namespace CongoTravel.Models
 
         /// <summary>Module Restaurant actif pour cette société.</summary>
         public bool ActiviteRestaurant { get; set; } = true;
+
+        /// <summary>Module Hôtel actif pour cette société.</summary>
+        public bool ActiviteHotel { get; set; } = true;
 
         /// <summary>Déclenche un PayOut automatique vers NumeroMobileMoney après confirmation paiement électronique FlexPay.</summary>
         public bool AutoReversementPaiementElectronique { get; set; }

@@ -193,6 +193,15 @@ builder.Services.AddSwaggerGen(c =>
     // ✅ Configuration pour éviter les conflits de schemaId
     // Utilise le nom complet du type (avec namespace) pour éviter les collisions
     c.CustomSchemaIds(type => type.FullName?.Replace("+", ".") ?? type.Name);
+
+    // POST .../photos JSON + multipart partagent la même route : documenter le multipart (flux canonique)
+    c.ResolveConflictingActions(apiDescriptions =>
+    {
+        var list = apiDescriptions.ToList();
+        return list.FirstOrDefault(d =>
+                   d.ActionDescriptor.DisplayName?.Contains("Multipart", StringComparison.OrdinalIgnoreCase) == true)
+               ?? list.First();
+    });
     
     // Configuration de l'authentification JWT dans Swagger
     c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
@@ -351,6 +360,12 @@ else
     Log.Warning("⚠️  Credentials AWS S3 non configurés. Utilisation du stockage local.");
 }
 
+builder.Services.Configure<CongoTravel.Configuration.PhotoStorageOptions>(
+    builder.Configuration.GetSection(CongoTravel.Configuration.PhotoStorageOptions.SectionName));
+builder.Services.AddScoped<CongoTravel.Services.PhotoStorage.ICongoTravelPhotoBlobStore, CongoTravel.Services.PhotoStorage.CongoTravelPhotoBlobStore>();
+builder.Services.AddScoped<CongoTravel.Services.PhotoStorage.IPhotoBinaryHydrator, CongoTravel.Services.PhotoStorage.PhotoBinaryHydrator>();
+builder.Services.AddScoped<CongoTravel.Services.PhotoStorage.IPhotoS3BackfillService, CongoTravel.Services.PhotoStorage.PhotoS3BackfillService>();
+
 builder.Services.AddScoped<IAntivirusService, AntivirusService>();
 // NOTIFICATIONS AVANCÉES
 builder.Services.AddScoped<CongoTravel.Services.Repositories.INotificationService, CongoTravel.Services.NotificationService>();
@@ -388,6 +403,7 @@ builder.Services.AddHostedService<NotificationJobWorker>();
 builder.Services.AddEvenementTicketing();
 builder.Services.AddSiteTouristiqueTicketing();
 builder.Services.AddRestaurantReservations();
+builder.Services.AddHotelReservations();
 builder.Services.AddScoped<CongoTravel.Services.Repositories.IEmailService, CongoTravelAPI.Services.EmailService>();
 builder.Services.AddScoped<IEmailVerificationService, EmailVerificationService>();
 
@@ -406,6 +422,7 @@ try
     builder.Services.AddScoped<ClientDashboardService>(); // Service dashboard Client
             builder.Services.AddScoped<ReservationWithPaiementService>(); // Service de réservation avec paiement unifié
             builder.Services.AddScoped<ICashReservationWithPaiementService, CashReservationWithPaiementService>();
+            builder.Services.AddScoped<IAllerRetourReservationService, AllerRetourReservationService>();
             builder.Services.AddScoped<IInfoPaiementResolutionService, InfoPaiementResolutionService>();
             builder.Services.AddScoped<IDeviseMontantConverter, DeviseMontantConverter>();
             builder.Services.AddScoped<IFlexPayReservationService, FlexPayReservationService>();

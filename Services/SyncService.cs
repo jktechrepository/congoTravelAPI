@@ -86,6 +86,7 @@ namespace CongoTravel.Services
                     ActiviteEvenement = configEntity.ActiviteEvenement,
                     ActiviteSiteTouristique = configEntity.ActiviteSiteTouristique,
                     ActiviteRestaurant = configEntity.ActiviteRestaurant,
+                    ActiviteHotel = configEntity.ActiviteHotel,
                     HeuresLimiteReaffectation = configEntity.HeuresLimiteReaffectation,
                     DureeHoldFlexPayMinutes = configEntity.DureeHoldFlexPayMinutes,
                     PenaliteReaffectationPourcentage = configEntity.PenaliteReaffectationPourcentage,

@@ -430,6 +430,7 @@ namespace CongoTravel.Controllers
                 ActiviteEvenement = config.ActiviteEvenement,
                 ActiviteSiteTouristique = config.ActiviteSiteTouristique,
                 ActiviteRestaurant = config.ActiviteRestaurant,
+                ActiviteHotel = config.ActiviteHotel,
                 AutoReversementPaiementElectronique = config.AutoReversementPaiementElectronique,
                 PourcentageReversementSite = config.PourcentageReversementSite,
                 FraisPlateforme = config.FraisPlateforme,

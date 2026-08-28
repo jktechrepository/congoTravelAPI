@@ -53,6 +53,11 @@ namespace CongoTravel.Models
         [MaxLength(100)]
         public string? ReferenceFlexPay { get; set; }
 
+        /// <summary>Single (défaut) | AllerRetour.</summary>
+        [Required]
+        [MaxLength(20)]
+        public string TypeCommande { get; set; } = "Single";
+
         /// <summary>Snapshot JSON : réservation, passagers, etc.</summary>
         [Required]
         public string PayloadMetierJson { get; set; } = "{}";

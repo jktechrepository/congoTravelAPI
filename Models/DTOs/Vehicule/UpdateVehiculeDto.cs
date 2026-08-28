@@ -37,17 +37,18 @@ namespace CongoTravel.Models.DTOs
         public bool Statut { get; set; }
 
         /// <summary>
-        /// Photos : null = ne pas modifier les photos existantes ;
-        /// [] = supprimer toutes les photos ;
-        /// 1 à 3 entrées = remplacer l'ensemble des photos par celles fournies.
+        /// LEGACY / déprécié — photos embarquées en photoBase64.
+        /// null = ne pas modifier ; [] = tout supprimer ; 1–3 = remplacer.
+        /// Préférer <c>PUT /api/Vehicule/{id}/photos</c> multipart (champ <c>files</c>).
         /// </summary>
         [JsonConverter(typeof(AddPhotoVehiculeDtoListJsonConverter))]
         public List<AddPhotoVehiculeDto>? Photos { get; set; }
 
-        /// <summary>Ancien champ unique (legacy). Remplace les photos si <see cref="Photos"/> est null.</summary>
+        /// <summary>LEGACY — ancien champ unique. Remplace les photos si <see cref="Photos"/> est null. Préférer multipart.</summary>
         [JsonPropertyName("photo")]
         public string? LegacyPhoto { get; set; }
 
+        /// <summary>LEGACY — alias « images ». Préférer multipart.</summary>
         [JsonPropertyName("images")]
         [JsonConverter(typeof(AddPhotoVehiculeDtoListJsonConverter))]
         public List<AddPhotoVehiculeDto>? Images

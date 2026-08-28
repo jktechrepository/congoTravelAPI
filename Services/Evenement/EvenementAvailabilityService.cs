@@ -26,6 +26,7 @@ namespace CongoTravel.Services.Evenement
         {
             var session = await _context.EvenementSessions
                 .AsNoTracking()
+                .Include(s => s.Societe)
                 .Include(s => s.GlobalQuota)
                 .Include(s => s.ClassQuotas)
                     .ThenInclude(q => q.Classe)
@@ -43,6 +44,8 @@ namespace CongoTravel.Services.Evenement
             var response = new EvenementAvailabilityResponseDto
             {
                 IdEvenementSession = session.IdEvenementSession,
+                IdSociete = session.IdSociete,
+                NomSociete = session.Societe?.Nom,
                 InventoryMode = session.InventoryMode.ToString(),
                 Status = session.Status.ToString()
             };

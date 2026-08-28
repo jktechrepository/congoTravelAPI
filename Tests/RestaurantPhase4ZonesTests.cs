@@ -319,7 +319,9 @@ namespace CongoTravel.Tests
                 .GetAvailabilityAsync(idCreneau, idSociete);
 
             Assert.NotNull(availability);
-            Assert.Equal("ClassQuota", availability!.InventoryMode);
+            Assert.Equal(idSociete, availability!.IdSociete);
+            Assert.Equal("Resto P4 AVAIL", availability.NomSociete);
+            Assert.Equal("ClassQuota", availability.InventoryMode);
             Assert.NotNull(availability.ZoneQuotas);
             Assert.Equal(2, availability.ZoneQuotas!.Count);
 

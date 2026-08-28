@@ -26,6 +26,7 @@ namespace CongoTravel.Services.Restaurant
         {
             var creneau = await _context.RestaurantCreneaux
                 .AsNoTracking()
+                .Include(c => c.Societe)
                 .Include(c => c.GlobalQuota)
                 .Include(c => c.ZoneQuotas)
                     .ThenInclude(q => q.Zone)
@@ -40,6 +41,8 @@ namespace CongoTravel.Services.Restaurant
             var response = new RestaurantAvailabilityResponseDto
             {
                 IdRestaurantCreneau = creneau.IdRestaurantCreneau,
+                IdSociete = creneau.IdSociete,
+                NomSociete = creneau.Societe?.Nom,
                 InventoryMode = creneau.InventoryMode.ToString(),
                 Status = creneau.Status.ToString()
             };

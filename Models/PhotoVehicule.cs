@@ -12,9 +12,12 @@ namespace CongoTravel.Models
         [Required]
         public int IdVehicule { get; set; }
 
-        /// <summary>Contenu binaire de l'image (JPEG/PNG). Exposé en base64 via l'API.</summary>
-        [Required]
-        public byte[] PhotoData { get; set; } = Array.Empty<byte>();
+        /// <summary>Contenu binaire (legacy / dual-write). Nullable après migration S3.</summary>
+        public byte[]? PhotoData { get; set; }
+
+        /// <summary>Clé objet S3 ou chemin local (ex. congotravel/photos/vehicules/12/1-guid.jpg).</summary>
+        [MaxLength(500)]
+        public string? StorageKey { get; set; }
 
         /// <summary>Position d'affichage (1 à 3).</summary>
         [Required]

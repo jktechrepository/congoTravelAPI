@@ -110,6 +110,60 @@ namespace CongoTravel.Services
             }
         }
         
+        public async Task<FileUploadResult> UploadBytesAsync(
+            byte[] content,
+            string relativeKey,
+            string contentType,
+            string? originalFileName = null,
+            CancellationToken cancellationToken = default)
+        {
+            if (content == null || content.Length == 0)
+                throw new ArgumentException("Le contenu binaire est vide ou null", nameof(content));
+
+            if (string.IsNullOrWhiteSpace(relativeKey))
+                throw new ArgumentException("La clé relative est obligatoire", nameof(relativeKey));
+
+            var s3Key = relativeKey.Trim().TrimStart('/');
+            var fileName = Path.GetFileName(s3Key);
+            var resolvedContentType = string.IsNullOrWhiteSpace(contentType)
+                ? GetContentType(fileName)
+                : contentType;
+
+            try
+            {
+                using var memoryStream = new MemoryStream(content, writable: false);
+                var uploadRequest = new TransferUtilityUploadRequest
+                {
+                    InputStream = memoryStream,
+                    Key = s3Key,
+                    BucketName = _bucketName,
+                    ContentType = resolvedContentType,
+                    CannedACL = S3CannedACL.Private
+                };
+
+                var transferUtility = new TransferUtility(_s3Client);
+                await transferUtility.UploadAsync(uploadRequest, cancellationToken);
+
+                _logger.LogInformation(
+                    "Octets uploadés vers S3 : {Bucket}/{Key} ({Size} bytes)",
+                    _bucketName, s3Key, content.Length);
+
+                return new FileUploadResult
+                {
+                    FileName = fileName,
+                    OriginalFileName = originalFileName ?? fileName,
+                    FilePath = s3Key,
+                    FileSize = content.Length,
+                    TypeMIME = resolvedContentType
+                };
+            }
+            catch (AmazonS3Exception ex)
+            {
+                _logger.LogError(ex, "Erreur AWS S3 lors de l'upload bytes : {Key}", s3Key);
+                throw new InvalidOperationException($"Erreur lors de l'upload vers S3 : {ex.Message}", ex);
+            }
+        }
+
         public async Task<bool> DeleteFileAsync(string filePath)
         {
             try
@@ -135,6 +189,29 @@ namespace CongoTravel.Services
             {
                 _logger.LogError(ex, $"Erreur inattendue lors de la suppression depuis S3 : {filePath}");
                 return false;
+            }
+        }
+
+        public async Task<byte[]> GetFileBytesAsync(string filePath, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var getRequest = new GetObjectRequest
+                {
+                    BucketName = _bucketName,
+                    Key = filePath
+                };
+
+                using var response = await _s3Client.GetObjectAsync(getRequest, cancellationToken);
+                using var memoryStream = new MemoryStream();
+                await response.ResponseStream.CopyToAsync(memoryStream, cancellationToken);
+                _logger.LogInformation("Octets téléchargés depuis S3 : {Bucket}/{Key}", _bucketName, filePath);
+                return memoryStream.ToArray();
+            }
+            catch (AmazonS3Exception ex)
+            {
+                _logger.LogError(ex, "Erreur AWS S3 lors du téléchargement bytes : {Key}", filePath);
+                throw new FileNotFoundException($"Fichier introuvable dans S3 : {filePath}", ex);
             }
         }
         

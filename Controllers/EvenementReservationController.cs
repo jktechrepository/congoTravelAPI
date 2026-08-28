@@ -34,7 +34,8 @@ namespace CongoTravel.Controllers
         }
 
         /// <summary>
-        /// Liste les réservations événement de la société (JWT ou idSociete Super-Admin).
+        /// Liste les réservations événement de la société (JWT ou idSociete).
+        /// Client voyageur : <c>?idSociete=</c> = organisateur autorisé ; filtre forcé sur son JWT.
         /// Sans <c>status</c> : uniquement <c>CONFIRMED</c>. Utiliser <c>status=ALL</c> pour tous les statuts.
         /// </summary>
         [HttpGet]
@@ -51,7 +52,7 @@ namespace CongoTravel.Controllers
         {
             try
             {
-                var effectiveSocieteId = EvenementTenancyGuard.ResolveEffectiveSocieteId(
+                var effectiveSocieteId = EvenementTenancyGuard.ResolveEffectiveSocieteIdForFlexPayVerifier(
                     _currentUserService,
                     idSociete);
 
@@ -70,6 +71,7 @@ namespace CongoTravel.Controllers
                     IdUtilisateur = idUtilisateur,
                     IdClient = idClient
                 };
+                EvenementTenancyGuard.ApplyClientSelfScopeToListFilter(_currentUserService, filter);
 
                 var reservations = await _reservationService.ListAsync(
                     effectiveSocieteId,
@@ -84,6 +86,54 @@ namespace CongoTravel.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Erreur GET liste réservations événement");
+                return StatusCode(500, new { message = "Une erreur interne est survenue." });
+            }
+        }
+
+        /// <summary>
+        /// Réservations événement d'un client sur <b>toutes</b> les sociétés organisatrices.
+        /// Client voyageur : <paramref name="idClient"/> doit égaler le ClientId JWT.
+        /// Sans <c>status</c> : uniquement <c>CONFIRMED</c> ; <c>status=ALL</c> pour tous.
+        /// </summary>
+        [HttpGet("client/{idClient:int}")]
+        [Permission("Evenement.Session.Read")]
+        [ProducesResponseType(typeof(IEnumerable<EvenementReservationListItemDto>), 200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(403)]
+        public async Task<ActionResult<IEnumerable<EvenementReservationListItemDto>>> GetByClient(
+            int idClient,
+            [FromQuery] string? status,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                EvenementTenancyGuard.EnsureClientMayQueryByClientId(_currentUserService, idClient);
+
+                if (!SatelliteReservationListStatusParser.TryParse(
+                        status,
+                        EvenementReservationStatus.CONFIRMED,
+                        out var parsedStatus,
+                        out var statusError))
+                    return BadRequest(new { message = statusError });
+
+                var filter = new EvenementReservationListFilter { Status = parsedStatus };
+                var reservations = await _reservationService.ListByClientAsync(
+                    idClient,
+                    filter,
+                    cancellationToken);
+                return Ok(reservations);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur GET réservations événement client {IdClient}", idClient);
                 return StatusCode(500, new { message = "Une erreur interne est survenue." });
             }
         }
@@ -440,16 +490,27 @@ namespace CongoTravel.Controllers
         [ProducesResponseType(404)]
         public async Task<ActionResult<IEnumerable<EvenementTicketResponseDto>>> GetTickets(
             int id,
+            [FromQuery] int? idSociete = null,
             CancellationToken cancellationToken = default)
         {
             try
             {
-                var idSociete = EvenementTenancyGuard.ResolveEffectiveSocieteId(_currentUserService);
-                var tickets = await _reservationService.GetTicketsByReservationAsync(id, idSociete, cancellationToken);
-
-                if (tickets == null)
+                var effectiveSocieteId = EvenementTenancyGuard.ResolveEffectiveSocieteIdForFlexPayVerifier(
+                    _currentUserService,
+                    idSociete);
+                var reservation = await _reservationService.GetByIdAsync(id, effectiveSocieteId, cancellationToken);
+                if (reservation == null)
                     return NotFound(new { message = $"Réservation événement {id} introuvable." });
 
+                EvenementTenancyGuard.EnsureClientOwnsReservation(
+                    _currentUserService,
+                    reservation.IdUtilisateur,
+                    reservation.IdClient);
+
+                var tickets = await _reservationService.GetTicketsByReservationAsync(
+                    id,
+                    effectiveSocieteId,
+                    cancellationToken);
                 return Ok(tickets);
             }
             catch (UnauthorizedAccessException)
@@ -470,15 +531,23 @@ namespace CongoTravel.Controllers
         [ProducesResponseType(404)]
         public async Task<ActionResult<EvenementReservationResponseDto>> GetById(
             int id,
+            [FromQuery] int? idSociete = null,
             CancellationToken cancellationToken = default)
         {
             try
             {
-                var idSociete = EvenementTenancyGuard.ResolveEffectiveSocieteId(_currentUserService);
-                var reservation = await _reservationService.GetByIdAsync(id, idSociete, cancellationToken);
+                var effectiveSocieteId = EvenementTenancyGuard.ResolveEffectiveSocieteIdForFlexPayVerifier(
+                    _currentUserService,
+                    idSociete);
+                var reservation = await _reservationService.GetByIdAsync(id, effectiveSocieteId, cancellationToken);
 
                 if (reservation == null)
                     return NotFound(new { message = $"Réservation événement {id} introuvable." });
+
+                EvenementTenancyGuard.EnsureClientOwnsReservation(
+                    _currentUserService,
+                    reservation.IdUtilisateur,
+                    reservation.IdClient);
 
                 return Ok(reservation);
             }

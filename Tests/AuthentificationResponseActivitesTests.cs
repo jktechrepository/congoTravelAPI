@@ -67,6 +67,7 @@ namespace CongoTravel.Tests
             config.ActiviteEvenement = false;
             config.ActiviteSiteTouristique = false;
             config.ActiviteRestaurant = true;
+            config.ActiviteHotel = false;
             await ctx.SaveChangesAsync();
 
             var user = new Utilisateur

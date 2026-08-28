@@ -68,6 +68,22 @@ namespace CongoTravel.Services
                 userId, orderNumber);
         }
 
+        public Task NotifyPaymentConfirmedForDomainAsync(
+            int userId, string orderNumber, int idReservation, int idPaiement,
+            string domain, CancellationToken cancellationToken = default) =>
+            _hubContext.Clients.Group(UserGroup(userId)).SendAsync(
+                "FlexPayPaymentConfirmed",
+                new { orderNumber, idReservation, idPaiement, domain, status = "confirmed", timestampUtc = DateTime.UtcNow },
+                cancellationToken);
+
+        public Task NotifyPaymentFailedForDomainAsync(
+            int userId, string orderNumber, string message, string domain,
+            CancellationToken cancellationToken = default) =>
+            _hubContext.Clients.Group(UserGroup(userId)).SendAsync(
+                "FlexPayPaymentFailed",
+                new { orderNumber, message, domain, status = "failed", timestampUtc = DateTime.UtcNow },
+                cancellationToken);
+
         private static string UserGroup(int userId) => $"user_{userId}";
     }
 }

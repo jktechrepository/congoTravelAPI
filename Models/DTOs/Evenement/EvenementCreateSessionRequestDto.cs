@@ -39,6 +39,13 @@ namespace CongoTravel.Models.DTOs.Evenement
         [MaxLength(50)]
         public string? TelephoneOrganisateur { get; set; }
 
+        [MaxLength(30)]
+        public string? NumeroMobileMoneyOrganisateur { get; set; }
+
+        public bool VenteEnLigneActive { get; set; } = true;
+
+        public bool AutoReversementOrganisateur { get; set; } = true;
+
         [EmailAddress]
         [MaxLength(255)]
         public string? MailOrganisateur { get; set; }
@@ -73,7 +80,11 @@ namespace CongoTravel.Models.DTOs.Evenement
         /// <summary>Sièges hors section (mode <c>SeatNumbered</c>).</summary>
         public List<EvenementCreateSessionSeatDto>? Seats { get; set; }
 
-        /// <summary>Photos optionnelles à la création (max 3).</summary>
+        /// <summary>
+        /// LEGACY / déprécié — photos embarquées en photoBase64 (max 3).
+        /// Préférer : créer la session sans photos, puis POST/PUT multipart
+        /// <c>/api/events/sessions/{id}/photos</c>.
+        /// </summary>
         public List<AddEvenementSessionPhotoDto>? Photos { get; set; }
     }
 }

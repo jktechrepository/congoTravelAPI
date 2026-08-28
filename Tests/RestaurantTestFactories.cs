@@ -21,10 +21,10 @@ namespace CongoTravel.Tests
     internal static class RestaurantTestFactories
     {
         public static RestaurantPhotoService CreatePhotoService(CongoTravelDbContext ctx) =>
-            new(ctx, NullLogger<RestaurantPhotoService>.Instance);
+            PhotoStorageTestFactory.CreateRestaurantPhotoService(ctx);
 
         public static RestaurantEtablissementService CreateEtablissementService(CongoTravelDbContext ctx) =>
-            new(ctx, CreatePhotoService(ctx), NullLogger<RestaurantEtablissementService>.Instance);
+            PhotoStorageTestFactory.CreateRestaurantEtablissementService(ctx);
 
         public static RestaurantInventoryConfirmStrategyFactory CreateConfirmStrategyFactory(CongoTravelDbContext ctx) =>
             new(

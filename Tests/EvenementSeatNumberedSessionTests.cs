@@ -120,7 +120,7 @@ namespace CongoTravel.Tests
         }
 
         private static EvenementSessionService CreateService(CongoTravelDbContext ctx) =>
-            new(ctx, new EvenementSessionPhotoService(ctx, Microsoft.Extensions.Logging.Abstractions.NullLogger<EvenementSessionPhotoService>.Instance), Microsoft.Extensions.Logging.Abstractions.NullLogger<EvenementSessionService>.Instance);
+            PhotoStorageTestFactory.CreateEvenementSessionService(ctx);
 
         private static async Task<(int IdSociete, int IdSite, int IdClasseVip)> SeedClasseAsync(CongoTravelDbContext ctx)
         {

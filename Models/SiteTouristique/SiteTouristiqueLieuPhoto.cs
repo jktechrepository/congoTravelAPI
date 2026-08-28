@@ -14,9 +14,12 @@ namespace CongoTravel.Models.SiteTouristique
         [Required]
         public int IdSiteTouristique { get; set; }
 
-        /// <summary>Contenu binaire de l'image (JPEG/PNG). Exposé en base64 via l'API.</summary>
-        [Required]
-        public byte[] PhotoData { get; set; } = Array.Empty<byte>();
+        /// <summary>Contenu binaire (legacy / dual-write). Nullable après migration S3.</summary>
+        public byte[]? PhotoData { get; set; }
+
+        /// <summary>Clé objet S3 ou chemin local.</summary>
+        [MaxLength(500)]
+        public string? StorageKey { get; set; }
 
         /// <summary>Position d'affichage (1 à 3).</summary>
         [Required]

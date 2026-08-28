@@ -27,8 +27,7 @@ namespace CongoTravel.Tests
 
             var classeService = new EvenementClasseService(
                 ctx, NullLogger<EvenementClasseService>.Instance);
-            var sessionService = new EvenementSessionService(
-                ctx, new EvenementSessionPhotoService(ctx, NullLogger<EvenementSessionPhotoService>.Instance), NullLogger<EvenementSessionService>.Instance);
+            var sessionService = PhotoStorageTestFactory.CreateEvenementSessionService(ctx);
             var holdService = CreateHoldService(ctx);
             var availabilityService = new EvenementAvailabilityService(
                 ctx, NullLogger<EvenementAvailabilityService>.Instance);
@@ -160,8 +159,7 @@ namespace CongoTravel.Tests
 
             var classeService = new EvenementClasseService(
                 ctx, NullLogger<EvenementClasseService>.Instance);
-            var sessionService = new EvenementSessionService(
-                ctx, new EvenementSessionPhotoService(ctx, NullLogger<EvenementSessionPhotoService>.Instance), NullLogger<EvenementSessionService>.Instance);
+            var sessionService = PhotoStorageTestFactory.CreateEvenementSessionService(ctx);
             var holdService = CreateHoldService(ctx);
             var cancelService = CreateCancelService(ctx);
             var availabilityService = new EvenementAvailabilityService(
@@ -225,8 +223,7 @@ namespace CongoTravel.Tests
 
             var classeService = new EvenementClasseService(
                 ctx, NullLogger<EvenementClasseService>.Instance);
-            var sessionService = new EvenementSessionService(
-                ctx, new EvenementSessionPhotoService(ctx, NullLogger<EvenementSessionPhotoService>.Instance), NullLogger<EvenementSessionService>.Instance);
+            var sessionService = PhotoStorageTestFactory.CreateEvenementSessionService(ctx);
             var holdService = CreateHoldService(ctx);
             var paymentService = CreatePaymentService(ctx);
             var cancelService = CreateCancelService(ctx);

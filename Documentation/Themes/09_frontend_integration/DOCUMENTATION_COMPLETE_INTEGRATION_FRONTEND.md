@@ -2,7 +2,7 @@
 
 > **Point d'entrée unique** pour les équipes frontend CongoTravelAPI.
 >
-> Structure : ce document maître + **9 fiches modules** (voir [§5](#5-index-des-fiches-modules)).
+> Structure : ce document maître + les **fiches modules** (voir [§5](#5-index-des-fiches-modules)).
 
 ---
 
@@ -70,12 +70,13 @@ Scan billet (`dateDepartVoyage` + `heureDepartVoyage`, `dateVoyage` + `heureVoya
 | 2. Permissions | MODULE_01 | `permissions[]` → guards router |
 | 3. Référentiels | [MODULE_09](MODULE_09_REFERENTIELS_ET_COMMUNICATION.md) | Société, Site, Agent, Véhicule |
 | 4. Voyages | [MODULE_02](MODULE_02_TRANSPORT_VOYAGE.md) | CRUD Voyage, Destination, Planification |
-| 5. Réservations | [MODULE_03](MODULE_03_RESERVATION_BILLET.md) | Réservation multi-passagers |
+| 5. Réservations | [MODULE_03](MODULE_03_RESERVATION_BILLET.md) · [MODULE_12](MODULE_12_TRANSPORT_ALLER_RETOUR.md) | Single-leg + aller-retour |
 | 6. Paiements | [MODULE_04](MODULE_04_PAIEMENT_FLEXPAY.md) | Cash, FlexPay, multi-devise |
 | 7. Reporting | [MODULE_07](MODULE_07_DASHBOARDS_ADMIN.md) | Dashboards gérant, financier |
 | 8. Événements | [MODULE_05](MODULE_05_EVENEMENT_BILLETTERIE.md) | Guichet `with-paiement` / FlexPay, sessions, tickets |
 | 9. Sites touristiques | [MODULE_10](MODULE_10_SITE_TOURISTIQUE.md) | Lieux (localisation, horaires, photos), planification, journées, CASH/FlexPay, tickets |
 | 10. Restaurants | [MODULE_11](MODULE_11_RESTAURANT.md) | Établissements (photos), créneaux, zones, acompte CASH/FlexPay, tickets gate, dashboard |
+| 11. Hôtels | [MODULE_14](MODULE_14_HOTEL.md) · [INTEGRATION_HOTEL_VUE_FLUTTER](INTEGRATION_HOTEL_VUE_FLUTTER.md) | Établissements, room-types/allotments ou nuits Global, acompte CASH/FlexPay, réception 7c–7e, dashboard |
 
 **Stack recommandée** : Vue 3, Vue Router, Pinia, Axios, Chart.js.
 
@@ -85,7 +86,7 @@ Scan billet (`dateDepartVoyage` + `heureDepartVoyage`, `dateVoyage` + `heureVoya
 |-------|--------|----------------|
 | 1. Login agent | MODULE_01 | `POST /Utilisateur/authentifier` |
 | 2. Voyages du jour | MODULE_02 | `GET /Voyage/site/{idSite}/paged?date=` |
-| 3. Vente guichet | MODULE_03 + MODULE_04 | Réservation + paiement cash |
+| 3. Vente guichet | MODULE_03 + MODULE_04 + [MODULE_12](MODULE_12_TRANSPORT_ALLER_RETOUR.md) | Single-leg + aller-retour cash |
 | 4. Scan QR | MODULE_03 | `GET /Billet/{qrCode}/check` |
 | 5. Embarquement | MODULE_03 | `POST .../embarquer` |
 | 6. Sync offline | [MODULE_08](MODULE_08_SYNC_OFFLINE_AGENT.md) | `/sync/*` |
@@ -93,6 +94,7 @@ Scan billet (`dateDepartVoyage` + `heureDepartVoyage`, `dateVoyage` + `heureVoya
 | 8. Événements (optionnel) | [MODULE_05](MODULE_05_EVENEMENT_BILLETTERIE.md) | Contrôle entrée tickets événement (`check` / `use`) |
 | 9. Sites touristiques (optionnel) | [MODULE_10](MODULE_10_SITE_TOURISTIQUE.md) | Gate tickets site touristique (`check` / `use`) |
 | 10. Restaurants (optionnel) | [MODULE_11](MODULE_11_RESTAURANT.md) | Gate tickets restaurant (`check` / `use`) |
+| 11. Hôtels (optionnel) | [MODULE_14](MODULE_14_HOTEL.md) · [INTEGRATION_HOTEL_VUE_FLUTTER](INTEGRATION_HOTEL_VUE_FLUTTER.md) | Vente guichet CASH/FlexPay, réception assign/check-in/extras ; aucun gate hôtel |
 
 **Stack recommandée** : Flutter, Dio, flutter_secure_storage, mobile_scanner.
 
@@ -103,13 +105,14 @@ Scan billet (`dateDepartVoyage` + `heureDepartVoyage`, `dateVoyage` + `heureVoya
 | 1. Inscription | [MODULE_06](MODULE_06_CLIENT_APP_VOYAGEUR.md) + [vérif email](INTEGRATION_VERIFICATION_EMAIL_VUE_FLUTTER.md) | `POST /client/register` + lien `verify-email` |
 | 2. Login | MODULE_01 + [guide Google/Apple](INTEGRATION_LOGIN_GOOGLE_APPLE_VUE_FLUTTER.md) | `authentifier` ou `auth/google` / `auth/apple` |
 | 3. Recherche voyage | MODULE_02 | `GET /Voyage/search` |
-| 4. Réservation | MODULE_03 | Multi-passagers |
-| 5. Paiement FlexPay | MODULE_04 | Mobile Money |
+| 4. Réservation | MODULE_03 · [MODULE_12](MODULE_12_TRANSPORT_ALLER_RETOUR.md) | Single-leg + aller-retour |
+| 5. Paiement FlexPay | MODULE_04 · MODULE_12 | Mobile Money (single ou AR) |
 | 6. Mes billets | MODULE_03 + MODULE_06 | QR codes, historique |
 | 7. Dashboard client | MODULE_06 | `GET /ClientDashboard` |
 | 8. Événements (optionnel) | [MODULE_05](MODULE_05_EVENEMENT_BILLETTERIE.md) | Catalogue → `with-paiement-electronique` → tickets QR |
 | 9. Sites touristiques (optionnel) | [MODULE_10](MODULE_10_SITE_TOURISTIQUE.md) | Catalogue lieux/journées → FlexPay → QR |
 | 10. Restaurants (optionnel) | [MODULE_11](MODULE_11_RESTAURANT.md) | Catalogue créneaux → acompte FlexPay → QR tickets |
+| 11. Hôtels (optionnel) | [MODULE_14](MODULE_14_HOTEL.md) · [INTEGRATION_HOTEL_VUE_FLUTTER](INTEGRATION_HOTEL_VUE_FLUTTER.md) | Catalogue multi-nuit → acompte FlexPay → mes réservations (sans ticket QR) |
 
 **Stack recommandée** : Flutter, Dio, SignalR (notifications paiement).
 
@@ -157,7 +160,7 @@ bool canAccess(List<String> perms, String required) => perms.contains(required);
 Hub : `/hubs/notifications?access_token={jwt}`
 
 Événements utiles :
-- `FlexPayPaymentConfirmed` / `FlexPayPaymentFailed` — paiement **transport** et **événement** (mêmes noms ; IDs et routes HTTP différents)
+- `FlexPayPaymentConfirmed` / `FlexPayPaymentFailed` — paiements Transport, Événement, Site Touristique, Restaurant et Hôtel (mêmes noms ; IDs et routes HTTP différents)
 - Notifications in-app
 
 Références :
@@ -314,6 +317,10 @@ void initApi(String baseUrl) {
 | — | [INTEGRATION_LOGIN_GOOGLE_APPLE_VUE_FLUTTER.md](INTEGRATION_LOGIN_GOOGLE_APPLE_VUE_FLUTTER.md) | Client (Vue + Flutter) | Se connecter avec Google / Apple |
 | 02 | [MODULE_02_TRANSPORT_VOYAGE.md](MODULE_02_TRANSPORT_VOYAGE.md) | Admin, Agent, Client | Voyages, destinations, véhicules, tarifs |
 | 03 | [MODULE_03_RESERVATION_BILLET.md](MODULE_03_RESERVATION_BILLET.md) | Tous | Réservation, billets, scan QR, embarquement |
+| 12 | [MODULE_12_TRANSPORT_ALLER_RETOUR.md](MODULE_12_TRANSPORT_ALLER_RETOUR.md) | Caissier, Client | Aller-retour transport (2 voyages, cash / FlexPay, Vue + Flutter) |
+| — | [INTEGRATION_RESERVATION_ALLER_RETOUR_VUE_FLUTTER.md](INTEGRATION_RESERVATION_ALLER_RETOUR_VUE_FLUTTER.md) | Caissier (Vue), Client (Flutter) | Guide pratique aller-retour — cash guichet + FlexPay voyageur |
+| 13 | [MODULE_13_PHOTOS_STOCKAGE_S3.md](MODULE_13_PHOTOS_STOCKAGE_S3.md) | Admin, Client | Photos 4 domaines — S3, `photoUrl`, multipart (véhicule / événement / resto / site) |
+| — | [INTEGRATION_PHOTOS_S3_VUE_FLUTTER.md](INTEGRATION_PHOTOS_S3_VUE_FLUTTER.md) | Vue + Flutter | Guide pratique affichage + upload photos S3 |
 | 04 | [MODULE_04_PAIEMENT_FLEXPAY.md](MODULE_04_PAIEMENT_FLEXPAY.md) | Admin, Agent, Client | Cash, FlexPay, multi-devise, remboursement |
 | — | [INTEGRATION_PAIEMENT_ELECTRONIQUE_CROSS_DEVISE_VUE_FLUTTER.md](INTEGRATION_PAIEMENT_ELECTRONIQUE_CROSS_DEVISE_VUE_FLUTTER.md) | Tous (Vue + Flutter) | Paiement FlexPay cross-devise — Transport, Evenement, Restaurant, Site touristique |
 | 05 | [MODULE_05_EVENEMENT_BILLETTERIE.md](MODULE_05_EVENEMENT_BILLETTERIE.md) | Admin, Client, Gate | Billetterie `api/events/*` — Vue guichet + Flutter catalogue/FlexPay/contrôle entrée |
@@ -324,6 +331,9 @@ void initApi(String baseUrl) {
 | — | [DOCUMENTATION_API_TICKETS_RESTAURANT_V1.md](../05_transport_sync/DOCUMENTATION_API_TICKETS_RESTAURANT_V1.md) | Admin, Gate | API `api/restaurants/tickets` (list / check / use) |
 | — | [CHANGELOG_2026-08-15_RESTAURANT_ET_SITE_TOURISTIQUE.md](CHANGELOG_2026-08-15_RESTAURANT_ET_SITE_TOURISTIQUE.md) | Tous | Changements 15 août 2026 (Vue + Flutter) |
 | — | [DOCUMENTATION_WORKFLOW_RESTAURANT_V1.md](../05_transport_sync/DOCUMENTATION_WORKFLOW_RESTAURANT_V1.md) | Tous | Workflow métier complet Restaurant (config → vente acompte) |
+| 14 | [MODULE_14_HOTEL.md](MODULE_14_HOTEL.md) | Admin, Guichet, Réception, Client | Contrats API `api/hotels/*` — Phases 1–7e, acompte CASH/FlexPay, dashboard |
+| — | [INTEGRATION_HOTEL_VUE_FLUTTER.md](INTEGRATION_HOTEL_VUE_FLUTTER.md) | Vue + Flutter | Guide pratique — écrans, Pinia/Axios, Dio, SignalR `domain: hotel`, tests manuels |
+| — | [DOCUMENTATION_WORKFLOW_HOTEL_V1.md](../05_transport_sync/DOCUMENTATION_WORKFLOW_HOTEL_V1.md) | Tous | Workflow métier complet Hôtel V1 (configuration → vente → réception) |
 | 06 | [MODULE_06_CLIENT_APP_VOYAGEUR.md](MODULE_06_CLIENT_APP_VOYAGEUR.md) | Client | Inscription, dashboard, plaintes |
 | — | [INTEGRATION_VERIFICATION_EMAIL_VUE_FLUTTER.md](INTEGRATION_VERIFICATION_EMAIL_VUE_FLUTTER.md) | Client (Vue + Flutter) | Vérification email par lien à l’inscription |
 | 07 | [MODULE_07_DASHBOARDS_ADMIN.md](MODULE_07_DASHBOARDS_ADMIN.md) | Admin (Vue) | KPIs, reporting, graphiques |
@@ -339,8 +349,11 @@ Pour la liste exhaustive de toutes les routes : [`DOCUMENTATION_API_ENDPOINTS_CO
 - [`DOCUMENTATION_INTEGRATION_FRONTENDS_VUE_FLUTTER.md`](DOCUMENTATION_INTEGRATION_FRONTENDS_VUE_FLUTTER.md) — version détaillée historique
 - [`DOCUMENTATION_BACKEND_CONTRACT_FRONTENDS.md`](DOCUMENTATION_BACKEND_CONTRACT_FRONTENDS.md) — contrats payload détaillés
 - [`INTEGRATION_FLUTTER_FLEXPAY.md`](INTEGRATION_FLUTTER_FLEXPAY.md) — FlexPay transport approfondi
+- [`INTEGRATION_RESERVATION_ALLER_RETOUR_VUE_FLUTTER.md`](INTEGRATION_RESERVATION_ALLER_RETOUR_VUE_FLUTTER.md) — aller-retour transport (Vue cash + Flutter FlexPay)
+- [`INTEGRATION_PHOTOS_S3_VUE_FLUTTER.md`](INTEGRATION_PHOTOS_S3_VUE_FLUTTER.md) — photos S3 / `photoUrl` / multipart (Vue + Flutter)
 - [`INTEGRATION_PAIEMENT_ELECTRONIQUE_CROSS_DEVISE_VUE_FLUTTER.md`](INTEGRATION_PAIEMENT_ELECTRONIQUE_CROSS_DEVISE_VUE_FLUTTER.md) — FlexPay cross-devise (4 domaines, Vue + Flutter)
 - [`INTEGRATION_SIGNALR_EVENEMENT_FLEXPAY.md`](INTEGRATION_SIGNALR_EVENEMENT_FLEXPAY.md) — SignalR + poll FlexPay événement (Vue + Flutter)
+- [`INTEGRATION_HOTEL_VUE_FLUTTER.md`](INTEGRATION_HOTEL_VUE_FLUTTER.md) — Hôtel multi-nuit (Vue admin/guichet/réception + Flutter client)
 - [`INTEGRATION_VUEJS.md`](INTEGRATION_VUEJS.md) — dashboards Vue détaillés
 - [`INTEGRATION_LOGIN_GOOGLE_APPLE_VUE_FLUTTER.md`](INTEGRATION_LOGIN_GOOGLE_APPLE_VUE_FLUTTER.md) — login social Google / Apple (Vue + Flutter)
 - [`INTEGRATION_VERIFICATION_EMAIL_VUE_FLUTTER.md`](INTEGRATION_VERIFICATION_EMAIL_VUE_FLUTTER.md) — vérification email inscription (Vue + Flutter)
@@ -382,12 +395,15 @@ Pour la liste exhaustive de toutes les routes : [`DOCUMENTATION_API_ENDPOINTS_CO
 - [ ] Guards router par permission
 - [ ] Format `heureDepart` en string `HH:mm:ss`
 - [ ] Module voyage + réservation + paiement branchés
+- [ ] Aller-retour transport (optionnel) : [MODULE_12](MODULE_12_TRANSPORT_ALLER_RETOUR.md) · [guide Vue/Flutter](INTEGRATION_RESERVATION_ALLER_RETOUR_VUE_FLUTTER.md)
 - [ ] Dashboards selon rôle (Gérant, Financier, Super-Admin)
 - [ ] Gestion 403 avec message utilisateur
 - [ ] Événements guichet : CASH / FlexPay selon [MODULE_05](MODULE_05_EVENEMENT_BILLETTERIE.md)
 - [ ] Sites touristiques : planification + vente selon [MODULE_10](MODULE_10_SITE_TOURISTIQUE.md) / [workflow](../05_transport_sync/DOCUMENTATION_WORKFLOW_SITE_TOURISTIQUE_V1.md)
 - [ ] Restaurants : créneaux + acompte selon [MODULE_11](MODULE_11_RESTAURANT.md) / [workflow](../05_transport_sync/DOCUMENTATION_WORKFLOW_RESTAURANT_V1.md)
+- [ ] Hôtels : config + guichet + réception 7c–7e + dashboard selon [MODULE_14](MODULE_14_HOTEL.md) / [guide pratique](INTEGRATION_HOTEL_VUE_FLUTTER.md) / [workflow](../05_transport_sync/DOCUMENTATION_WORKFLOW_HOTEL_V1.md)
 - [ ] FlexPay cross-devise (Transport, Evenement, Restaurant, Site touristique) : [guide](INTEGRATION_PAIEMENT_ELECTRONIQUE_CROSS_DEVISE_VUE_FLUTTER.md)
+- [ ] Photos S3 (`photoUrl` + multipart, pas de base64 create) : [MODULE_13](MODULE_13_PHOTOS_STOCKAGE_S3.md) · [guide](INTEGRATION_PHOTOS_S3_VUE_FLUTTER.md)
 
 ### Flutter — Agent
 
@@ -406,13 +422,16 @@ Pour la liste exhaustive de toutes les routes : [`DOCUMENTATION_API_ENDPOINTS_CO
 - [ ] Login classique et/ou Google / Apple ([guide](INTEGRATION_LOGIN_GOOGLE_APPLE_VUE_FLUTTER.md))
 - [ ] Gestion 429 inscription (ne pas boucler)
 - [ ] Recherche voyage + réservation multi-passagers
+- [ ] Aller-retour (optionnel) : [MODULE_12](MODULE_12_TRANSPORT_ALLER_RETOUR.md) · [guide](INTEGRATION_RESERVATION_ALLER_RETOUR_VUE_FLUTTER.md) — reload `GET aller-retour/{id}` après FlexPay
 - [ ] FlexPay : POST → attente → SignalR ou polling `verifier`
 - [ ] Affichage billets QR après paiement confirmé
 - [ ] SignalR notifications paiement (transport + événement)
 - [ ] Événements : achat `with-paiement-electronique` + [SignalR guide](INTEGRATION_SIGNALR_EVENEMENT_FLEXPAY.md) (permissions `Evenement.Hold.Create` + `Evenement.Reservation.Confirm`)
 - [ ] Sites touristiques : [MODULE_10](MODULE_10_SITE_TOURISTIQUE.md) (`/sites-touristiques/flexpay/verifier`, `domain: siteTouristique`)
 - [ ] Restaurants : [MODULE_11](MODULE_11_RESTAURANT.md) (`/restaurants/flexpay/verifier`, `domain: restaurant`)
+- [ ] Hôtels : [MODULE_14](MODULE_14_HOTEL.md) + [INTEGRATION_HOTEL_VUE_FLUTTER](INTEGRATION_HOTEL_VUE_FLUTTER.md) (`domain: hotel`, mes réservations sans ticket/gate)
 - [ ] FlexPay cross-devise : sélecteur D_p, estimation taux, double affichage montant — [guide](INTEGRATION_PAIEMENT_ELECTRONIQUE_CROSS_DEVISE_VUE_FLUTTER.md)
+- [ ] Photos catalogue : afficher `photoUrl` (pas `photoBase64`) — [MODULE_13](MODULE_13_PHOTOS_STOCKAGE_S3.md) · [guide](INTEGRATION_PHOTOS_S3_VUE_FLUTTER.md)
 
 ---
 

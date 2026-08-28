@@ -197,7 +197,38 @@ Idempotence auto : `(ModulePaiement, IdPaiementSource)` — un Transport `IdPaie
 3. `ConfigSociete.PourcentageReversementSite` > 0 (défaut 100 = totalité du `MontantPaye`)
 4. Optionnel : `ConfigSociete.FraisPlateforme` > 0 avec `CodeDeviseFraisPlateforme` (CDF/USD, ou null = devise du paiement)
 5. Paiement électronique confirmé (Transport : `MOBILE_MONEY` / `CARTE_BANCAIRE` ; satellites : Provider FlexPay + statut `SUCCEEDED`)
-6. Site avec `NumeroMobileMoney` valide
+6. Site avec `NumeroMobileMoney` valide (ou override session événement — voir ci-dessous)
+
+### Module Événement — bénéficiaire organisateur
+
+Pour le reversement auto **événement** uniquement, le numéro PayOut peut être redirigé vers le wallet de l'organisateur de session :
+
+| Champ session (`EvenementSession`) | Rôle |
+|-----------------------------------|------|
+| `numeroMobileMoneyOrganisateur` | Mobile Money bénéficiaire (distinct de `telephoneOrganisateur` contact) |
+| `autoReversementOrganisateur` | Gate session (AND avec `ConfigSociete.autoReversementPaiementElectronique`) |
+| `venteEnLigneActive` | Gate vente en ligne (AND avec `ConfigSociete.reservationIsActif`) |
+
+**Résolution bénéficiaire PayOut (événement)** :
+
+```
+Si numeroMobileMoneyOrganisateur normalisé valide → ce numéro
+Sinon → Site.NumeroMobileMoney (comportement historique)
+```
+
+Le **compte marchand débiteur** reste `InfoPaiementSociete` résolu via `IdSite` (inchangé). Le snapshot `ReversementsSite.NumeroMobileMoney` enregistre le numéro effectivement utilisé.
+
+**Gates reversement auto événement** (en plus des conditions société / FlexPay) :
+
+- `session.autoReversementOrganisateur` = true (défaut true)
+- Paiement FlexPay `SUCCEEDED`
+
+**Gates achat / hold événement** :
+
+- `ConfigSociete.reservationIsActif` AND `session.venteEnLigneActive` (défaut true)
+- Session `Published` + fenêtre de vente existante
+
+Script SQL production : [`Scripts/add_evenement_session_organisateur_reversement_production.sql`](../../../Scripts/add_evenement_session_organisateur_reversement_production.sql).
 
 ### Formule de montant
 

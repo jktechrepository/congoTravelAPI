@@ -34,6 +34,8 @@ namespace CongoTravel.Tests
 
             Assert.NotNull(result);
             Assert.Equal(idSession, result!.IdEvenementSession);
+            Assert.Equal(idSociete, result.IdSociete);
+            Assert.Equal("EVT Availability", result.NomSociete);
             Assert.Equal("GlobalQuota", result.InventoryMode);
             Assert.Equal("Published", result.Status);
             Assert.NotNull(result.GlobalQuota);

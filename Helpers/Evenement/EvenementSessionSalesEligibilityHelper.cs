@@ -30,6 +30,12 @@ namespace CongoTravel.Helpers.Evenement
         /// <summary>Rejette si la session n’est plus en vente (statut ou fin dépassée).</summary>
         public static void EnsureCanSell(EvenementSession session, DateTime utcNow)
         {
+            if (!session.VenteEnLigneActive)
+            {
+                throw new InvalidOperationException(
+                    "Vente en ligne désactivée pour cette session.");
+            }
+
             if (session.Status != EvenementSessionStatus.Published)
             {
                 throw new InvalidOperationException(

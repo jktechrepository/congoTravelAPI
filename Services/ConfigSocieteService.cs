@@ -60,6 +60,7 @@ namespace CongoTravel.Services
             config.ActiviteEvenement = dto.ActiviteEvenement;
             config.ActiviteSiteTouristique = dto.ActiviteSiteTouristique;
             config.ActiviteRestaurant = dto.ActiviteRestaurant;
+            config.ActiviteHotel = dto.ActiviteHotel;
             config.AutoReversementPaiementElectronique = dto.AutoReversementPaiementElectronique;
             config.PourcentageReversementSite = dto.PourcentageReversementSite;
             config.FraisPlateforme = dto.FraisPlateforme;

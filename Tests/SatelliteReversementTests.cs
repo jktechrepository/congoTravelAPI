@@ -143,6 +143,231 @@ namespace CongoTravel.Tests
         }
 
         [Fact]
+        public async Task TryDeclencherAsync_evenement_payouts_to_organizer_mobile_money_when_set()
+        {
+            await using var ctx = BuildDb(nameof(TryDeclencherAsync_evenement_payouts_to_organizer_mobile_money_when_set));
+            var (idSociete, idSite) = await SeedSiteWithAutoReversementAsync(ctx, "243911100001");
+
+            const string organizerPhone = "243812345678";
+            var session = new EvenementSession
+            {
+                IdSociete = idSociete,
+                IdSite = idSite,
+                CodeSession = "ORG-MM",
+                Libelle = "Concert organisateur",
+                StartAtUtc = DateTime.UtcNow.AddDays(1),
+                InventoryMode = EvenementInventoryMode.GlobalQuota,
+                Status = EvenementSessionStatus.Published,
+                NumeroMobileMoneyOrganisateur = organizerPhone,
+                AutoReversementOrganisateur = true,
+                VenteEnLigneActive = true,
+                DateCreation = DateTime.UtcNow
+            };
+            ctx.EvenementSessions.Add(session);
+            await ctx.SaveChangesAsync();
+
+            var flexPay = new Mock<IFlexPayService>();
+            flexPay.Setup(f => f.InitierPayOutAsync(
+                    It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), organizerPhone,
+                    15000m, "CDF", It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new FlexPayPaymentResponseDto { Code = "0", OrderNumber = "FP-EV-ORG" });
+
+            var svc = CreateAutoService(ctx, flexPay.Object);
+            var payment = new EvenementPayment
+            {
+                IdEvenementPayment = 13,
+                IdEvenementReservation = 23,
+                IdSite = idSite,
+                Provider = EvenementFlexPayConstants.Provider,
+                Status = EvenementPaymentStatus.SUCCEEDED,
+                Montant = 15000m,
+                CodeDevise = "CDF",
+                MontantTarif = 15000m,
+                CodeDeviseTarif = "CDF",
+                ReferencePaiement = "REF-EV-ORG"
+            };
+            var reservation = new EvenementReservation
+            {
+                IdEvenementReservation = 23,
+                IdEvenementSession = session.IdEvenementSession,
+                IdSociete = idSociete,
+                IdSite = idSite,
+                IdUtilisateur = 7
+            };
+
+            var ok = await svc.TryDeclencherAsync(
+                ReversementAutomatiqueContext.FromEvenement(payment, reservation, session));
+
+            Assert.True(ok);
+            var rev = await ctx.ReversementsSite.SingleAsync();
+            Assert.Equal(organizerPhone, rev.NumeroMobileMoney);
+            flexPay.Verify(f => f.InitierPayOutAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), organizerPhone,
+                15000m, "CDF", It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task TryDeclencherAsync_evenement_falls_back_to_site_mobile_money_when_organizer_empty()
+        {
+            await using var ctx = BuildDb(nameof(TryDeclencherAsync_evenement_falls_back_to_site_mobile_money_when_organizer_empty));
+            const string sitePhone = "243911100010";
+            var (idSociete, idSite) = await SeedSiteWithAutoReversementAsync(ctx, sitePhone);
+
+            var session = new EvenementSession
+            {
+                IdSociete = idSociete,
+                IdSite = idSite,
+                CodeSession = "ORG-FB",
+                Libelle = "Fallback site",
+                StartAtUtc = DateTime.UtcNow.AddDays(1),
+                InventoryMode = EvenementInventoryMode.GlobalQuota,
+                Status = EvenementSessionStatus.Published,
+                NumeroMobileMoneyOrganisateur = null,
+                AutoReversementOrganisateur = true,
+                DateCreation = DateTime.UtcNow
+            };
+            ctx.EvenementSessions.Add(session);
+            await ctx.SaveChangesAsync();
+
+            var flexPay = new Mock<IFlexPayService>();
+            flexPay.Setup(f => f.InitierPayOutAsync(
+                    It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), sitePhone,
+                    8000m, "CDF", It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new FlexPayPaymentResponseDto { Code = "0", OrderNumber = "FP-EV-FB" });
+
+            var svc = CreateAutoService(ctx, flexPay.Object);
+            var payment = new EvenementPayment
+            {
+                IdEvenementPayment = 14,
+                IdEvenementReservation = 24,
+                IdSite = idSite,
+                Provider = EvenementFlexPayConstants.Provider,
+                Status = EvenementPaymentStatus.SUCCEEDED,
+                Montant = 8000m,
+                CodeDevise = "CDF",
+                MontantTarif = 8000m,
+                CodeDeviseTarif = "CDF",
+                ReferencePaiement = "REF-EV-FB"
+            };
+            var reservation = new EvenementReservation
+            {
+                IdEvenementReservation = 24,
+                IdEvenementSession = session.IdEvenementSession,
+                IdSociete = idSociete,
+                IdSite = idSite,
+                IdUtilisateur = 7
+            };
+
+            var ok = await svc.TryDeclencherAsync(
+                ReversementAutomatiqueContext.FromEvenement(payment, reservation, session));
+
+            Assert.True(ok);
+            var rev = await ctx.ReversementsSite.SingleAsync();
+            Assert.Equal(sitePhone, rev.NumeroMobileMoney);
+        }
+
+        [Fact]
+        public async Task TryDeclencherAsync_evenement_skips_when_auto_reversement_organisateur_disabled()
+        {
+            await using var ctx = BuildDb(nameof(TryDeclencherAsync_evenement_skips_when_auto_reversement_organisateur_disabled));
+            var (idSociete, idSite) = await SeedSiteWithAutoReversementAsync(ctx, "243911100011");
+
+            var session = new EvenementSession
+            {
+                IdSociete = idSociete,
+                IdSite = idSite,
+                CodeSession = "ORG-OFF",
+                Libelle = "Pas de reversement session",
+                StartAtUtc = DateTime.UtcNow.AddDays(1),
+                InventoryMode = EvenementInventoryMode.GlobalQuota,
+                Status = EvenementSessionStatus.Published,
+                NumeroMobileMoneyOrganisateur = "243812345678",
+                AutoReversementOrganisateur = false,
+                DateCreation = DateTime.UtcNow
+            };
+            ctx.EvenementSessions.Add(session);
+            await ctx.SaveChangesAsync();
+
+            var flexPay = new Mock<IFlexPayService>();
+            var svc = CreateAutoService(ctx, flexPay.Object);
+            var payment = new EvenementPayment
+            {
+                IdEvenementPayment = 15,
+                IdEvenementReservation = 25,
+                IdSite = idSite,
+                Provider = EvenementFlexPayConstants.Provider,
+                Status = EvenementPaymentStatus.SUCCEEDED,
+                Montant = 5000m,
+                CodeDevise = "CDF",
+                MontantTarif = 5000m,
+                CodeDeviseTarif = "CDF",
+                ReferencePaiement = "REF-EV-OFF"
+            };
+            var reservation = new EvenementReservation
+            {
+                IdEvenementReservation = 25,
+                IdEvenementSession = session.IdEvenementSession,
+                IdSociete = idSociete,
+                IdSite = idSite,
+                IdUtilisateur = 7
+            };
+
+            var ok = await svc.TryDeclencherAsync(
+                ReversementAutomatiqueContext.FromEvenement(payment, reservation, session));
+
+            Assert.False(ok);
+            Assert.False(await ctx.ReversementsSite.AnyAsync());
+            flexPay.Verify(
+                f => f.InitierPayOutAsync(
+                    It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                    It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+                Times.Never);
+        }
+
+        [Fact]
+        public async Task Evenement_callback_payouts_to_organizer_mobile_money()
+        {
+            await using var ctx = BuildDb(nameof(Evenement_callback_payouts_to_organizer_mobile_money));
+            var (idSociete, idReservation, orderNumber) =
+                await EvenementTestFactories.SeedPendingFlexPayPaymentAsync(ctx, quantity: 1);
+
+            const string sitePhone = "243911100012";
+            const string organizerPhone = "243899988877";
+            await EnableSitePayOutAsync(ctx, idSociete, sitePhone);
+
+            var reservation = await ctx.EvenementReservations
+                .Include(r => r.Session)
+                .FirstAsync(r => r.IdEvenementReservation == idReservation);
+            reservation.Session!.NumeroMobileMoneyOrganisateur = organizerPhone;
+            reservation.Session.AutoReversementOrganisateur = true;
+            await ctx.SaveChangesAsync();
+
+            var payment = await ctx.EvenementPayments.SingleAsync();
+            var flexPay = new Mock<IFlexPayService>();
+            flexPay.Setup(f => f.InitierPayOutAsync(
+                    It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), organizerPhone,
+                    payment.Montant, payment.CodeDevise, It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new FlexPayPaymentResponseDto { Code = "0", OrderNumber = "FP-EV-CB-ORG" });
+
+            var auto = CreateAutoService(ctx, flexPay.Object);
+            var service = EvenementTestFactories.CreateCallbackService(
+                ctx,
+                reversementAutomatiqueService: auto);
+
+            var result = await service.ProcessCallbackAsync(new FlexPayCallbackDto
+            {
+                Code = "0",
+                OrderNumber = orderNumber,
+                Amount = payment.Montant.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                Currency = payment.CodeDevise
+            });
+
+            Assert.True(result.Success);
+            var rev = await ctx.ReversementsSite.SingleAsync();
+            Assert.Equal(organizerPhone, rev.NumeroMobileMoney);
+        }
+
+        [Fact]
         public async Task TryDeclencherAsync_restaurant_initiates_payout()
         {
             await using var ctx = BuildDb(nameof(TryDeclencherAsync_restaurant_initiates_payout));

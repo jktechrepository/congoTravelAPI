@@ -94,6 +94,22 @@ namespace CongoTravel.Tests
         }
 
         [Fact]
+        public void ResolveEffectiveSocieteId_null_requested_falls_back_to_jwt()
+        {
+            var currentUser = new FakeCurrentUserService { SocieteId = 9, IsSuperAdmin = false };
+
+            Assert.Equal(9, EvenementTenancyGuard.ResolveEffectiveSocieteId(currentUser, requestedIdSociete: null));
+        }
+
+        [Fact]
+        public void ResolveEffectiveSocieteId_same_tenant_request_accepted()
+        {
+            var currentUser = new FakeCurrentUserService { SocieteId = 9, IsSuperAdmin = false };
+
+            Assert.Equal(9, EvenementTenancyGuard.ResolveEffectiveSocieteId(currentUser, requestedIdSociete: 9));
+        }
+
+        [Fact]
         public void ResolveEffectiveSocieteId_rejects_cross_tenant_request()
         {
             var currentUser = new FakeCurrentUserService { SocieteId = 9, IsSuperAdmin = false };
@@ -108,6 +124,14 @@ namespace CongoTravel.Tests
             var currentUser = new FakeCurrentUserService { SocieteId = 1, IsSuperAdmin = true };
 
             Assert.Equal(42, EvenementTenancyGuard.ResolveEffectiveSocieteId(currentUser, requestedIdSociete: 42));
+        }
+
+        [Fact]
+        public void ResolveEffectiveSocieteId_super_admin_without_request_uses_jwt()
+        {
+            var currentUser = new FakeCurrentUserService { SocieteId = 1, IsSuperAdmin = true };
+
+            Assert.Equal(1, EvenementTenancyGuard.ResolveEffectiveSocieteId(currentUser, requestedIdSociete: null));
         }
 
         private sealed class FakeCurrentUserService : ICurrentUserService

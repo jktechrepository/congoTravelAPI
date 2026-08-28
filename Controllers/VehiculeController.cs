@@ -1,8 +1,11 @@
+using CongoTravel.Helpers;
 using CongoTravel.Models;
 using CongoTravel.Models.DTOs;
 using CongoTravel.Models.DTOs.Pagination;
 using CongoTravel.Services.Repositories;
 using CongoTravel.Services;
+using CongoTravel.Services.PhotoStorage;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using AutoMapper;
@@ -19,6 +22,7 @@ namespace CongoTravel.Controllers
         private readonly IAuditService _auditService;
         private readonly ICurrentUserService _currentUserService;
         private readonly ISiegeService _siegeService;
+        private readonly IPhotoBinaryHydrator _photoHydrator;
         private readonly IMapper _mapper;
 
         public VehiculeController(
@@ -27,6 +31,7 @@ namespace CongoTravel.Controllers
             IAuditService auditService,
             ICurrentUserService currentUserService,
             ISiegeService siegeService,
+            IPhotoBinaryHydrator photoHydrator,
             IMapper mapper)
         {
             _vehiculeRepository = vehiculeRepository;
@@ -34,6 +39,7 @@ namespace CongoTravel.Controllers
             _auditService = auditService;
             _currentUserService = currentUserService;
             _siegeService = siegeService;
+            _photoHydrator = photoHydrator;
             _mapper = mapper;
         }
 
@@ -399,16 +405,51 @@ namespace CongoTravel.Controllers
             }
         }
 
-        private async Task<VehiculeResponseDto> MapWithRepartitionAsync(Vehicule vehicule)
+        private async Task<VehiculeResponseDto> MapWithRepartitionAsync(
+            Vehicule vehicule,
+            bool includePhotoBase64 = false)
         {
+            if (includePhotoBase64)
+                await _photoHydrator.HydrateVehiculesAsync(new[] { vehicule });
             var dto = _mapper.Map<VehiculeResponseDto>(vehicule);
+            if (includePhotoBase64 && vehicule.Photos != null)
+            {
+                foreach (var photoDto in dto.Photos)
+                {
+                    var entity = vehicule.Photos.FirstOrDefault(p => p.IdPhotoVehicule == photoDto.IdPhotoVehicule);
+                    if (entity != null)
+                        PhotoContentHelper.ApplyBase64(photoDto, entity, true);
+                }
+            }
+
             await ApplyRepartitionAsync(new[] { dto });
             return dto;
         }
 
-        private async Task<IReadOnlyList<VehiculeResponseDto>> MapWithRepartitionAsync(IEnumerable<Vehicule> vehicules)
+        private async Task<IReadOnlyList<VehiculeResponseDto>> MapWithRepartitionAsync(
+            IEnumerable<Vehicule> vehicules,
+            bool includePhotoBase64 = false)
         {
-            var dtos = _mapper.Map<List<VehiculeResponseDto>>(vehicules);
+            var list = vehicules.ToList();
+            if (includePhotoBase64)
+                await _photoHydrator.HydrateVehiculesAsync(list);
+            var dtos = _mapper.Map<List<VehiculeResponseDto>>(list);
+            if (includePhotoBase64)
+            {
+                var byId = list
+                    .Where(v => v.Photos != null)
+                    .SelectMany(v => v.Photos!)
+                    .ToDictionary(p => p.IdPhotoVehicule);
+                foreach (var dto in dtos)
+                {
+                    foreach (var photoDto in dto.Photos)
+                    {
+                        if (byId.TryGetValue(photoDto.IdPhotoVehicule, out var entity))
+                            PhotoContentHelper.ApplyBase64(photoDto, entity, true);
+                    }
+                }
+            }
+
             await ApplyRepartitionAsync(dtos);
             return dtos;
         }
@@ -431,7 +472,9 @@ namespace CongoTravel.Controllers
 
         // GET: api/Vehicule/{id}/photos
         [HttpGet("{id}/photos")]
-        public async Task<ActionResult<IEnumerable<PhotoVehiculeDto>>> GetVehiculePhotos(int id)
+        public async Task<ActionResult<IEnumerable<PhotoVehiculeDto>>> GetVehiculePhotos(
+            int id,
+            [FromQuery] bool includePhotoBase64 = false)
         {
             try
             {
@@ -439,8 +482,15 @@ namespace CongoTravel.Controllers
                 if (vehicule == null)
                     return NotFound(new { message = $"Véhicule avec ID {id} non trouvé" });
 
-                var photos = await _vehiculePhotoService.GetByVehiculeIdAsync(id);
-                return Ok(_mapper.Map<List<PhotoVehiculeDto>>(photos));
+                var photos = await _vehiculePhotoService.GetByVehiculeIdAsync(id, includePhotoBase64);
+                var dtos = _mapper.Map<List<PhotoVehiculeDto>>(photos);
+                if (includePhotoBase64)
+                {
+                    for (var i = 0; i < photos.Count; i++)
+                        PhotoContentHelper.ApplyBase64(dtos[i], photos[i], true);
+                }
+
+                return Ok(dtos);
             }
             catch (Exception ex)
             {
@@ -448,8 +498,36 @@ namespace CongoTravel.Controllers
             }
         }
 
-        // POST: api/Vehicule/{id}/photos
+        // GET: api/Vehicule/{id}/photos/{photoId}/content
+        [HttpGet("{id}/photos/{photoId}/content")]
+        [Produces("image/jpeg", "image/png")]
+        public async Task<IActionResult> GetVehiculePhotoContent(
+            int id,
+            int photoId,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var payload = await _vehiculePhotoService.GetContentAsync(id, photoId, cancellationToken);
+                if (payload == null)
+                    return NotFound(new { message = $"Photo avec ID {photoId} non trouvée pour ce véhicule" });
+
+                Response.Headers.CacheControl = "private, max-age=300";
+                return File(payload.Content, payload.ContentType);
+            }
+            catch (FileNotFoundException)
+            {
+                return NotFound(new { message = $"Contenu photo {photoId} introuvable" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Erreur lors de la récupération du contenu photo", error = ex.Message });
+            }
+        }
+
+        // POST: api/Vehicule/{id}/photos (JSON photoBase64)
         [HttpPost("{id}/photos")]
+        [Consumes("application/json")]
         public async Task<ActionResult<PhotoVehiculeDto>> AddVehiculePhoto(int id, [FromBody] AddPhotoVehiculeDto dto)
         {
             try
@@ -482,6 +560,88 @@ namespace CongoTravel.Controllers
             catch (Exception ex)
             {
                 return StatusCode(500, new { message = "Erreur lors de l'ajout de la photo", error = ex.Message });
+            }
+        }
+
+        // POST: api/Vehicule/{id}/photos (multipart file)
+        [HttpPost("{id}/photos")]
+        [Consumes("multipart/form-data")]
+        public async Task<ActionResult<PhotoVehiculeDto>> AddVehiculePhotoMultipart(
+            int id,
+            [FromForm] IFormFile file,
+            [FromForm] int? ordre = null,
+            [FromForm] string? fileName = null,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var photo = await _vehiculePhotoService.AddPhotoFromFileAsync(
+                    id,
+                    file,
+                    ordre,
+                    fileName,
+                    cancellationToken);
+
+                await _auditService.LogCreateAsync(
+                    photo,
+                    _currentUserService.UserId,
+                    _currentUserService.UserName,
+                    _currentUserService.UserRole,
+                    _currentUserService.SocieteId,
+                    Request.HttpContext.Connection.RemoteIpAddress?.ToString(),
+                    Request.Headers["User-Agent"].ToString(),
+                    $"Ajout d'une photo (multipart) au véhicule (ID: {id})");
+
+                return CreatedAtAction(nameof(GetVehiculePhotos), new { id }, _mapper.Map<PhotoVehiculeDto>(photo));
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Conflict(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Erreur lors de l'ajout de la photo", error = ex.Message });
+            }
+        }
+
+        /// <summary>Remplace toute la galerie photos (0–3 fichiers multipart). Liste vide = vider.</summary>
+        [HttpPut("{id}/photos")]
+        [Consumes("multipart/form-data")]
+        public async Task<ActionResult<IEnumerable<PhotoVehiculeDto>>> ReplaceVehiculePhotos(
+            int id,
+            [FromForm] List<IFormFile>? files,
+            [FromForm] List<int>? ordres = null,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var vehicule = await _vehiculeRepository.GetByIdAsync(id);
+                if (vehicule == null)
+                    return NotFound(new { message = $"Véhicule avec ID {id} non trouvé" });
+
+                var photos = await _vehiculePhotoService.ReplaceAllFromFilesAsync(
+                    id,
+                    files ?? new List<IFormFile>(),
+                    ordres,
+                    cancellationToken);
+
+                return Ok(_mapper.Map<List<PhotoVehiculeDto>>(photos));
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Erreur lors du remplacement des photos", error = ex.Message });
             }
         }
 

@@ -25,7 +25,7 @@ namespace CongoTravel.Tests
             await using var ctx = BuildDb(nameof(ModeA_journey_publish_hold_confirm_check_use_availability));
             var (idSociete, idSite) = await SeedSocieteAsync(ctx);
 
-            var sessionService = new EvenementSessionService(ctx, new EvenementSessionPhotoService(ctx, NullLogger<EvenementSessionPhotoService>.Instance), NullLogger<EvenementSessionService>.Instance);
+            var sessionService = PhotoStorageTestFactory.CreateEvenementSessionService(ctx);
             var holdService = CreateHoldService(ctx);
             var availabilityService = new EvenementAvailabilityService(ctx, NullLogger<EvenementAvailabilityService>.Instance);
             var paymentService = CreatePaymentService(ctx);
@@ -108,7 +108,7 @@ namespace CongoTravel.Tests
         {
             await using var ctx = BuildDb(nameof(ModeA_cancel_hold_restores_seat));
             var (idSociete, idSite) = await SeedSocieteAsync(ctx);
-            var sessionService = new EvenementSessionService(ctx, new EvenementSessionPhotoService(ctx, NullLogger<EvenementSessionPhotoService>.Instance), NullLogger<EvenementSessionService>.Instance);
+            var sessionService = PhotoStorageTestFactory.CreateEvenementSessionService(ctx);
             var holdService = CreateHoldService(ctx);
             var cancelService = CreateCancelService(ctx);
             var availabilityService = new EvenementAvailabilityService(ctx, NullLogger<EvenementAvailabilityService>.Instance);

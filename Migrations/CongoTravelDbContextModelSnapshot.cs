@@ -103,7 +103,7 @@ namespace CongoTravel.Migrations
                         .IsUnique()
                         .HasDatabaseName("IX_Agents_SerialNumber_Unique");
 
-                    b.ToTable("Agents");
+                    b.ToTable("Agents", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.AuditLog", b =>
@@ -199,7 +199,7 @@ namespace CongoTravel.Migrations
                     b.HasIndex("TableName", "RecordId")
                         .HasDatabaseName("IX_AuditLog_Table_Record");
 
-                    b.ToTable("AuditLogs");
+                    b.ToTable("AuditLogs", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.Billet", b =>
@@ -290,7 +290,7 @@ namespace CongoTravel.Migrations
                     b.HasIndex("QrCode")
                         .HasDatabaseName("IX_Billets_QrCode");
 
-                    b.ToTable("Billets");
+                    b.ToTable("Billets", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.BilletEmbarquement", b =>
@@ -328,7 +328,7 @@ namespace CongoTravel.Migrations
 
                     b.HasIndex("IdUtilisateurEnregistrement");
 
-                    b.ToTable("BilletEmbarquements");
+                    b.ToTable("BilletEmbarquements", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.CallbackFlexPay", b =>
@@ -413,7 +413,7 @@ namespace CongoTravel.Migrations
                     b.HasIndex("OrderNumber")
                         .HasDatabaseName("IX_CallbackFlexPay_OrderNumber");
 
-                    b.ToTable("CallbacksFlexPay");
+                    b.ToTable("CallbacksFlexPay", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.CategorieSiege", b =>
@@ -453,7 +453,7 @@ namespace CongoTravel.Migrations
                         .IsUnique()
                         .HasDatabaseName("IX_CategorieSieges_Societe_Code_Unique");
 
-                    b.ToTable("CategorieSieges");
+                    b.ToTable("CategorieSieges", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.Client", b =>
@@ -535,7 +535,7 @@ namespace CongoTravel.Migrations
                     b.HasIndex("UpdatedAt", "IdClient")
                         .HasDatabaseName("IX_Clients_Sync");
 
-                    b.ToTable("Clients");
+                    b.ToTable("Clients", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.CommandeReservationEnAttente", b =>
@@ -603,6 +603,13 @@ namespace CongoTravel.Migrations
                     b.Property<decimal>("TauxVersDevisePaiement")
                         .HasColumnType("decimal(18,8)");
 
+                    b.Property<string>("TypeCommande")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)")
+                        .HasDefaultValue("Single");
+
                     b.HasKey("IdCommandeReservationEnAttente");
 
                     b.HasIndex("OrderNumberFlexPay")
@@ -612,7 +619,7 @@ namespace CongoTravel.Migrations
                     b.HasIndex("IdSociete", "DateCreation")
                         .HasDatabaseName("IX_CommandesReservationEnAttente_Societe_Date");
 
-                    b.ToTable("CommandesReservationEnAttente");
+                    b.ToTable("CommandesReservationEnAttente", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.CommunicationCampaign", b =>
@@ -702,7 +709,7 @@ namespace CongoTravel.Migrations
 
                     b.HasIndex("IdUtilisateurCreateur");
 
-                    b.ToTable("CommunicationCampaigns");
+                    b.ToTable("CommunicationCampaigns", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.ConfigSociete", b =>
@@ -712,6 +719,11 @@ namespace CongoTravel.Migrations
                         .HasColumnType("int");
 
                     b.Property<bool>("ActiviteEvenement")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint(1)")
+                        .HasDefaultValue(true);
+
+                    b.Property<bool>("ActiviteHotel")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("tinyint(1)")
                         .HasDefaultValue(true);
@@ -847,7 +859,7 @@ namespace CongoTravel.Migrations
                         .IsUnique()
                         .HasDatabaseName("IX_ConfigSociete_IdSociete_Unique");
 
-                    b.ToTable("ConfigSocietes");
+                    b.ToTable("ConfigSocietes", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.Destination", b =>
@@ -903,7 +915,7 @@ namespace CongoTravel.Migrations
                         .IsUnique()
                         .HasDatabaseName("IX_Destinations_Societe_Villes_Unique");
 
-                    b.ToTable("Destinations");
+                    b.ToTable("Destinations", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.DeviseMonetaire", b =>
@@ -947,7 +959,7 @@ namespace CongoTravel.Migrations
                         .IsUnique()
                         .HasDatabaseName("IX_DevisesMonetaires_Societe_CodeDevise_Unique");
 
-                    b.ToTable("DevisesMonetaires");
+                    b.ToTable("DevisesMonetaires", (string)null);
 
                     b.HasData(
                         new
@@ -1000,7 +1012,7 @@ namespace CongoTravel.Migrations
 
                     b.HasIndex("IdUtilisateur", "DateUtilisation");
 
-                    b.ToTable("EmailVerificationTokens");
+                    b.ToTable("EmailVerificationTokens", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.Evenement.EvenementClasse", b =>
@@ -1043,7 +1055,109 @@ namespace CongoTravel.Migrations
                         .IsUnique()
                         .HasDatabaseName("IX_EvenementClasses_Societe_CodeClasse_UQ");
 
-                    b.ToTable("EvenementClasses");
+                    b.ToTable("EvenementClasses", (string)null);
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.Evenement.EvenementCommandeEnAttente", b =>
+                {
+                    b.Property<Guid>("IdEvenementCommandeEnAttente")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("CodeDevisePaiement")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(3)
+                        .HasColumnType("char(3)")
+                        .HasDefaultValue("CDF")
+                        .IsFixedLength();
+
+                    b.Property<string>("CodeDeviseTarif")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(3)
+                        .HasColumnType("char(3)")
+                        .HasDefaultValue("CDF")
+                        .IsFixedLength();
+
+                    b.Property<DateTime>("DateCreation")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("DateExpiration")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("IdClient")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IdEvenementSession")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("IdPaiementEnAttente")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("IdSite")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IdSociete")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("IdUtilisateur")
+                        .HasColumnType("int");
+
+                    b.Property<string>("IdempotencyKey")
+                        .HasMaxLength(120)
+                        .HasColumnType("varchar(120)");
+
+                    b.Property<string>("MethodePaiement")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<decimal>("MontantFlexPay")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("MontantTarif")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("OrderNumberFlexPay")
+                        .HasMaxLength(120)
+                        .HasColumnType("varchar(120)");
+
+                    b.Property<string>("PayloadMetierJson")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("ReferenceFlexPay")
+                        .HasMaxLength(120)
+                        .HasColumnType("varchar(120)");
+
+                    b.Property<decimal>("TauxVersDevisePaiement")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("decimal(18,8)")
+                        .HasDefaultValue(1m);
+
+                    b.HasKey("IdEvenementCommandeEnAttente");
+
+                    b.HasIndex("DateExpiration")
+                        .HasDatabaseName("IX_EvenementCommandesEnAttente_DateExpiration");
+
+                    b.HasIndex("IdEvenementSession");
+
+                    b.HasIndex("IdPaiementEnAttente");
+
+                    b.HasIndex("IdSite");
+
+                    b.HasIndex("IdempotencyKey")
+                        .IsUnique()
+                        .HasDatabaseName("IX_EvenementCommandesEnAttente_Idempotency_UQ");
+
+                    b.HasIndex("OrderNumberFlexPay")
+                        .HasDatabaseName("IX_EvenementCommandesEnAttente_OrderNumberFlexPay");
+
+                    b.HasIndex("IdSociete", "IdEvenementSession")
+                        .HasDatabaseName("IX_EvenementCommandesEnAttente_Societe_Session");
+
+                    b.ToTable("EvenementCommandesEnAttente", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.Evenement.EvenementPayment", b =>
@@ -1074,7 +1188,10 @@ namespace CongoTravel.Migrations
                     b.Property<DateTime?>("DateModification")
                         .HasColumnType("datetime(6)");
 
-                    b.Property<int>("IdEvenementReservation")
+                    b.Property<Guid?>("IdEvenementCommandeEnAttente")
+                        .HasColumnType("char(36)");
+
+                    b.Property<int?>("IdEvenementReservation")
                         .HasColumnType("int");
 
                     b.Property<int?>("IdSite")
@@ -1115,6 +1232,9 @@ namespace CongoTravel.Migrations
 
                     b.HasKey("IdEvenementPayment");
 
+                    b.HasIndex("IdEvenementCommandeEnAttente")
+                        .HasDatabaseName("IX_EvenementPayments_IdEvenementCommandeEnAttente");
+
                     b.HasIndex("IdSite")
                         .HasDatabaseName("IX_EvenementPayments_IdSite");
 
@@ -1129,7 +1249,7 @@ namespace CongoTravel.Migrations
                     b.HasIndex("IdEvenementReservation", "Status")
                         .HasDatabaseName("IX_EvenementPayments_Reservation_Status");
 
-                    b.ToTable("EvenementPayments");
+                    b.ToTable("EvenementPayments", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.Evenement.EvenementReservation", b =>
@@ -1217,7 +1337,7 @@ namespace CongoTravel.Migrations
                     b.HasIndex("Status", "ExpiresAtUtc")
                         .HasDatabaseName("IX_EvenementReservations_Status_ExpiresAtUtc");
 
-                    b.ToTable("EvenementReservations");
+                    b.ToTable("EvenementReservations", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.Evenement.EvenementReservationLine", b =>
@@ -1266,7 +1386,7 @@ namespace CongoTravel.Migrations
                         .IsUnique()
                         .HasDatabaseName("IX_EvenementReservationLines_Reservation_Seat_UQ");
 
-                    b.ToTable("EvenementReservationLines");
+                    b.ToTable("EvenementReservationLines", (string)null);
 
                     b.HasCheckConstraint("CK_EvenementReservationLines_Quantite", "`Quantite` > 0");
                 });
@@ -1276,6 +1396,9 @@ namespace CongoTravel.Migrations
                     b.Property<int>("IdEvenementSession")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
+
+                    b.Property<bool>("AutoReversementOrganisateur")
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<string>("Avenue")
                         .HasMaxLength(200)
@@ -1334,6 +1457,10 @@ namespace CongoTravel.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("varchar(50)");
 
+                    b.Property<string>("NumeroMobileMoneyOrganisateur")
+                        .HasMaxLength(30)
+                        .HasColumnType("varchar(30)");
+
                     b.Property<string>("Quartier")
                         .HasMaxLength(100)
                         .HasColumnType("varchar(100)");
@@ -1357,6 +1484,9 @@ namespace CongoTravel.Migrations
                         .HasColumnType("enum('Sport','Music','Art','Cinema','Formation','Conference','Spectacle','Festival','Autres')")
                         .HasDefaultValue("Autres");
 
+                    b.Property<bool>("VenteEnLigneActive")
+                        .HasColumnType("tinyint(1)");
+
                     b.Property<string>("Ville")
                         .HasMaxLength(100)
                         .HasColumnType("varchar(100)");
@@ -1373,7 +1503,7 @@ namespace CongoTravel.Migrations
                     b.HasIndex("IdSociete", "StartAtUtc")
                         .HasDatabaseName("IX_EvenementSessions_IdSociete_StartAtUtc");
 
-                    b.ToTable("EvenementSessions");
+                    b.ToTable("EvenementSessions", (string)null);
 
                     b.HasCheckConstraint("CK_EvenementSessions_StartEnd", "`EndAtUtc` IS NULL OR `EndAtUtc` >= `StartAtUtc`");
                 });
@@ -1425,7 +1555,7 @@ namespace CongoTravel.Migrations
                         .IsUnique()
                         .HasDatabaseName("IX_EvenementSessionClassQuotas_Session_Classe_UQ");
 
-                    b.ToTable("EvenementSessionClassQuotas");
+                    b.ToTable("EvenementSessionClassQuotas", (string)null);
 
                     b.HasCheckConstraint("CK_EvenementSessionClassQuotas_Capacite", "`CapaciteTotale` >= 0");
 
@@ -1465,7 +1595,7 @@ namespace CongoTravel.Migrations
 
                     b.HasKey("IdEvenementSession");
 
-                    b.ToTable("EvenementSessionGlobalQuotas");
+                    b.ToTable("EvenementSessionGlobalQuotas", (string)null);
 
                     b.HasCheckConstraint("CK_EvenementSessionGlobalQuotas_Capacite", "`CapaciteTotale` >= 0");
 
@@ -1500,13 +1630,16 @@ namespace CongoTravel.Migrations
                         .HasColumnType("varchar(100)");
 
                     b.Property<byte[]>("PhotoData")
-                        .IsRequired()
                         .HasColumnType("mediumblob");
 
                     b.Property<bool>("Statut")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("tinyint(1)")
                         .HasDefaultValue(true);
+
+                    b.Property<string>("StorageKey")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
 
                     b.Property<string>("TypeMIME")
                         .HasMaxLength(50)
@@ -1521,7 +1654,7 @@ namespace CongoTravel.Migrations
                         .IsUnique()
                         .HasDatabaseName("IX_EvenementSessionPhotos_Session_Ordre_UQ");
 
-                    b.ToTable("EvenementSessionPhotos");
+                    b.ToTable("EvenementSessionPhotos", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.Evenement.EvenementSessionSeat", b =>
@@ -1543,6 +1676,9 @@ namespace CongoTravel.Migrations
 
                     b.Property<int?>("IdEvenementClasse")
                         .HasColumnType("int");
+
+                    b.Property<Guid?>("IdEvenementCommandeEnAttenteCourante")
+                        .HasColumnType("char(36)");
 
                     b.Property<int?>("IdEvenementReservationCourante")
                         .HasColumnType("int");
@@ -1574,6 +1710,9 @@ namespace CongoTravel.Migrations
 
                     b.HasIndex("IdEvenementClasse");
 
+                    b.HasIndex("IdEvenementCommandeEnAttenteCourante")
+                        .HasDatabaseName("IX_EvenementSessionSeats_IdEvenementCommandeEnAttenteCourante");
+
                     b.HasIndex("IdEvenementReservationCourante");
 
                     b.HasIndex("IdEvenementSessionSection");
@@ -1585,7 +1724,7 @@ namespace CongoTravel.Migrations
                     b.HasIndex("IdEvenementSession", "SeatStatus")
                         .HasDatabaseName("IX_EvenementSessionSeats_Session_SeatStatus");
 
-                    b.ToTable("EvenementSessionSeats");
+                    b.ToTable("EvenementSessionSeats", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.Evenement.EvenementSessionSection", b =>
@@ -1616,7 +1755,7 @@ namespace CongoTravel.Migrations
                         .IsUnique()
                         .HasDatabaseName("IX_EvenementSessionSections_Session_CodeSection_UQ");
 
-                    b.ToTable("EvenementSessionSections");
+                    b.ToTable("EvenementSessionSections", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.Evenement.EvenementTicket", b =>
@@ -1656,7 +1795,7 @@ namespace CongoTravel.Migrations
                         .IsUnique()
                         .HasDatabaseName("IX_EvenementTickets_TicketCode_UQ");
 
-                    b.ToTable("EvenementTickets");
+                    b.ToTable("EvenementTickets", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.FeuilleDeRoute", b =>
@@ -1754,7 +1893,7 @@ namespace CongoTravel.Migrations
                     b.HasIndex("IdSociete", "DateEmbarquement")
                         .HasDatabaseName("IX_FeuilleDeRoutes_Societe_DateEmbarquement");
 
-                    b.ToTable("FeuilleDeRoutes");
+                    b.ToTable("FeuilleDeRoutes", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.FeuilleDeRoutePassager", b =>
@@ -1814,7 +1953,7 @@ namespace CongoTravel.Migrations
                     b.HasIndex("IdFeuilleDeRoute")
                         .HasDatabaseName("IX_FeuilleDeRoutePassagers_IdFeuilleDeRoute");
 
-                    b.ToTable("FeuilleDeRoutePassagers");
+                    b.ToTable("FeuilleDeRoutePassagers", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.InfoPaiementSociete", b =>
@@ -1863,7 +2002,7 @@ namespace CongoTravel.Migrations
                     b.HasIndex("IdSociete")
                         .HasDatabaseName("IX_InfoPaiementSociete_IdSociete");
 
-                    b.ToTable("InfoPaiementsSociete");
+                    b.ToTable("InfoPaiementsSociete", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.Notification", b =>
@@ -1953,7 +2092,7 @@ namespace CongoTravel.Migrations
 
                     b.HasIndex("IdSociete");
 
-                    b.ToTable("Notifications");
+                    b.ToTable("Notifications", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.NotificationPreference", b =>
@@ -1993,7 +2132,7 @@ namespace CongoTravel.Migrations
 
                     b.HasIndex("IdUtilisateur");
 
-                    b.ToTable("NotificationPreferences");
+                    b.ToTable("NotificationPreferences", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.Paiement", b =>
@@ -2028,6 +2167,9 @@ namespace CongoTravel.Migrations
                         .HasColumnType("int");
 
                     b.Property<int?>("IdReservation")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("IdReservationAllerRetour")
                         .HasColumnType("int");
 
                     b.Property<int?>("IdSite")
@@ -2109,7 +2251,7 @@ namespace CongoTravel.Migrations
                     b.HasIndex("IdSociete", "CodeDevisePaiement", "DatePaiement")
                         .HasDatabaseName("IX_Paiements_Societe_DevisePaiement_DatePaiement");
 
-                    b.ToTable("Paiements");
+                    b.ToTable("Paiements", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.PasswordResetToken", b =>
@@ -2142,7 +2284,7 @@ namespace CongoTravel.Migrations
                     b.HasIndex("Token")
                         .IsUnique();
 
-                    b.ToTable("PasswordResetTokens");
+                    b.ToTable("PasswordResetTokens", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.Permission", b =>
@@ -2178,7 +2320,7 @@ namespace CongoTravel.Migrations
 
                     b.HasKey("IdPermission");
 
-                    b.ToTable("Permissions");
+                    b.ToTable("Permissions", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.PhotoVehicule", b =>
@@ -2207,11 +2349,14 @@ namespace CongoTravel.Migrations
                         .HasColumnType("varchar(100)");
 
                     b.Property<byte[]>("PhotoData")
-                        .IsRequired()
                         .HasColumnType("mediumblob");
 
                     b.Property<bool>("Statut")
                         .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("StorageKey")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
 
                     b.Property<string>("TypeMIME")
                         .HasMaxLength(50)
@@ -2226,7 +2371,7 @@ namespace CongoTravel.Migrations
                         .IsUnique()
                         .HasDatabaseName("IX_PhotoVehicules_Vehicule_Ordre_Unique");
 
-                    b.ToTable("PhotoVehicules");
+                    b.ToTable("PhotoVehicules", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.PlainteClient", b =>
@@ -2303,7 +2448,7 @@ namespace CongoTravel.Migrations
 
                     b.HasIndex("IdUtilisateurCreateur");
 
-                    b.ToTable("PlainteClients");
+                    b.ToTable("PlainteClients", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.PlanificationGenerationLog", b =>
@@ -2345,7 +2490,7 @@ namespace CongoTravel.Migrations
                     b.HasIndex("IdPlanificationVoyage")
                         .HasDatabaseName("IX_PlanificationGenerationLogs_IdPlanificationVoyage");
 
-                    b.ToTable("PlanificationGenerationLogs");
+                    b.ToTable("PlanificationGenerationLogs", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.PlanificationVoyage", b =>
@@ -2401,7 +2546,7 @@ namespace CongoTravel.Migrations
 
                     b.HasIndex("IdVehicule");
 
-                    b.ToTable("PlanificationsVoyage");
+                    b.ToTable("PlanificationsVoyage", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.PlanificationVoyageEtape", b =>
@@ -2433,7 +2578,7 @@ namespace CongoTravel.Migrations
                         .IsUnique()
                         .HasDatabaseName("IX_PlanificationVoyageEtapes_Planif_Ordre_Unique");
 
-                    b.ToTable("PlanificationVoyageEtapes");
+                    b.ToTable("PlanificationVoyageEtapes", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.PlanificationVoyageTarif", b =>
@@ -2465,7 +2610,7 @@ namespace CongoTravel.Migrations
                         .IsUnique()
                         .HasDatabaseName("IX_PlanificationVoyageTarifs_Planif_Categorie_Unique");
 
-                    b.ToTable("PlanificationVoyageTarifs");
+                    b.ToTable("PlanificationVoyageTarifs", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.RefreshToken", b =>
@@ -2503,7 +2648,7 @@ namespace CongoTravel.Migrations
 
                     b.HasIndex("IdUtilisateur");
 
-                    b.ToTable("RefreshTokens");
+                    b.ToTable("RefreshTokens", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.Remboursement", b =>
@@ -2560,13 +2705,16 @@ namespace CongoTravel.Migrations
                     b.HasIndex("IdSociete", "DateRemboursement")
                         .HasDatabaseName("IX_Remboursements_Societe_Date");
 
-                    b.ToTable("Remboursements");
+                    b.ToTable("Remboursements", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.Reservation", b =>
                 {
                     b.Property<int>("IdReservation")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<int?>("AllerRetourLeg")
                         .HasColumnType("int");
 
                     b.Property<DateTime>("DateCreation")
@@ -2582,6 +2730,9 @@ namespace CongoTravel.Migrations
                     b.Property<int>("IdClient")
                         .HasColumnType("int")
                         .HasColumnName("IdClient");
+
+                    b.Property<int?>("IdReservationAllerRetour")
+                        .HasColumnType("int");
 
                     b.Property<int?>("IdSite")
                         .HasColumnType("int");
@@ -2625,6 +2776,9 @@ namespace CongoTravel.Migrations
                     b.HasIndex("IdClient")
                         .HasDatabaseName("IX_Reservations_IdClient");
 
+                    b.HasIndex("IdReservationAllerRetour")
+                        .HasDatabaseName("IX_Reservations_IdReservationAllerRetour");
+
                     b.HasIndex("IdSite")
                         .HasDatabaseName("IX_Reservations_IdSite");
 
@@ -2640,7 +2794,70 @@ namespace CongoTravel.Migrations
                     b.HasIndex("StatutReservation")
                         .HasDatabaseName("IX_Reservations_StatutReservation");
 
-                    b.ToTable("Reservations");
+                    b.ToTable("Reservations", (string)null);
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.ReservationAllerRetour", b =>
+                {
+                    b.Property<int>("IdReservationAllerRetour")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("DateCreation")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("DateModification")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("IdClient")
+                        .HasColumnType("int");
+
+                    b.Property<Guid?>("IdCommandeReservationEnAttente")
+                        .HasColumnType("char(36)");
+
+                    b.Property<int?>("IdPaiement")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("IdReservationAller")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("IdReservationRetour")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("IdSite")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IdSociete")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IdUtilisateur")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IdVoyageAller")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IdVoyageRetour")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Origine")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<string>("Statut")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("varchar(30)");
+
+                    b.HasKey("IdReservationAllerRetour");
+
+                    b.HasIndex("IdSociete")
+                        .HasDatabaseName("IX_ReservationsAllerRetour_IdSociete");
+
+                    b.HasIndex("Statut")
+                        .HasDatabaseName("IX_ReservationsAllerRetour_Statut");
+
+                    b.ToTable("ReservationsAllerRetour", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.ReservationPassenger", b =>
@@ -2706,7 +2923,7 @@ namespace CongoTravel.Migrations
                     b.HasIndex("IdSociete")
                         .HasDatabaseName("IX_ReservationPassengers_IdSociete");
 
-                    b.ToTable("ReservationPassengers");
+                    b.ToTable("ReservationPassengers", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.Restaurant.Restaurant", b =>
@@ -2766,6 +2983,111 @@ namespace CongoTravel.Migrations
                         .HasDatabaseName("IX_Restaurants_Societe_CodeRestaurant_UQ");
 
                     b.ToTable("Restaurants", (string)null);
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.Restaurant.RestaurantCommandeEnAttente", b =>
+                {
+                    b.Property<Guid>("IdRestaurantCommandeEnAttente")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("CodeDevisePaiement")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(3)
+                        .HasColumnType("char(3)")
+                        .HasDefaultValue("CDF")
+                        .IsFixedLength();
+
+                    b.Property<string>("CodeDeviseTarif")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(3)
+                        .HasColumnType("char(3)")
+                        .HasDefaultValue("CDF")
+                        .IsFixedLength();
+
+                    b.Property<DateTime>("DateCreation")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("DateExpiration")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("IdClient")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("IdPaiementEnAttente")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IdRestaurant")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IdRestaurantCreneau")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("IdSite")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IdSociete")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("IdUtilisateur")
+                        .HasColumnType("int");
+
+                    b.Property<string>("IdempotencyKey")
+                        .HasMaxLength(120)
+                        .HasColumnType("varchar(120)");
+
+                    b.Property<string>("MethodePaiement")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<decimal>("MontantFlexPay")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("MontantTarif")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("OrderNumberFlexPay")
+                        .HasMaxLength(120)
+                        .HasColumnType("varchar(120)");
+
+                    b.Property<string>("PayloadMetierJson")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("ReferenceFlexPay")
+                        .HasMaxLength(120)
+                        .HasColumnType("varchar(120)");
+
+                    b.Property<decimal>("TauxVersDevisePaiement")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("decimal(18,8)")
+                        .HasDefaultValue(1m);
+
+                    b.HasKey("IdRestaurantCommandeEnAttente");
+
+                    b.HasIndex("DateExpiration")
+                        .HasDatabaseName("IX_RestaurantCommandesEnAttente_DateExpiration");
+
+                    b.HasIndex("IdPaiementEnAttente");
+
+                    b.HasIndex("IdRestaurantCreneau");
+
+                    b.HasIndex("IdSite");
+
+                    b.HasIndex("IdempotencyKey")
+                        .IsUnique()
+                        .HasDatabaseName("IX_RestaurantCommandesEnAttente_Idempotency_UQ");
+
+                    b.HasIndex("OrderNumberFlexPay")
+                        .HasDatabaseName("IX_RestaurantCommandesEnAttente_OrderNumberFlexPay");
+
+                    b.HasIndex("IdSociete", "IdRestaurantCreneau")
+                        .HasDatabaseName("IX_RestaurantCommandesEnAttente_Societe_Creneau");
+
+                    b.ToTable("RestaurantCommandesEnAttente", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.Restaurant.RestaurantCreneau", b =>
@@ -2952,7 +3274,10 @@ namespace CongoTravel.Migrations
                     b.Property<DateTime?>("DateModification")
                         .HasColumnType("datetime(6)");
 
-                    b.Property<int>("IdRestaurantReservation")
+                    b.Property<Guid?>("IdRestaurantCommandeEnAttente")
+                        .HasColumnType("char(36)");
+
+                    b.Property<int?>("IdRestaurantReservation")
                         .HasColumnType("int");
 
                     b.Property<int?>("IdSite")
@@ -2992,6 +3317,9 @@ namespace CongoTravel.Migrations
                         .HasDefaultValue(1m);
 
                     b.HasKey("IdRestaurantPayment");
+
+                    b.HasIndex("IdRestaurantCommandeEnAttente")
+                        .HasDatabaseName("IX_RestaurantPayments_IdRestaurantCommandeEnAttente");
 
                     b.HasIndex("IdSite")
                         .HasDatabaseName("IX_RestaurantPayments_IdSite");
@@ -3036,13 +3364,16 @@ namespace CongoTravel.Migrations
                         .HasColumnType("varchar(100)");
 
                     b.Property<byte[]>("PhotoData")
-                        .IsRequired()
                         .HasColumnType("mediumblob");
 
                     b.Property<bool>("Statut")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("tinyint(1)")
                         .HasDefaultValue(true);
+
+                    b.Property<string>("StorageKey")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
 
                     b.Property<string>("TypeMIME")
                         .HasMaxLength(50)
@@ -3592,15 +3923,15 @@ namespace CongoTravel.Migrations
                         .HasDatabaseName("IX_ReversementSite_OrderNumber")
                         .HasFilter("[OrderNumber] IS NOT NULL");
 
-                    b.HasIndex("IdSociete", "IdSite", "DateCreation")
-                        .HasDatabaseName("IX_ReversementSite_Societe_Site_Date");
-
                     b.HasIndex("ModulePaiement", "IdPaiementSource")
                         .IsUnique()
                         .HasDatabaseName("IX_ReversementSite_Module_IdPaiementSource")
                         .HasFilter("[ModulePaiement] IS NOT NULL AND [IdPaiementSource] IS NOT NULL");
 
-                    b.ToTable("ReversementsSite");
+                    b.HasIndex("IdSociete", "IdSite", "DateCreation")
+                        .HasDatabaseName("IX_ReversementSite_Societe_Site_Date");
+
+                    b.ToTable("ReversementsSite", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.Role", b =>
@@ -3632,7 +3963,7 @@ namespace CongoTravel.Migrations
                     b.HasIndex("Nom")
                         .IsUnique();
 
-                    b.ToTable("Roles");
+                    b.ToTable("Roles", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.RolePermission", b =>
@@ -3659,7 +3990,7 @@ namespace CongoTravel.Migrations
 
                     b.HasIndex("IdRole");
 
-                    b.ToTable("RolePermissions");
+                    b.ToTable("RolePermissions", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.Siege", b =>
@@ -3710,7 +4041,7 @@ namespace CongoTravel.Migrations
                         .IsUnique()
                         .HasDatabaseName("IX_Sieges_Vehicule_NumeroOrdre_Unique");
 
-                    b.ToTable("Sieges");
+                    b.ToTable("Sieges", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.SiegeHoldEnAttente", b =>
@@ -3746,7 +4077,7 @@ namespace CongoTravel.Migrations
                         .IsUnique()
                         .HasDatabaseName("IX_SiegeHoldsEnAttente_Voyage_Siege_Unique");
 
-                    b.ToTable("SiegeHoldsEnAttente");
+                    b.ToTable("SiegeHoldsEnAttente", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.Site", b =>
@@ -3833,7 +4164,7 @@ namespace CongoTravel.Migrations
                     b.HasIndex("IdSociete", "IsSitePrincipal")
                         .HasDatabaseName("IX_Sites_IdSociete_IsSitePrincipal");
 
-                    b.ToTable("Sites");
+                    b.ToTable("Sites", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.SiteTouristique.SiteTouristiqueClasse", b =>
@@ -3924,6 +4255,108 @@ namespace CongoTravel.Migrations
                     b.HasCheckConstraint("CK_SiteTouristiqueClassQuotas_StockMax", "`QuantiteHold` + `QuantiteVendue` <= `CapaciteTotale`");
 
                     b.HasCheckConstraint("CK_SiteTouristiqueClassQuotas_StockPositive", "`QuantiteHold` >= 0 AND `QuantiteVendue` >= 0");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.SiteTouristique.SiteTouristiqueCommandeEnAttente", b =>
+                {
+                    b.Property<Guid>("IdSiteTouristiqueCommandeEnAttente")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("CodeDevisePaiement")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(3)
+                        .HasColumnType("char(3)")
+                        .HasDefaultValue("CDF")
+                        .IsFixedLength();
+
+                    b.Property<string>("CodeDeviseTarif")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(3)
+                        .HasColumnType("char(3)")
+                        .HasDefaultValue("CDF")
+                        .IsFixedLength();
+
+                    b.Property<DateTime>("DateCreation")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("DateExpiration")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("IdClient")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("IdPaiementEnAttente")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("IdSite")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IdSiteTouristiqueJournee")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IdSociete")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("IdUtilisateur")
+                        .HasColumnType("int");
+
+                    b.Property<string>("IdempotencyKey")
+                        .HasMaxLength(120)
+                        .HasColumnType("varchar(120)");
+
+                    b.Property<string>("MethodePaiement")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<decimal>("MontantFlexPay")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("MontantTarif")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("OrderNumberFlexPay")
+                        .HasMaxLength(120)
+                        .HasColumnType("varchar(120)");
+
+                    b.Property<string>("PayloadMetierJson")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("ReferenceFlexPay")
+                        .HasMaxLength(120)
+                        .HasColumnType("varchar(120)");
+
+                    b.Property<decimal>("TauxVersDevisePaiement")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("decimal(18,8)")
+                        .HasDefaultValue(1m);
+
+                    b.HasKey("IdSiteTouristiqueCommandeEnAttente");
+
+                    b.HasIndex("DateExpiration")
+                        .HasDatabaseName("IX_SiteTouristiqueCommandesEnAttente_DateExpiration");
+
+                    b.HasIndex("IdPaiementEnAttente");
+
+                    b.HasIndex("IdSite");
+
+                    b.HasIndex("IdSiteTouristiqueJournee");
+
+                    b.HasIndex("IdempotencyKey")
+                        .IsUnique()
+                        .HasDatabaseName("IX_SiteTouristiqueCommandesEnAttente_Idempotency_UQ");
+
+                    b.HasIndex("OrderNumberFlexPay")
+                        .HasDatabaseName("IX_SiteTouristiqueCommandesEnAttente_OrderNumberFlexPay");
+
+                    b.HasIndex("IdSociete", "IdSiteTouristiqueJournee")
+                        .HasDatabaseName("IX_SiteTouristiqueCommandesEnAttente_Societe_Journee");
+
+                    b.ToTable("SiteTouristiqueCommandesEnAttente", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.SiteTouristique.SiteTouristiqueGlobalQuota", b =>
@@ -4128,13 +4561,16 @@ namespace CongoTravel.Migrations
                         .HasColumnType("varchar(100)");
 
                     b.Property<byte[]>("PhotoData")
-                        .IsRequired()
                         .HasColumnType("mediumblob");
 
                     b.Property<bool>("Statut")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("tinyint(1)")
                         .HasDefaultValue(true);
+
+                    b.Property<string>("StorageKey")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
 
                     b.Property<string>("TypeMIME")
                         .HasMaxLength(50)
@@ -4183,7 +4619,10 @@ namespace CongoTravel.Migrations
                     b.Property<int?>("IdSite")
                         .HasColumnType("int");
 
-                    b.Property<int>("IdSiteTouristiqueReservation")
+                    b.Property<Guid?>("IdSiteTouristiqueCommandeEnAttente")
+                        .HasColumnType("char(36)");
+
+                    b.Property<int?>("IdSiteTouristiqueReservation")
                         .HasColumnType("int");
 
                     b.Property<string>("IdempotencyKey")
@@ -4223,6 +4662,9 @@ namespace CongoTravel.Migrations
 
                     b.HasIndex("IdSite")
                         .HasDatabaseName("IX_SiteTouristiquePayments_IdSite");
+
+                    b.HasIndex("IdSiteTouristiqueCommandeEnAttente")
+                        .HasDatabaseName("IX_SiteTouristiquePayments_IdCommandeEnAttente");
 
                     b.HasIndex("IdempotencyKey")
                         .IsUnique()
@@ -4635,7 +5077,7 @@ namespace CongoTravel.Migrations
 
                     b.HasIndex("UtilisateurIdUtilisateur");
 
-                    b.ToTable("SmsLogs");
+                    b.ToTable("SmsLogs", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.Societe", b =>
@@ -4695,7 +5137,7 @@ namespace CongoTravel.Migrations
 
                     b.HasKey("IdSociete");
 
-                    b.ToTable("Societes");
+                    b.ToTable("Societes", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.TauxChange", b =>
@@ -4737,7 +5179,7 @@ namespace CongoTravel.Migrations
                     b.HasIndex("IdSociete", "CodeDeviseSource", "CodeDeviseCible", "DateEffet")
                         .HasDatabaseName("IX_TauxChanges_Societe_Paire_DateEffet");
 
-                    b.ToTable("TauxChanges");
+                    b.ToTable("TauxChanges", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.TransactionFlexPay", b =>
@@ -4859,7 +5301,7 @@ namespace CongoTravel.Migrations
                     b.HasIndex("Reference")
                         .HasDatabaseName("IX_TransactionFlexPay_Reference");
 
-                    b.ToTable("TransactionsFlexPay");
+                    b.ToTable("TransactionsFlexPay", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.TypeVehicule", b =>
@@ -4898,7 +5340,7 @@ namespace CongoTravel.Migrations
                         .IsUnique()
                         .HasDatabaseName("IX_TypeVehicules_Societe_Libelle_Unique");
 
-                    b.ToTable("TypeVehicules");
+                    b.ToTable("TypeVehicules", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.UserDevice", b =>
@@ -4944,7 +5386,7 @@ namespace CongoTravel.Migrations
 
                     b.HasIndex("IdUtilisateur");
 
-                    b.ToTable("UserDevices");
+                    b.ToTable("UserDevices", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.UserPermission", b =>
@@ -4983,7 +5425,7 @@ namespace CongoTravel.Migrations
 
                     b.HasIndex("IdUtilisateur");
 
-                    b.ToTable("UserPermissions");
+                    b.ToTable("UserPermissions", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.UserRole", b =>
@@ -5025,7 +5467,7 @@ namespace CongoTravel.Migrations
                     b.HasIndex("IdUtilisateur", "Statut")
                         .HasDatabaseName("IX_UserRole_Utilisateur_Statut");
 
-                    b.ToTable("UserRoles");
+                    b.ToTable("UserRoles", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.Utilisateur", b =>
@@ -5130,7 +5572,7 @@ namespace CongoTravel.Migrations
                         .IsUnique()
                         .HasDatabaseName("IX_Utilisateurs_AuthProvider_ExternalSubjectId");
 
-                    b.ToTable("Utilisateurs");
+                    b.ToTable("Utilisateurs", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.Vehicule", b =>
@@ -5183,7 +5625,7 @@ namespace CongoTravel.Migrations
                         .IsUnique()
                         .HasDatabaseName("IX_Vehicules_Societe_AliasVehicule_Unique");
 
-                    b.ToTable("Vehicules");
+                    b.ToTable("Vehicules", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.Voyage", b =>
@@ -5270,7 +5712,7 @@ namespace CongoTravel.Migrations
                     b.HasIndex("IdSociete", "CodeDevisePrix", "DateDepart")
                         .HasDatabaseName("IX_Voyages_Societe_DevisePrix_Date");
 
-                    b.ToTable("Voyages");
+                    b.ToTable("Voyages", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.VoyageDestination", b =>
@@ -5308,7 +5750,7 @@ namespace CongoTravel.Migrations
                         .IsUnique()
                         .HasDatabaseName("IX_VoyageDestinations_Voyage_Ordre_Unique");
 
-                    b.ToTable("VoyageDestinations");
+                    b.ToTable("VoyageDestinations", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.VoyageSeatAllocation", b =>
@@ -5352,7 +5794,7 @@ namespace CongoTravel.Migrations
                         .IsUnique()
                         .HasDatabaseName("IX_VoyageSeatAllocations_Voyage_Siege_Unique");
 
-                    b.ToTable("VoyageSeatAllocations");
+                    b.ToTable("VoyageSeatAllocations", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.VoyageTarifCategorieSiege", b =>
@@ -5390,7 +5832,7 @@ namespace CongoTravel.Migrations
                         .IsUnique()
                         .HasDatabaseName("IX_VoyageTarifCategorieSieges_Voyage_Categorie_Unique");
 
-                    b.ToTable("VoyageTarifsCategorieSiege");
+                    b.ToTable("VoyageTarifsCategorieSiege", (string)null);
                 });
 
             modelBuilder.Entity("CongoTravel.Models.Agent", b =>
@@ -5584,18 +6026,49 @@ namespace CongoTravel.Migrations
                     b.Navigation("Societe");
                 });
 
-            modelBuilder.Entity("CongoTravel.Models.Evenement.EvenementPayment", b =>
+            modelBuilder.Entity("CongoTravel.Models.Evenement.EvenementCommandeEnAttente", b =>
                 {
-                    b.HasOne("CongoTravel.Models.Evenement.EvenementReservation", "Reservation")
-                        .WithMany("Payments")
-                        .HasForeignKey("IdEvenementReservation")
+                    b.HasOne("CongoTravel.Models.Evenement.EvenementSession", "Session")
+                        .WithMany()
+                        .HasForeignKey("IdEvenementSession")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("CongoTravel.Models.Evenement.EvenementPayment", "PaiementEnAttente")
+                        .WithMany()
+                        .HasForeignKey("IdPaiementEnAttente")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("CongoTravel.Models.Site", "Site")
                         .WithMany()
                         .HasForeignKey("IdSite")
                         .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("PaiementEnAttente");
+
+                    b.Navigation("Session");
+
+                    b.Navigation("Site");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.Evenement.EvenementPayment", b =>
+                {
+                    b.HasOne("CongoTravel.Models.Evenement.EvenementCommandeEnAttente", "CommandeEnAttente")
+                        .WithMany()
+                        .HasForeignKey("IdEvenementCommandeEnAttente")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("CongoTravel.Models.Evenement.EvenementReservation", "Reservation")
+                        .WithMany("Payments")
+                        .HasForeignKey("IdEvenementReservation")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("CongoTravel.Models.Site", "Site")
+                        .WithMany()
+                        .HasForeignKey("IdSite")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("CommandeEnAttente");
 
                     b.Navigation("Reservation");
 
@@ -5726,6 +6199,11 @@ namespace CongoTravel.Migrations
                         .HasForeignKey("IdEvenementClasse")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("CongoTravel.Models.Evenement.EvenementCommandeEnAttente", "CommandeEnAttenteCourante")
+                        .WithMany()
+                        .HasForeignKey("IdEvenementCommandeEnAttenteCourante")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("CongoTravel.Models.Evenement.EvenementReservation", "ReservationCourante")
                         .WithMany("SeatsEnCours")
                         .HasForeignKey("IdEvenementReservationCourante")
@@ -5743,6 +6221,8 @@ namespace CongoTravel.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Classe");
+
+                    b.Navigation("CommandeEnAttenteCourante");
 
                     b.Navigation("ReservationCourante");
 
@@ -6063,6 +6543,11 @@ namespace CongoTravel.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("CongoTravel.Models.ReservationAllerRetour", "ReservationAllerRetour")
+                        .WithMany("Reservations")
+                        .HasForeignKey("IdReservationAllerRetour")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("CongoTravel.Models.Site", "Site")
                         .WithMany()
                         .HasForeignKey("IdSite")
@@ -6087,6 +6572,8 @@ namespace CongoTravel.Migrations
                         .IsRequired();
 
                     b.Navigation("Client");
+
+                    b.Navigation("ReservationAllerRetour");
 
                     b.Navigation("Site");
 
@@ -6139,6 +6626,31 @@ namespace CongoTravel.Migrations
                     b.Navigation("Site");
 
                     b.Navigation("Societe");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.Restaurant.RestaurantCommandeEnAttente", b =>
+                {
+                    b.HasOne("CongoTravel.Models.Restaurant.RestaurantPayment", "PaiementEnAttente")
+                        .WithMany()
+                        .HasForeignKey("IdPaiementEnAttente")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("CongoTravel.Models.Restaurant.RestaurantCreneau", "Creneau")
+                        .WithMany()
+                        .HasForeignKey("IdRestaurantCreneau")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CongoTravel.Models.Site", "Site")
+                        .WithMany()
+                        .HasForeignKey("IdSite")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Creneau");
+
+                    b.Navigation("PaiementEnAttente");
+
+                    b.Navigation("Site");
                 });
 
             modelBuilder.Entity("CongoTravel.Models.Restaurant.RestaurantCreneau", b =>
@@ -6206,16 +6718,22 @@ namespace CongoTravel.Migrations
 
             modelBuilder.Entity("CongoTravel.Models.Restaurant.RestaurantPayment", b =>
                 {
+                    b.HasOne("CongoTravel.Models.Restaurant.RestaurantCommandeEnAttente", "CommandeEnAttente")
+                        .WithMany()
+                        .HasForeignKey("IdRestaurantCommandeEnAttente")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("CongoTravel.Models.Restaurant.RestaurantReservation", "Reservation")
                         .WithMany("Payments")
                         .HasForeignKey("IdRestaurantReservation")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("CongoTravel.Models.Site", "Site")
                         .WithMany()
                         .HasForeignKey("IdSite")
                         .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("CommandeEnAttente");
 
                     b.Navigation("Reservation");
 
@@ -6502,6 +7020,31 @@ namespace CongoTravel.Migrations
                     b.Navigation("Journee");
                 });
 
+            modelBuilder.Entity("CongoTravel.Models.SiteTouristique.SiteTouristiqueCommandeEnAttente", b =>
+                {
+                    b.HasOne("CongoTravel.Models.SiteTouristique.SiteTouristiquePayment", "PaiementEnAttente")
+                        .WithMany()
+                        .HasForeignKey("IdPaiementEnAttente")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("CongoTravel.Models.Site", "Site")
+                        .WithMany()
+                        .HasForeignKey("IdSite")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("CongoTravel.Models.SiteTouristique.SiteTouristiqueJournee", "Journee")
+                        .WithMany()
+                        .HasForeignKey("IdSiteTouristiqueJournee")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Journee");
+
+                    b.Navigation("PaiementEnAttente");
+
+                    b.Navigation("Site");
+                });
+
             modelBuilder.Entity("CongoTravel.Models.SiteTouristique.SiteTouristiqueGlobalQuota", b =>
                 {
                     b.HasOne("CongoTravel.Models.SiteTouristique.SiteTouristiqueJournee", "Journee")
@@ -6575,11 +7118,17 @@ namespace CongoTravel.Migrations
                         .HasForeignKey("IdSite")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("CongoTravel.Models.SiteTouristique.SiteTouristiqueCommandeEnAttente", "CommandeEnAttente")
+                        .WithMany()
+                        .HasForeignKey("IdSiteTouristiqueCommandeEnAttente")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("CongoTravel.Models.SiteTouristique.SiteTouristiqueReservation", "Reservation")
                         .WithMany("Payments")
                         .HasForeignKey("IdSiteTouristiqueReservation")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("CommandeEnAttente");
 
                     b.Navigation("Reservation");
 
@@ -7063,6 +7612,11 @@ namespace CongoTravel.Migrations
             modelBuilder.Entity("CongoTravel.Models.Reservation", b =>
                 {
                     b.Navigation("Passagers");
+                });
+
+            modelBuilder.Entity("CongoTravel.Models.ReservationAllerRetour", b =>
+                {
+                    b.Navigation("Reservations");
                 });
 
             modelBuilder.Entity("CongoTravel.Models.ReservationPassenger", b =>

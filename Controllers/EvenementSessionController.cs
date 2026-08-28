@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using CongoTravel.Attributes;
 using CongoTravel.Helpers.Evenement;
@@ -506,7 +507,9 @@ namespace CongoTravel.Controllers
         [AllowAnonymous]
         [ProducesResponseType(typeof(IEnumerable<EvenementSessionPhotoDto>), 200)]
         [ProducesResponseType(404)]
-        public async Task<ActionResult<IEnumerable<EvenementSessionPhotoDto>>> GetPhotos(int id)
+        public async Task<ActionResult<IEnumerable<EvenementSessionPhotoDto>>> GetPhotos(
+            int id,
+            [FromQuery] bool includePhotoBase64 = false)
         {
             try
             {
@@ -514,8 +517,11 @@ namespace CongoTravel.Controllers
                 if (session == null)
                     return NotFound(new { message = $"Session événement {id} introuvable." });
 
-                var photos = await _photoService.GetBySessionIdAsync(id, session.IdSociete);
-                return Ok(photos.Select(EvenementSessionMapper.ToPhotoDto).ToList());
+                var photos = await _photoService.GetBySessionIdAsync(
+                    id,
+                    session.IdSociete,
+                    includePhotoBase64: includePhotoBase64);
+                return Ok(photos.Select(p => EvenementSessionMapper.ToPhotoDto(p, includePhotoBase64)).ToList());
             }
             catch (KeyNotFoundException ex)
             {
@@ -532,8 +538,56 @@ namespace CongoTravel.Controllers
             }
         }
 
-        /// <summary>Ajoute une photo à une session (max 3).</summary>
+        /// <summary>Stream binaire d'une photo de session.</summary>
+        [HttpGet("{id:int}/photos/{photoId:int}/content")]
+        [AllowAnonymous]
+        [Produces("image/jpeg", "image/png")]
+        [ProducesResponseType(200)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> GetPhotoContent(
+            int id,
+            int photoId,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var session = await ResolveSessionForPublicReadAsync(id);
+                if (session == null)
+                    return NotFound(new { message = $"Session événement {id} introuvable." });
+
+                var payload = await _photoService.GetContentAsync(
+                    id,
+                    session.IdSociete,
+                    photoId,
+                    cancellationToken);
+                if (payload == null)
+                    return NotFound(new { message = $"Photo {photoId} introuvable pour la session {id}." });
+
+                Response.Headers.CacheControl = "private, max-age=300";
+                return File(payload.Content, payload.ContentType);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+            catch (FileNotFoundException)
+            {
+                return NotFound(new { message = $"Contenu photo {photoId} introuvable." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur GET content photo {PhotoId} session {Id}", photoId, id);
+                return StatusCode(500, new { message = "Une erreur interne est survenue." });
+            }
+        }
+
+        /// <summary>Ajoute une photo à une session (max 3) — JSON photoBase64.</summary>
         [HttpPost("{id:int}/photos")]
+        [Consumes("application/json")]
         [Permission("Evenement.Session.Write")]
         [ProducesResponseType(typeof(EvenementSessionPhotoDto), 201)]
         [ProducesResponseType(400)]
@@ -570,6 +624,105 @@ namespace CongoTravel.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Erreur POST photo session événement {Id}", id);
+                return StatusCode(500, new { message = "Une erreur interne est survenue." });
+            }
+        }
+
+        /// <summary>Ajoute une photo à une session (max 3) — multipart file.</summary>
+        [HttpPost("{id:int}/photos")]
+        [Consumes("multipart/form-data")]
+        [Permission("Evenement.Session.Write")]
+        [ProducesResponseType(typeof(EvenementSessionPhotoDto), 201)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
+        public async Task<ActionResult<EvenementSessionPhotoDto>> AddPhotoMultipart(
+            int id,
+            [FromForm] IFormFile file,
+            [FromForm] int? ordre = null,
+            [FromForm] string? fileName = null,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var idSociete = EvenementTenancyGuard.ResolveEffectiveSocieteId(_currentUserService);
+                var photo = await _photoService.AddPhotoFromFileAsync(
+                    id,
+                    idSociete,
+                    file,
+                    ordre,
+                    fileName,
+                    cancellationToken);
+                return CreatedAtAction(
+                    nameof(GetPhotos),
+                    new { id },
+                    EvenementSessionMapper.ToPhotoDto(photo));
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur POST photo multipart session événement {Id}", id);
+                return StatusCode(500, new { message = "Une erreur interne est survenue." });
+            }
+        }
+
+        /// <summary>Remplace toute la galerie photos (0–3 fichiers multipart). Liste vide = vider.</summary>
+        [HttpPut("{id:int}/photos")]
+        [Consumes("multipart/form-data")]
+        [Permission("Evenement.Session.Write")]
+        [ProducesResponseType(typeof(IEnumerable<EvenementSessionPhotoDto>), 200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
+        public async Task<ActionResult<IEnumerable<EvenementSessionPhotoDto>>> ReplacePhotos(
+            int id,
+            [FromForm] List<IFormFile>? files,
+            [FromForm] List<int>? ordres = null,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var idSociete = EvenementTenancyGuard.ResolveEffectiveSocieteId(_currentUserService);
+                var photos = await _photoService.ReplaceAllFromFilesAsync(
+                    id,
+                    idSociete,
+                    files ?? new List<IFormFile>(),
+                    ordres,
+                    cancellationToken);
+                return Ok(photos.Select(p => EvenementSessionMapper.ToPhotoDto(p)).ToList());
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur PUT photos multipart session événement {Id}", id);
                 return StatusCode(500, new { message = "Une erreur interne est survenue." });
             }
         }

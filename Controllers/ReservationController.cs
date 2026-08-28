@@ -25,6 +25,7 @@ namespace CongoTravel.Controllers
         private readonly ILogger<ReservationController> _logger;
         private readonly ICashReservationWithPaiementService _cashReservationWithPaiementService;
         private readonly IFlexPayReservationService _flexPayReservationService;
+        private readonly IAllerRetourReservationService _allerRetourReservationService;
         private readonly IReservationWithPaiementReadService _reservationWithPaiementReadService;
         private readonly IBilletPricingEnrichmentService _billetPricingEnrichment;
         private readonly CongoTravelDbContext _context;
@@ -37,6 +38,7 @@ namespace CongoTravel.Controllers
             ILogger<ReservationController> logger,
             ICashReservationWithPaiementService cashReservationWithPaiementService,
             IFlexPayReservationService flexPayReservationService,
+            IAllerRetourReservationService allerRetourReservationService,
             IReservationWithPaiementReadService reservationWithPaiementReadService,
             IBilletPricingEnrichmentService billetPricingEnrichment,
             CongoTravelDbContext context,
@@ -48,6 +50,7 @@ namespace CongoTravel.Controllers
             _logger = logger;
             _cashReservationWithPaiementService = cashReservationWithPaiementService;
             _flexPayReservationService = flexPayReservationService;
+            _allerRetourReservationService = allerRetourReservationService;
             _reservationWithPaiementReadService = reservationWithPaiementReadService;
             _billetPricingEnrichment = billetPricingEnrichment;
             _context = context;
@@ -852,6 +855,125 @@ namespace CongoTravel.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Erreur lors de l'initiation du paiement électronique");
+                return StatusCode(500, new { message = "Erreur interne du serveur" });
+            }
+        }
+
+        /// <summary>
+        /// Crée une réservation aller-retour avec paiement cash (2 voyages, 1 paiement).
+        /// </summary>
+        [HttpPost("reservation_aller_retour_with_paiement")]
+        [ProducesResponseType(typeof(ReservationAllerRetourWithPaiementResponseDto), 200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(500)]
+        public async Task<ActionResult<ReservationAllerRetourWithPaiementResponseDto>> CreateReservationAllerRetourWithPaiement(
+            [FromBody] CreateReservationAllerRetourWithPaiementDto dto)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                    return BadRequest(ModelState);
+
+                var result = await _allerRetourReservationService.CreateCashAsync(dto);
+                if (result.Statut == TransactionStatut.Echec)
+                    return StatusCode(500, result);
+
+                return Ok(result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur création réservation aller-retour cash");
+                return StatusCode(500, new { message = "Erreur interne du serveur" });
+            }
+        }
+
+        /// <summary>
+        /// Initie un paiement FlexPay pour une réservation aller-retour (holds sur 2 voyages).
+        /// </summary>
+        [HttpPost("reservation_aller_retour_with_paiement_electronique")]
+        [ProducesResponseType(typeof(ReservationAllerRetourWithPaiementResponseDto), 200)]
+        [ProducesResponseType(400)]
+        public async Task<ActionResult<ReservationAllerRetourWithPaiementResponseDto>> CreateReservationAllerRetourElectronique(
+            [FromBody] InitiateFlexPayReservationAllerRetourDto dto)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                    return BadRequest(ModelState);
+
+                var result = await _allerRetourReservationService.InitiateFlexPayAsync(dto);
+                return Ok(result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur initiation FlexPay aller-retour");
+                return StatusCode(500, new { message = "Erreur interne du serveur" });
+            }
+        }
+
+        /// <summary>
+        /// Détail d'un dossier aller-retour.
+        /// </summary>
+        [HttpGet("aller-retour/{id:int}")]
+        [ProducesResponseType(typeof(ReservationAllerRetourResponseDto), 200)]
+        [ProducesResponseType(404)]
+        public async Task<ActionResult<ReservationAllerRetourResponseDto>> GetAllerRetour(int id)
+        {
+            try
+            {
+                var result = await _allerRetourReservationService.GetByIdAsync(id);
+                if (result == null)
+                    return NotFound(new { message = $"Aller-retour {id} introuvable." });
+                return Ok(result);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Forbid(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur lecture aller-retour {Id}", id);
+                return StatusCode(500, new { message = "Erreur interne du serveur" });
+            }
+        }
+
+        /// <summary>
+        /// Annule atomiquement un dossier aller-retour (2 legs + libération sièges).
+        /// </summary>
+        [HttpPost("aller-retour/{id:int}/cancel")]
+        [ProducesResponseType(typeof(ReservationAllerRetourResponseDto), 200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
+        public async Task<ActionResult<ReservationAllerRetourResponseDto>> CancelAllerRetour(int id)
+        {
+            try
+            {
+                var exists = await _allerRetourReservationService.GetByIdAsync(id);
+                if (exists == null)
+                    return NotFound(new { message = $"Aller-retour {id} introuvable." });
+
+                var result = await _allerRetourReservationService.CancelAsync(id);
+                return Ok(result);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Forbid(ex.Message);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur annulation aller-retour {Id}", id);
                 return StatusCode(500, new { message = "Erreur interne du serveur" });
             }
         }

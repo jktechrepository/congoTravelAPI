@@ -12,6 +12,16 @@
       "Resource": "arn:aws:s3:::kansa-kelasinabiso-s3-bucket/devoirs/*"
     },
     {
+      "Sid": "AllowCongoTravelPhotosOperations",
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject",
+        "s3:GetObject",
+        "s3:DeleteObject"
+      ],
+      "Resource": "arn:aws:s3:::kansa-kelasinabiso-s3-bucket/congotravel/photos/*"
+    },
+    {
       "Sid": "AllowListBucket",
       "Effect": "Allow",
       "Action": [
@@ -20,10 +30,12 @@
       "Resource": "arn:aws:s3:::kansa-kelasinabiso-s3-bucket",
       "Condition": {
         "StringLike": {
-          "s3:prefix": "devoirs/*"
+          "s3:prefix": [
+            "devoirs/*",
+            "congotravel/photos/*"
+          ]
         }
       }
     }
   ]
 }
-

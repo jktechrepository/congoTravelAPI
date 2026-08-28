@@ -11,6 +11,7 @@ using CongoTravel.Helpers;
 using CongoTravel.Services;
 using CongoTravel.Services.Repositories;
 using CongoTravel.Data;
+using CongoTravel.Services.PhotoStorage;
 using AutoMapper;
 
 namespace CongoTravel.Controllers
@@ -26,6 +27,7 @@ namespace CongoTravel.Controllers
         private readonly ICurrentUserService _currentUserService;
         private readonly CongoTravelDbContext _context;
         private readonly IMapper _mapper;
+        private readonly IPhotoBinaryHydrator _photoHydrator;
         private readonly ILogger<VoyageController> _logger;
 
         public VoyageController(
@@ -35,6 +37,7 @@ namespace CongoTravel.Controllers
             ICurrentUserService currentUserService,
             CongoTravelDbContext context,
             IMapper mapper,
+            IPhotoBinaryHydrator photoHydrator,
             ILogger<VoyageController> logger)
         {
             _voyageRepository = voyageRepository;
@@ -43,6 +46,7 @@ namespace CongoTravel.Controllers
             _currentUserService = currentUserService;
             _context = context;
             _mapper = mapper;
+            _photoHydrator = photoHydrator;
             _logger = logger;
         }
 
@@ -106,27 +110,83 @@ namespace CongoTravel.Controllers
             await VoyageConfigEnrichmentHelper.EnrichElectronicSupplementAsync(_context, dtos, cancellationToken);
         }
 
-        private async Task<VoyageResponseDto> MapVoyageResponseAsync(Voyage voyage, CancellationToken cancellationToken = default)
+        private async Task<VoyageResponseDto> MapVoyageResponseAsync(
+            Voyage voyage,
+            bool includePhotoBase64 = false,
+            CancellationToken cancellationToken = default)
         {
+            if (includePhotoBase64)
+                await _photoHydrator.HydrateVoyagesAsync(new[] { voyage }, cancellationToken);
             var dto = MapVoyageResponse(voyage);
+            if (includePhotoBase64 && voyage.Vehicule?.Photos != null)
+            {
+                foreach (var photoDto in dto.PhotosVehicules)
+                {
+                    var entity = voyage.Vehicule.Photos.FirstOrDefault(p => p.IdPhotoVehicule == photoDto.IdPhotoVehicule);
+                    if (entity != null)
+                        PhotoContentHelper.ApplyBase64(photoDto, entity, true);
+                }
+            }
+
             await EnrichVoyageResponseDtosAsync(new[] { dto }, cancellationToken);
             return dto;
         }
 
         private async Task<List<VoyageResponseDto>> MapVoyageResponsesAsync(
             IEnumerable<Voyage> voyages,
+            bool includePhotoBase64 = false,
             CancellationToken cancellationToken = default)
         {
-            var list = voyages.Select(MapVoyageResponse).ToList();
+            var voyageList = voyages.ToList();
+            if (includePhotoBase64)
+                await _photoHydrator.HydrateVoyagesAsync(voyageList, cancellationToken);
+            var list = voyageList.Select(MapVoyageResponse).ToList();
+            if (includePhotoBase64)
+            {
+                var byId = voyageList
+                    .Where(v => v.Vehicule?.Photos != null)
+                    .SelectMany(v => v.Vehicule!.Photos!)
+                    .GroupBy(p => p.IdPhotoVehicule)
+                    .ToDictionary(g => g.Key, g => g.First());
+                foreach (var dto in list)
+                {
+                    foreach (var photoDto in dto.PhotosVehicules)
+                    {
+                        if (byId.TryGetValue(photoDto.IdPhotoVehicule, out var entity))
+                            PhotoContentHelper.ApplyBase64(photoDto, entity, true);
+                    }
+                }
+            }
+
             await EnrichVoyageResponseDtosAsync(list, cancellationToken);
             return list;
         }
 
         private async Task<PagedResult<VoyageResponseDto>> MapPagedVoyagesAsync(
             PagedResult<Voyage> pagedResult,
+            bool includePhotoBase64 = false,
             CancellationToken cancellationToken = default)
         {
+            if (includePhotoBase64)
+                await _photoHydrator.HydrateVoyagesAsync(pagedResult.Data, cancellationToken);
             var mapped = pagedResult.Data.Select(MapVoyageResponse).ToList();
+            if (includePhotoBase64)
+            {
+                var byId = pagedResult.Data
+                    .Where(v => v.Vehicule?.Photos != null)
+                    .SelectMany(v => v.Vehicule!.Photos!)
+                    .GroupBy(p => p.IdPhotoVehicule)
+                    .ToDictionary(g => g.Key, g => g.First());
+                foreach (var dto in mapped)
+                {
+                    foreach (var photoDto in dto.PhotosVehicules)
+                    {
+                        if (byId.TryGetValue(photoDto.IdPhotoVehicule, out var entity))
+                            PhotoContentHelper.ApplyBase64(photoDto, entity, true);
+                    }
+                }
+            }
+
             await EnrichVoyageResponseDtosAsync(mapped, cancellationToken);
 
             return new PagedResult<VoyageResponseDto>(

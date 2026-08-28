@@ -6,6 +6,9 @@ namespace CongoTravel.Models.DTOs
     {
         public int IdPhotoVehicule { get; set; }
         public int IdVehicule { get; set; }
+        /// <summary>URL relative pour streamer l'image (préféré à PhotoBase64 pour l'affichage).</summary>
+        public string? PhotoUrl { get; set; }
+        /// <summary>Data-URL base64. Vide par défaut sur les lectures ; renseigné si includePhotoBase64=true.</summary>
         public string PhotoBase64 { get; set; } = string.Empty;
         public int Ordre { get; set; }
         public string? OriginalFileName { get; set; }

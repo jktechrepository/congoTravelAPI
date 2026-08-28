@@ -34,6 +34,12 @@ namespace CongoTravel.Models.DTOs.Evenement
 
         public string? TelephoneOrganisateur { get; set; }
 
+        public string? NumeroMobileMoneyOrganisateur { get; set; }
+
+        public bool VenteEnLigneActive { get; set; } = true;
+
+        public bool AutoReversementOrganisateur { get; set; } = true;
+
         public string? MailOrganisateur { get; set; }
 
         public string? LogoOrganisateur { get; set; }

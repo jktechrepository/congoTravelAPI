@@ -5,6 +5,7 @@ using CongoTravel.Helpers.Evenement;
 using CongoTravel.Models.DTOs.Evenement;
 using CongoTravel.Models.Evenement;
 using CongoTravel.Models.Evenement.Enums;
+using CongoTravel.Services.PhotoStorage;
 
 namespace CongoTravel.Services.Evenement
 {
@@ -12,15 +13,18 @@ namespace CongoTravel.Services.Evenement
     {
         private readonly CongoTravelDbContext _context;
         private readonly IEvenementSessionPhotoService _photoService;
+        private readonly IPhotoBinaryHydrator _photoHydrator;
         private readonly ILogger<EvenementSessionService> _logger;
 
         public EvenementSessionService(
             CongoTravelDbContext context,
             IEvenementSessionPhotoService photoService,
+            IPhotoBinaryHydrator photoHydrator,
             ILogger<EvenementSessionService> logger)
         {
             _context = context;
             _photoService = photoService;
+            _photoHydrator = photoHydrator;
             _logger = logger;
         }
 
@@ -70,6 +74,10 @@ namespace CongoTravel.Services.Evenement
                 TypeEvenement = typeEvenement,
                 NomOrganisateur = NormalizeOptionalText(request.NomOrganisateur),
                 TelephoneOrganisateur = NormalizeOptionalText(request.TelephoneOrganisateur),
+                NumeroMobileMoneyOrganisateur = EvenementSessionOrganizerPayoutHelper.NormalizeOptionalMobileMoney(
+                    request.NumeroMobileMoneyOrganisateur),
+                VenteEnLigneActive = request.VenteEnLigneActive,
+                AutoReversementOrganisateur = request.AutoReversementOrganisateur,
                 MailOrganisateur = NormalizeOptionalEmail(request.MailOrganisateur),
                 LogoOrganisateur = NormalizeOptionalText(request.LogoOrganisateur),
                 Ville = NormalizeOptionalText(request.Ville),
@@ -129,7 +137,7 @@ namespace CongoTravel.Services.Evenement
                 query = query.Where(s => s.IdSociete == idSociete.Value);
 
             var session = await query.FirstOrDefaultAsync(cancellationToken);
-            return session == null ? null : EvenementSessionMapper.ToResponseDto(session);
+            return session == null ? null : await MapResponseAsync(session, cancellationToken);
         }
 
         public async Task<EvenementSessionResponseDto?> GetPublishedByIdAsync(
@@ -144,7 +152,7 @@ namespace CongoTravel.Services.Evenement
                          && s.Societe.Statut == true,
                     cancellationToken);
 
-            return session == null ? null : EvenementSessionMapper.ToResponseDto(session);
+            return session == null ? null : await MapResponseAsync(session, cancellationToken);
         }
 
         public async Task<EvenementSessionResponseDto?> GetByCodeAsync(
@@ -161,7 +169,7 @@ namespace CongoTravel.Services.Evenement
                     s => s.IdSociete == idSociete && s.CodeSession == normalized,
                     cancellationToken);
 
-            return session == null ? null : EvenementSessionMapper.ToResponseDto(session);
+            return session == null ? null : await MapResponseAsync(session, cancellationToken);
         }
 
         public async Task<EvenementSessionResponseDto?> GetPublishedByCodeAsync(
@@ -184,7 +192,7 @@ namespace CongoTravel.Services.Evenement
             {
                 var session = await query
                     .FirstOrDefaultAsync(s => s.IdSociete == idSociete.Value, cancellationToken);
-                return session == null ? null : EvenementSessionMapper.ToResponseDto(session);
+                return session == null ? null : await MapResponseAsync(session, cancellationToken);
             }
 
             var matches = await query.Take(2).ToListAsync(cancellationToken);
@@ -197,7 +205,7 @@ namespace CongoTravel.Services.Evenement
                     $"Plusieurs sessions Published portent le code '{normalized}'. Précisez ?idSociete=.");
             }
 
-            return EvenementSessionMapper.ToResponseDto(matches[0]);
+            return await MapResponseAsync(matches[0], cancellationToken);
         }
 
         public async Task<IReadOnlyList<EvenementSessionListItemDto>> ListAsync(
@@ -208,9 +216,7 @@ namespace CongoTravel.Services.Evenement
             var sessions = await BuildListQuery(idSociete, filter)
                 .ToListAsync(cancellationToken);
 
-            return sessions
-                .Select(EvenementSessionMapper.ToListItemDto)
-                .ToList();
+            return await MapListAsync(sessions, cancellationToken);
         }
 
         public async Task<IReadOnlyList<EvenementSessionListItemDto>> ListPublishedGlobalAsync(
@@ -238,9 +244,7 @@ namespace CongoTravel.Services.Evenement
                 .OrderBy(s => s.StartAtUtc)
                 .ToListAsync(cancellationToken);
 
-            return sessions
-                .Select(EvenementSessionMapper.ToListItemDto)
-                .ToList();
+            return await MapListAsync(sessions, cancellationToken);
         }
 
         public Task<IReadOnlyList<EvenementSessionListItemDto>> ListByStatusAsync(
@@ -272,9 +276,7 @@ namespace CongoTravel.Services.Evenement
                 .OrderByDescending(s => s.StartAtUtc)
                 .ToListAsync(cancellationToken);
 
-            return sessions
-                .Select(EvenementSessionMapper.ToListItemDto)
-                .ToList();
+            return await MapListAsync(sessions, cancellationToken);
         }
 
         public async Task<IReadOnlyList<EvenementSessionListItemDto>> ListByDateRangeAsync(
@@ -291,9 +293,7 @@ namespace CongoTravel.Services.Evenement
                 .OrderByDescending(s => s.StartAtUtc)
                 .ToListAsync(cancellationToken);
 
-            return sessions
-                .Select(EvenementSessionMapper.ToListItemDto)
-                .ToList();
+            return await MapListAsync(sessions, cancellationToken);
         }
 
         public async Task<EvenementSessionResponseDto> PublishAsync(
@@ -320,6 +320,7 @@ namespace CongoTravel.Services.Evenement
             }
 
             ValidateInventoryForPublish(session);
+            EvenementSessionOrganizerPayoutHelper.ValidateMobileMoneyForPublish(session);
 
             session.Status = EvenementSessionStatus.Published;
             session.DateModification = DateTime.UtcNow;
@@ -378,6 +379,27 @@ namespace CongoTravel.Services.Evenement
                     .ThenInclude(seat => seat.Classe)
                 .Include(s => s.Photos);
 
+        private async Task<EvenementSessionResponseDto> MapResponseAsync(
+            EvenementSession session,
+            CancellationToken cancellationToken,
+            bool includePhotoBase64 = false)
+        {
+            if (includePhotoBase64)
+                await _photoHydrator.HydrateEvenementSessionPhotosAsync(session.Photos, cancellationToken);
+            return EvenementSessionMapper.ToResponseDto(session, includePhotoBase64);
+        }
+
+        private async Task<List<EvenementSessionListItemDto>> MapListAsync(
+            IEnumerable<EvenementSession> sessions,
+            CancellationToken cancellationToken,
+            bool includePhotoBase64 = false)
+        {
+            var list = sessions.ToList();
+            if (includePhotoBase64)
+                await _photoHydrator.HydrateEvenementSessionsAsync(list, cancellationToken);
+            return list.Select(s => EvenementSessionMapper.ToListItemDto(s, includePhotoBase64)).ToList();
+        }
+
         private async Task<EvenementSessionResponseDto> LoadSessionResponseAsync(
             int idEvenementSession,
             int idSociete,
@@ -388,7 +410,7 @@ namespace CongoTravel.Services.Evenement
                     s => s.IdEvenementSession == idEvenementSession && s.IdSociete == idSociete,
                     cancellationToken);
 
-            return EvenementSessionMapper.ToResponseDto(session);
+            return await MapResponseAsync(session, cancellationToken);
         }
 
         private static void AttachGlobalQuota(

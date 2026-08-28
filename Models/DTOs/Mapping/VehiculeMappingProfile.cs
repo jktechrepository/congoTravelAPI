@@ -30,12 +30,9 @@ namespace CongoTravel.Models.DTOs.Mapping
                         : Enumerable.Empty<PhotoVehicule>()));
 
             CreateMap<PhotoVehicule, PhotoVehiculeDto>()
-                .ForMember(dest => dest.PhotoBase64, opt => opt.MapFrom(src =>
-                    src.PhotoData != null && src.PhotoData.Length > 0
-                        ? VehiculePhotoBase64Helper.ToDataUrl(
-                            src.PhotoData,
-                            string.IsNullOrWhiteSpace(src.TypeMIME) ? "image/jpeg" : src.TypeMIME)
-                        : string.Empty));
+                .ForMember(dest => dest.PhotoUrl, opt => opt.MapFrom(src =>
+                    CongoTravelPhotoUrlBuilder.ForVehicule(src.IdVehicule, src.IdPhotoVehicule)))
+                .ForMember(dest => dest.PhotoBase64, opt => opt.MapFrom(src => string.Empty));
 
             CreateMap<CreateTypeVehiculeDto, TypeVehicule>()
                 .ForMember(dest => dest.IdTypeVehicule, opt => opt.Ignore())

@@ -1,6 +1,7 @@
 # MODULE 03 — Réservation et billet embarquement
 
-> Retour : [Document maître](DOCUMENTATION_COMPLETE_INTEGRATION_FRONTEND.md)
+> Retour : [Document maître](DOCUMENTATION_COMPLETE_INTEGRATION_FRONTEND.md)  
+> **Aller-retour** : voir [MODULE_12_TRANSPORT_ALLER_RETOUR.md](MODULE_12_TRANSPORT_ALLER_RETOUR.md) (endpoints dédiés, single-leg inchangé ici).
 
 ---
 

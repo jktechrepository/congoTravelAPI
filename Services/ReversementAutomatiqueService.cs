@@ -56,6 +56,14 @@ namespace CongoTravel.Services
                 return false;
             }
 
+            if (ctx.AutoReversementSessionAutorise == false)
+            {
+                _logger.LogDebug(
+                    "Reversement auto désactivé pour la session — module {Module}, paiementSource {IdPaiementSource}",
+                    ctx.ModulePaiement, ctx.IdPaiementSource);
+                return false;
+            }
+
             var config = await _configSocieteRepository.GetOrCreateAsync(ctx.IdSociete, cancellationToken);
             if (!config.AutoReversementPaiementElectronique)
             {
@@ -103,6 +111,7 @@ namespace CongoTravel.Services
                     montant.Motif,
                     ctx.IdPaiementTransport,
                     ctx.IdReservationTransport,
+                    ctx.NumeroMobileMoneyBeneficiaireOverride,
                     cancellationToken);
 
                 if (result == null)

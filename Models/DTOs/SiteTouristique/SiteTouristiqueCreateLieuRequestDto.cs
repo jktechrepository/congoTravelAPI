@@ -38,7 +38,11 @@ namespace CongoTravel.Models.DTOs.SiteTouristique
         [Range(1, int.MaxValue)]
         public int IdSite { get; set; }
 
-        /// <summary>Photos optionnelles à la création (max 3).</summary>
+        /// <summary>
+        /// LEGACY / déprécié — photos embarquées en photoBase64 (max 3).
+        /// Préférer : créer le lieu sans photos, puis POST/PUT multipart
+        /// <c>/api/sites-touristiques/lieux/{id}/photos</c>.
+        /// </summary>
         public List<AddSiteTouristiqueLieuPhotoDto>? Photos { get; set; }
     }
 }

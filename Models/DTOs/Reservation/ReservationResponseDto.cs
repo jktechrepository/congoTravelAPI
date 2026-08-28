@@ -38,5 +38,11 @@ namespace CongoTravel.Models.DTOs
 
         /// <summary>Renseigné lorsque les passagers sont chargés (ex. GET par société, client, voyage).</summary>
         public List<ReservationPassengerReadDto>? Passagers { get; set; }
+
+        /// <summary>Agrégat aller-retour (null = single-leg).</summary>
+        public int? IdReservationAllerRetour { get; set; }
+
+        /// <summary>Leg AR : Aller / Retour (null = single-leg).</summary>
+        public CongoTravel.Models.Enums.ReservationAllerRetourLeg? AllerRetourLeg { get; set; }
     }
 }

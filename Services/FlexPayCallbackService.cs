@@ -25,6 +25,7 @@ namespace CongoTravel.Services
         private readonly IReservationWithPaiementReadService _reservationWithPaiementReadService;
         private readonly IInfoPaiementResolutionService _infoPaiementResolution;
         private readonly IReversementAutomatiqueService _reversementAutomatiqueService;
+        private readonly IAllerRetourReservationService _allerRetourReservationService;
         private readonly FlexPayOptions _flexPayOptions;
         private readonly ILogger<FlexPayCallbackService> _logger;
 
@@ -38,6 +39,7 @@ namespace CongoTravel.Services
             IOptions<FlexPayOptions> flexPayOptions,
             IInfoPaiementResolutionService infoPaiementResolution,
             IReversementAutomatiqueService reversementAutomatiqueService,
+            IAllerRetourReservationService allerRetourReservationService,
             ILogger<FlexPayCallbackService> logger)
         {
             _context = context;
@@ -49,6 +51,7 @@ namespace CongoTravel.Services
             _flexPayOptions = flexPayOptions.Value;
             _infoPaiementResolution = infoPaiementResolution;
             _reversementAutomatiqueService = reversementAutomatiqueService;
+            _allerRetourReservationService = allerRetourReservationService;
             _logger = logger;
         }
 
@@ -298,6 +301,68 @@ namespace CongoTravel.Services
             return new FlexPayVerifierResultDto { StatusOnly = status };
         }
 
+        private async Task<FlexPayCallbackProcessResultDto> FinalizeAllerRetourSuccessAsync(
+            CommandeReservationEnAttente commande,
+            Paiement? paiement,
+            TransactionFlexPay? transaction,
+            FlexPayCallbackDto callback,
+            CancellationToken cancellationToken)
+        {
+            if (paiement == null)
+                throw new InvalidOperationException("Paiement en attente introuvable.");
+
+            var strategy = _context.Database.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync(async () =>
+            {
+                var useTx = _context.Database.IsRelational();
+                await using var tx = useTx
+                    ? await _context.Database.BeginTransactionAsync(cancellationToken)
+                    : null;
+                try
+                {
+                    var (idReservationAller, idPaiement, _) =
+                        await _allerRetourReservationService.FinalizeFlexPaySuccessAsync(
+                            commande,
+                            paiement,
+                            transaction,
+                            callback,
+                            cancellationToken);
+
+                    if (tx != null)
+                        await tx.CommitAsync(cancellationToken);
+
+                    var reservationAller = await _context.Reservations
+                        .FirstAsync(r => r.IdReservation == idReservationAller, cancellationToken);
+
+                    await TryNotifyPaymentConfirmedAsync(
+                        commande,
+                        paiement,
+                        idReservationAller,
+                        callback.OrderNumber ?? commande.OrderNumberFlexPay,
+                        cancellationToken);
+
+                    await _reversementAutomatiqueService.TryDeclencherApresPaiementElectroniqueAsync(
+                        paiement,
+                        reservationAller,
+                        cancellationToken);
+
+                    return new FlexPayCallbackProcessResultDto
+                    {
+                        Success = true,
+                        Message = "Réservation aller-retour créée après confirmation FlexPay.",
+                        IdReservation = idReservationAller,
+                        IdPaiement = idPaiement
+                    };
+                }
+                catch
+                {
+                    if (tx != null)
+                        await tx.RollbackAsync(cancellationToken);
+                    throw;
+                }
+            });
+        }
+
         private async Task<FlexPayCallbackProcessResultDto> FinalizeSuccessAsync(
             CommandeReservationEnAttente commande,
             Paiement? paiement,
@@ -305,6 +370,11 @@ namespace CongoTravel.Services
             FlexPayCallbackDto callback,
             CancellationToken cancellationToken)
         {
+            if (string.Equals(commande.TypeCommande, TypeCommandeReservation.AllerRetour, StringComparison.OrdinalIgnoreCase))
+            {
+                return await FinalizeAllerRetourSuccessAsync(commande, paiement, transaction, callback, cancellationToken);
+            }
+
             var dto = JsonSerializer.Deserialize<InitiateFlexPayReservationDto>(commande.PayloadMetierJson)
                       ?? throw new InvalidOperationException("Payload métier invalide.");
 

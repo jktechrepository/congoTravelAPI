@@ -14,6 +14,7 @@ namespace CongoTravel.Models.DTOs.Sync
         public bool ActiviteEvenement { get; set; }
         public bool ActiviteSiteTouristique { get; set; }
         public bool ActiviteRestaurant { get; set; }
+        public bool ActiviteHotel { get; set; }
         public int HeuresLimiteReaffectation { get; set; }
         public decimal PenaliteReaffectationPourcentage { get; set; }
         public int DureeHoldFlexPayMinutes { get; set; }

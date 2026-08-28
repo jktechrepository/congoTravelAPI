@@ -1,6 +1,7 @@
 # MODULE 04 — Paiement FlexPay et multi-devise
 
-> Retour : [Document maître](DOCUMENTATION_COMPLETE_INTEGRATION_FRONTEND.md)
+> Retour : [Document maître](DOCUMENTATION_COMPLETE_INTEGRATION_FRONTEND.md)  
+> **Aller-retour FlexPay** : voir [MODULE_12_TRANSPORT_ALLER_RETOUR.md](MODULE_12_TRANSPORT_ALLER_RETOUR.md) (`reservation_aller_retour_with_paiement_electronique`).
 
 ---
 

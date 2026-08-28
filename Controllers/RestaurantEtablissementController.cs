@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using CongoTravel.Attributes;
 using CongoTravel.Helpers.Restaurant;
@@ -229,6 +230,7 @@ namespace CongoTravel.Controllers
         [ProducesResponseType(404)]
         public async Task<ActionResult<IEnumerable<RestaurantPhotoDto>>> GetPhotos(
             int id,
+            [FromQuery] bool includePhotoBase64 = false,
             CancellationToken cancellationToken = default)
         {
             try
@@ -237,8 +239,12 @@ namespace CongoTravel.Controllers
                 if (etablissement == null)
                     return NotFound(new { message = $"Établissement {id} introuvable." });
 
-                var photos = await _photoService.GetByRestaurantIdAsync(id, etablissement.IdSociete, cancellationToken);
-                return Ok(photos.Select(RestaurantEtablissementMapper.ToPhotoDto).ToList());
+                var photos = await _photoService.GetByRestaurantIdAsync(
+                    id,
+                    etablissement.IdSociete,
+                    cancellationToken,
+                    includePhotoBase64);
+                return Ok(photos.Select(p => RestaurantEtablissementMapper.ToPhotoDto(p, includePhotoBase64)).ToList());
             }
             catch (KeyNotFoundException ex)
             {
@@ -255,8 +261,56 @@ namespace CongoTravel.Controllers
             }
         }
 
-        /// <summary>Ajoute une photo à un établissement (max 3).</summary>
+        /// <summary>Stream binaire d'une photo d'établissement.</summary>
+        [HttpGet("{id:int}/photos/{photoId:int}/content")]
+        [AllowAnonymous]
+        [Produces("image/jpeg", "image/png")]
+        [ProducesResponseType(200)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> GetPhotoContent(
+            int id,
+            int photoId,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var etablissement = await ResolveEtablissementForPublicReadAsync(id, cancellationToken);
+                if (etablissement == null)
+                    return NotFound(new { message = $"Établissement {id} introuvable." });
+
+                var payload = await _photoService.GetContentAsync(
+                    id,
+                    etablissement.IdSociete,
+                    photoId,
+                    cancellationToken);
+                if (payload == null)
+                    return NotFound(new { message = $"Photo {photoId} introuvable pour l'établissement {id}." });
+
+                Response.Headers.CacheControl = "private, max-age=300";
+                return File(payload.Content, payload.ContentType);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+            catch (FileNotFoundException)
+            {
+                return NotFound(new { message = $"Contenu photo {photoId} introuvable." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur GET content photo {PhotoId} établissement {Id}", photoId, id);
+                return StatusCode(500, new { message = "Une erreur interne est survenue." });
+            }
+        }
+
+        /// <summary>Ajoute une photo à un établissement (max 3) — JSON photoBase64.</summary>
         [HttpPost("{id:int}/photos")]
+        [Consumes("application/json")]
         [Permission("Restaurant.Etablissement.Write")]
         [ProducesResponseType(typeof(RestaurantPhotoDto), 201)]
         [ProducesResponseType(400)]
@@ -294,6 +348,105 @@ namespace CongoTravel.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Erreur POST photo établissement restaurant {Id}", id);
+                return StatusCode(500, new { message = "Une erreur interne est survenue." });
+            }
+        }
+
+        /// <summary>Ajoute une photo à un établissement (max 3) — multipart file.</summary>
+        [HttpPost("{id:int}/photos")]
+        [Consumes("multipart/form-data")]
+        [Permission("Restaurant.Etablissement.Write")]
+        [ProducesResponseType(typeof(RestaurantPhotoDto), 201)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
+        public async Task<ActionResult<RestaurantPhotoDto>> AddPhotoMultipart(
+            int id,
+            [FromForm] IFormFile file,
+            [FromForm] int? ordre = null,
+            [FromForm] string? fileName = null,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var idSociete = RestaurantTenancyGuard.ResolveEffectiveSocieteId(_currentUserService);
+                var photo = await _photoService.AddPhotoFromFileAsync(
+                    id,
+                    idSociete,
+                    file,
+                    ordre,
+                    fileName,
+                    cancellationToken);
+                return CreatedAtAction(
+                    nameof(GetPhotos),
+                    new { id },
+                    RestaurantEtablissementMapper.ToPhotoDto(photo));
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur POST photo multipart établissement restaurant {Id}", id);
+                return StatusCode(500, new { message = "Une erreur interne est survenue." });
+            }
+        }
+
+        /// <summary>Remplace toute la galerie photos (0–3 fichiers multipart). Liste vide = vider.</summary>
+        [HttpPut("{id:int}/photos")]
+        [Consumes("multipart/form-data")]
+        [Permission("Restaurant.Etablissement.Write")]
+        [ProducesResponseType(typeof(IEnumerable<RestaurantPhotoDto>), 200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
+        public async Task<ActionResult<IEnumerable<RestaurantPhotoDto>>> ReplacePhotos(
+            int id,
+            [FromForm] List<IFormFile>? files,
+            [FromForm] List<int>? ordres = null,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var idSociete = RestaurantTenancyGuard.ResolveEffectiveSocieteId(_currentUserService);
+                var photos = await _photoService.ReplaceAllFromFilesAsync(
+                    id,
+                    idSociete,
+                    files ?? new List<IFormFile>(),
+                    ordres,
+                    cancellationToken);
+                return Ok(photos.Select(p => RestaurantEtablissementMapper.ToPhotoDto(p)).ToList());
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur PUT photos multipart établissement restaurant {Id}", id);
                 return StatusCode(500, new { message = "Une erreur interne est survenue." });
             }
         }

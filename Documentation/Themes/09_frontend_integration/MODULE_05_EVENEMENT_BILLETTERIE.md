@@ -5,6 +5,8 @@
 > Préfixe routes : **`/api/events/*`**
 >
 > Module **autonome** du transport : ne pas réutiliser `/api/FlexPay/*` ni les DTOs `Reservation` / `Billet` transport.
+>
+> **Photos** : préférer [`MODULE_13_PHOTOS_STOCKAGE_S3.md`](MODULE_13_PHOTOS_STOCKAGE_S3.md) + [`INTEGRATION_PHOTOS_S3_VUE_FLUTTER.md`](INTEGRATION_PHOTOS_S3_VUE_FLUTTER.md) (`photoUrl` + multipart). `photoBase64` / `photos[]` embarqués = **legacy déprécié**.
 
 Ce guide permet de brancher :
 
@@ -70,7 +72,7 @@ Guards : [MODULE_01_AUTH_ET_PERMISSIONS.md](MODULE_01_AUTH_ET_PERMISSIONS.md).
 | `Evenement.Hold.Create` | **Obligatoire** avec Confirm pour les 2 POST achat |
 | `Evenement.Reservation.Confirm` | Achat + verify FlexPay + cancel |
 
-**Rôle Client (JWT app voyageur)** : doit avoir **`Evenement.Hold.Create`** et **`Evenement.Reservation.Confirm`** pour `POST .../with-paiement-electronique` (sinon **403** corps vide). `Evenement.Session.Read` pour les listes staff ; le catalogue public est souvent `AllowAnonymous`.
+**Rôle Client (JWT app voyageur)** : doit avoir **`Evenement.Hold.Create`** et **`Evenement.Reservation.Confirm`** pour `POST .../with-paiement-electronique` et `GET .../flexpay/verifier/{orderNumber}` (sinon **403** corps vide — vérifier `RolePermissions` + **relogin** pour rafraîchir le JWT). Script DEV : [`Scripts/assign_evenement_reservation_confirm_client.sql`](../../../Scripts/assign_evenement_reservation_confirm_client.sql).
 
 | `Evenement.Ticket.Check` / `Use` | Contrôle entrée |
 | `Evenement.Dashboard.Read` | Dashboard |
@@ -87,6 +89,13 @@ Matrice : [MATRICE_ROLES_PERMISSIONS.md](MATRICE_ROLES_PERMISSIONS.md).
 - **Staff** : sessions de sa société ; autre `idSociete` → 403.
 - **Fenêtre de vente** : hold / CASH / FlexPay autorisés tant que `utcNow < endAtUtc` (ou `startAtUtc + 24h` sans fin) et statut `Published`. Rejet « Vente fermée » après la fin. Même garde à la confirmation (callback FlexPay).
 - **Achat Client** (`POST .../with-paiement` / `with-paiement-electronique`) : la réservation est rattachée à la **société organisatrice de la session** (ex. MEDICO), **pas** à `utilisateur.idSociete` du JWT. Un client inscrit sur la société 1 peut donc payer une session Published de la société 12. Le staff guichet reste limité à sa société JWT.
+- **Mes réservations (Client)** :
+  - Cross-organisateur (recommandé) : `GET /api/events/reservations/client/{idClient}` — **sans** `idSociete` ; `idClient` = `JWT.ClientId` (sinon 403).
+  - Par organisateur : `GET /api/events/reservations?idSociete={organisateur}` — filtre forcé sur le JWT.
+  - Détail / tickets : `GET .../reservations/{id}?idSociete={organisateur}` et `.../tickets?idSociete=...`.
+  - Tickets par réservation (Client cross-org) :
+    - **Recommandé** : `GET /api/events/reservations/{id}/tickets?idSociete={organisateur}`
+    - Alternatif : `GET /api/events/tickets/societe/{idSociete}/reservation/{id}` (`idSociete` = organisateur) ou `GET /api/events/tickets/reservation/{id}?idSociete={organisateur}` — même règle tenancy + ownership (Client ne lit que ses billets ; staff mismatch → 403).
 - Champs utiles UI carte :
 
 | Champ | Usage UI |
@@ -94,7 +103,9 @@ Matrice : [MATRICE_ROLES_PERMISSIONS.md](MATRICE_ROLES_PERMISSIONS.md).
 | `libelle`, `startAtUtc` | Titre + date |
 | `nomSociete` | Sous-titre organisateur |
 | `idSite`, `nomSite` | Site opérationnel ; **préremplir** `paiement.idSite` à l’achat |
-| `photoCouverture.photoBase64` | Image (`data:image/...`) ou placeholder si `null` |
+| `photoCouverture.photoUrl` | URL relative `.../photos/{id}/content` — **préféré** ([MODULE_13](MODULE_13_PHOTOS_STOCKAGE_S3.md)) |
+| `photoCouverture.photoBase64` | Legacy ; vide sauf `includePhotoBase64=true` |
+
 | `prixMin`, `prixMax`, `codeDevise` | « À partir de X CDF » / fourchette |
 | `inventoryMode`, `idEvenementSession` | Navigation détail |
 
@@ -107,8 +118,19 @@ Même accès Published pour public/Client. Champs supplémentaires typiques :
 - résumé : `placesTotales`, `placesRestantes`, `isSoldOut` (si exposés)
 - `prixMin` / `prixMax` / `nomSociete` / `photoCouverture`
 - `idSite` / `nomSite` (défaut FlexPay / guichet)
+- `numeroMobileMoneyOrganisateur` — wallet MM organisateur pour PayOut auto (optionnel ; fallback site)
+- `autoReversementOrganisateur` — gate reversement session (AND config société, défaut `true`)
+- `venteEnLigneActive` — gate vente en ligne (AND `reservationIsActif`, défaut `true`)
+
+`telephoneOrganisateur` = contact affichage uniquement, **pas** le wallet PayOut.
 
 Puis `GET /events/sessions/{id}/availability` pour le stock live avant achat.
+
+Champs utiles sur la réponse **availability** (en plus du stock) :
+
+| Champ | Usage UI |
+|-------|----------|
+| `idSociete`, `nomSociete` | Organisateur — préremplir `GET /api/Devise/taux-change?idSociete=...` avant FlexPay cross-devise sans rappeler le détail session |
 
 ### 4.3 Body achat commun
 
@@ -197,6 +219,9 @@ Réponse clé :
 | `flexPayAccepted` | si `false` → afficher `message` |
 
 Puis : `GET /api/events/flexpay/verifier/{orderNumber}` toutes les ~3 s jusqu’à succès / échec / expiration.  
+**Client voyageur (achat cross-société)** : passer `?idSociete=` = **société organisatrice** de la session (celle du POST achat), même si le JWT Client a une autre `idSociete`. Sans ce query, l’API utilise la société du token (souvent incorrecte pour un catalogue global).  
+**Staff** : ne pas forcer un `idSociete` différent du JWT (403).  
+**Après attribution de permissions en base** : se **reconnecter** (nouveau JWT).  
 **Ne jamais** appeler `POST /api/events/flexpay/callback` depuis le front.
 
 **SignalR (même events que le transport)** — groupe `user_{idUtilisateur}` :
@@ -268,12 +293,18 @@ Sur `paymentPending: false` sans confirmation (refus, cancel, hold expiré) → 
 | Méthode | Route |
 |---------|-------|
 | POST | `/with-paiement`, `/with-paiement-electronique` |
-| GET | `/`, `/{id}`, `/{id}/tickets`, `/reference/{ref}`, … |
+| GET | `/client/{idClient}` (toutes sociétés ; Client = son JWT.ClientId), `/?idSociete=`, `/{id}?idSociete=`, `/{id}/tickets?idSociete=`, `/reference/{ref}`, … |
 | POST | `/{id}/cancel` |
 
 ### Tickets — `api/events/tickets`
 
 `GET /{ticketCode}/check`, `POST /{ticketCode}/use`, listes lecture.
+
+| Méthode | Route | Note Client |
+|---------|-------|-------------|
+| GET | `/api/events/reservations/{id}/tickets?idSociete=` | **Recommandé** |
+| GET | `/api/events/tickets/societe/{idSociete}/reservation/{id}` | Path `idSociete` = organisateur ; ownership JWT |
+| GET | `/api/events/tickets/reservation/{id}?idSociete=` | Query organisateur si JWT ≠ organisateur |
 
 ### FlexPay / Dashboard
 
@@ -327,6 +358,9 @@ const { data: session } = await api.post('/events/sessions', {
   idSite: siteId, // obligatoire — site de la société
   startAtUtc: '2026-08-01T19:00:00Z',
   inventoryMode: 'ClassQuota',
+  numeroMobileMoneyOrganisateur: '243812345678', // optionnel — reversement auto vers organisateur
+  autoReversementOrganisateur: true,
+  venteEnLigneActive: true,
   classQuotas: [/* selon contrat CreateSession */],
 });
 await api.put(`/events/sessions/${session.idEvenementSession}/publish`);

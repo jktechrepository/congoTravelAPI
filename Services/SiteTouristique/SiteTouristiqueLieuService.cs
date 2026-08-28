@@ -5,6 +5,7 @@ using CongoTravel.Helpers.SiteTouristique;
 using CongoTravel.Models.DTOs.SiteTouristique;
 using CongoTravel.Models.SiteTouristique;
 using CongoTravel.Models.SiteTouristique.Enums;
+using CongoTravel.Services.PhotoStorage;
 
 namespace CongoTravel.Services.SiteTouristique
 {
@@ -12,15 +13,18 @@ namespace CongoTravel.Services.SiteTouristique
     {
         private readonly CongoTravelDbContext _context;
         private readonly ISiteTouristiqueLieuPhotoService _photoService;
+        private readonly IPhotoBinaryHydrator _photoHydrator;
         private readonly ILogger<SiteTouristiqueLieuService> _logger;
 
         public SiteTouristiqueLieuService(
             CongoTravelDbContext context,
             ISiteTouristiqueLieuPhotoService photoService,
+            IPhotoBinaryHydrator photoHydrator,
             ILogger<SiteTouristiqueLieuService> logger)
         {
             _context = context;
             _photoService = photoService;
+            _photoHydrator = photoHydrator;
             _logger = logger;
         }
 
@@ -89,19 +93,25 @@ namespace CongoTravel.Services.SiteTouristique
         public async Task<SiteTouristiqueLieuResponseDto?> GetByIdAsync(
             int idSiteTouristique,
             int? idSociete = null,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default,
+            bool includePhotoBase64 = false)
         {
             var query = LieuDetailQuery().Where(l => l.IdSiteTouristique == idSiteTouristique);
             if (idSociete.HasValue && idSociete.Value > 0)
                 query = query.Where(l => l.IdSociete == idSociete.Value);
 
             var lieu = await query.FirstOrDefaultAsync(cancellationToken);
-            return lieu == null ? null : SiteTouristiqueLieuMapper.ToResponseDto(lieu);
+            if (lieu == null)
+                return null;
+            if (includePhotoBase64)
+                await _photoHydrator.HydrateSiteTouristiquePhotosAsync(lieu.Photos, cancellationToken);
+            return SiteTouristiqueLieuMapper.ToResponseDto(lieu, includePhotoBase64);
         }
 
         public async Task<SiteTouristiqueLieuResponseDto?> GetPublishedByIdAsync(
             int idSiteTouristique,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default,
+            bool includePhotoBase64 = false)
         {
             var lieu = await LieuDetailQuery()
                 .FirstOrDefaultAsync(
@@ -110,13 +120,18 @@ namespace CongoTravel.Services.SiteTouristique
                          && l.Societe != null
                          && l.Societe.Statut == true,
                     cancellationToken);
-            return lieu == null ? null : SiteTouristiqueLieuMapper.ToResponseDto(lieu);
+            if (lieu == null)
+                return null;
+            if (includePhotoBase64)
+                await _photoHydrator.HydrateSiteTouristiquePhotosAsync(lieu.Photos, cancellationToken);
+            return SiteTouristiqueLieuMapper.ToResponseDto(lieu, includePhotoBase64);
         }
 
         public async Task<SiteTouristiqueLieuResponseDto?> GetByCodeAsync(
             string codeLieu,
             int idSociete,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default,
+            bool includePhotoBase64 = false)
         {
             if (string.IsNullOrWhiteSpace(codeLieu))
                 return null;
@@ -124,13 +139,18 @@ namespace CongoTravel.Services.SiteTouristique
             var normalized = codeLieu.Trim();
             var lieu = await LieuDetailQuery()
                 .FirstOrDefaultAsync(l => l.IdSociete == idSociete && l.CodeLieu == normalized, cancellationToken);
-            return lieu == null ? null : SiteTouristiqueLieuMapper.ToResponseDto(lieu);
+            if (lieu == null)
+                return null;
+            if (includePhotoBase64)
+                await _photoHydrator.HydrateSiteTouristiquePhotosAsync(lieu.Photos, cancellationToken);
+            return SiteTouristiqueLieuMapper.ToResponseDto(lieu, includePhotoBase64);
         }
 
         public async Task<SiteTouristiqueLieuResponseDto?> GetPublishedByCodeAsync(
             string codeLieu,
             int? idSociete = null,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default,
+            bool includePhotoBase64 = false)
         {
             if (string.IsNullOrWhiteSpace(codeLieu))
                 return null;
@@ -146,7 +166,11 @@ namespace CongoTravel.Services.SiteTouristique
             if (idSociete.HasValue && idSociete.Value > 0)
             {
                 var lieu = await query.FirstOrDefaultAsync(l => l.IdSociete == idSociete.Value, cancellationToken);
-                return lieu == null ? null : SiteTouristiqueLieuMapper.ToResponseDto(lieu);
+                if (lieu == null)
+                    return null;
+                if (includePhotoBase64)
+                    await _photoHydrator.HydrateSiteTouristiquePhotosAsync(lieu.Photos, cancellationToken);
+                return SiteTouristiqueLieuMapper.ToResponseDto(lieu, includePhotoBase64);
             }
 
             var matches = await query.Take(2).ToListAsync(cancellationToken);
@@ -158,25 +182,33 @@ namespace CongoTravel.Services.SiteTouristique
                     $"Plusieurs lieux Published portent le code '{normalized}'. Précisez ?idSociete=.");
             }
 
-            return SiteTouristiqueLieuMapper.ToResponseDto(matches[0]);
+            if (includePhotoBase64)
+                await _photoHydrator.HydrateSiteTouristiquePhotosAsync(matches[0].Photos, cancellationToken);
+            return SiteTouristiqueLieuMapper.ToResponseDto(matches[0], includePhotoBase64);
         }
 
         public async Task<IReadOnlyList<SiteTouristiqueLieuListItemDto>> ListAsync(
             int idSociete,
             SiteTouristiqueLieuListFilter? filter = null,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default,
+            bool includePhotoBase64 = false)
         {
             var query = LieuListQuery().Where(l => l.IdSociete == idSociete);
             if (filter?.Status.HasValue == true)
                 query = query.Where(l => l.Status == filter.Status.Value);
 
             var lieux = await query.OrderBy(l => l.Nom).ToListAsync(cancellationToken);
-            return lieux.Select(SiteTouristiqueLieuMapper.ToListItemDto).ToList();
+            if (includePhotoBase64)
+                await _photoHydrator.HydrateSiteTouristiqueLieuxAsync(lieux, cancellationToken);
+            return lieux
+                .Select(l => SiteTouristiqueLieuMapper.ToListItemDto(l, includePhotoBase64))
+                .ToList();
         }
 
         public async Task<IReadOnlyList<SiteTouristiqueLieuListItemDto>> ListPublishedGlobalAsync(
             SiteTouristiqueLieuListFilter? filter = null,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default,
+            bool includePhotoBase64 = false)
         {
             var query = LieuListQuery().Where(l =>
                 l.Status == SiteTouristiqueStatus.Published
@@ -186,14 +218,23 @@ namespace CongoTravel.Services.SiteTouristique
                 query = query.Where(l => l.IdSociete == filter.IdSociete.Value);
 
             var lieux = await query.OrderBy(l => l.Nom).ToListAsync(cancellationToken);
-            return lieux.Select(SiteTouristiqueLieuMapper.ToListItemDto).ToList();
+            if (includePhotoBase64)
+                await _photoHydrator.HydrateSiteTouristiqueLieuxAsync(lieux, cancellationToken);
+            return lieux
+                .Select(l => SiteTouristiqueLieuMapper.ToListItemDto(l, includePhotoBase64))
+                .ToList();
         }
 
         public Task<IReadOnlyList<SiteTouristiqueLieuListItemDto>> ListByStatusAsync(
             SiteTouristiqueStatus status,
             int idSociete,
-            CancellationToken cancellationToken = default) =>
-            ListAsync(idSociete, new SiteTouristiqueLieuListFilter { Status = status }, cancellationToken);
+            CancellationToken cancellationToken = default,
+            bool includePhotoBase64 = false) =>
+            ListAsync(
+                idSociete,
+                new SiteTouristiqueLieuListFilter { Status = status },
+                cancellationToken,
+                includePhotoBase64);
 
         public async Task<SiteTouristiqueLieuResponseDto?> UpdateAsync(
             int idSiteTouristique,

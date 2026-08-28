@@ -6,6 +6,7 @@ namespace CongoTravel.Models.Enums
         Transport,
         Evenement,
         SiteTouristique,
-        Restaurant
+        Restaurant,
+        Hotel
     }
 }

@@ -10,6 +10,8 @@
 > Analyse backend : [ANALYSE_V1_SITE_TOURISTIQUE.md](../11_analyses_plans/ANALYSE_V1_SITE_TOURISTIQUE.md)  
 > Pattern SignalR (adapter les routes) : [INTEGRATION_SIGNALR_EVENEMENT_FLEXPAY.md](INTEGRATION_SIGNALR_EVENEMENT_FLEXPAY.md)  
 > Déploiement SQL : [`Scripts/README_DEPLOIEMENT_SITE_TOURISTIQUE_V1.md`](../../../Scripts/README_DEPLOIEMENT_SITE_TOURISTIQUE_V1.md)
+>
+> **Photos** : préférer [`MODULE_13_PHOTOS_STOCKAGE_S3.md`](MODULE_13_PHOTOS_STOCKAGE_S3.md) + [`INTEGRATION_PHOTOS_S3_VUE_FLUTTER.md`](INTEGRATION_PHOTOS_S3_VUE_FLUTTER.md) (`photoUrl` + multipart). `photos[]` base64 à la création = **legacy déprécié**.
 
 Ce guide permet de brancher :
 
@@ -142,14 +144,16 @@ Puis : `PUT /api/sites-touristiques/lieux/{id}/publish`.
 | Localisation / téléphone | Optionnels ; chaînes vides → `null` |
 | `heureOuverture` / `heureFermeture` | `TimeOnly` JSON `"HH:mm:ss"` ; si les deux sont renseignées, `heureFermeture` doit être **strictement** après `heureOuverture` |
 | `jourOuverture` | Texte libre (ex. `Lun-Dim`), max 100 |
-| Photos | Max **3** ; data-URL en réponse |
+| Photos | Max **3** ; afficher `photoUrl` (pas data-URL par défaut) — [MODULE_13](MODULE_13_PHOTOS_STOCKAGE_S3.md) |
 
-**CRUD photos** (après création) :
+**CRUD photos** (après création ; préférer multipart, voir [guide S3](INTEGRATION_PHOTOS_S3_VUE_FLUTTER.md)) :
 
 | Méthode | Route |
 |---------|-------|
 | GET | `/api/sites-touristiques/lieux/{id}/photos` |
-| POST | `/api/sites-touristiques/lieux/{id}/photos` |
+| GET | `/api/sites-touristiques/lieux/{id}/photos/{photoId}/content` |
+| POST | `/api/sites-touristiques/lieux/{id}/photos` (JSON legacy **ou** multipart) |
+| PUT | `/api/sites-touristiques/lieux/{id}/photos` (replace-all multipart) |
 | PUT | `/api/sites-touristiques/lieux/{id}/photos/{photoId}/ordre` |
 | DELETE | `/api/sites-touristiques/lieux/{id}/photos/{photoId}` |
 
@@ -251,6 +255,8 @@ Puis publish.
 - `GET /api/sites-touristiques/journees/{id}/availability` — stock live avant achat.
 
 Champs UI utiles : `nom`, `dateVisite`, `inventoryMode`, `prixMin`/`prixMax` si exposés, `idSite` guichet pour préremplir le paiement.
+
+Sur la réponse **availability** : `idSociete`, `nomSociete` — préremplir `GET /api/Devise/taux-change?idSociete=...` avant FlexPay cross-devise sans rappeler le détail journée.
 
 **Achat Client** : réservation rattachée à la **société du lieu**, pas à `utilisateur.idSociete` du JWT client (même logique qu’Evenement).
 

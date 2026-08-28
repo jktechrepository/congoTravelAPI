@@ -321,8 +321,9 @@ namespace CongoTravel.Services.Evenement
                             trackedPayment.IdEvenementPayment,
                             cancellationToken);
 
-                        await _reversementAutomatiqueService.TryDeclencherAsync(
-                            ReversementAutomatiqueContext.FromEvenement(trackedPayment, trackedReservation),
+                        await TryDeclencherReversementEvenementAsync(
+                            trackedPayment,
+                            trackedReservation,
                             cancellationToken);
 
                         return new EvenementFlexPayCallbackProcessResultDto
@@ -585,8 +586,9 @@ namespace CongoTravel.Services.Evenement
                 payment.IdEvenementPayment,
                 cancellationToken);
 
-            await _reversementAutomatiqueService.TryDeclencherAsync(
-                ReversementAutomatiqueContext.FromEvenement(payment, reservation),
+            await TryDeclencherReversementEvenementAsync(
+                payment,
+                reservation,
                 cancellationToken);
 
             return new EvenementFlexPayCallbackProcessResultDto
@@ -947,6 +949,22 @@ namespace CongoTravel.Services.Evenement
                     "SignalR FlexPayPaymentConfirmed (événement) non envoyé pour order {OrderNumber}",
                     orderNumber);
             }
+        }
+
+        private async Task TryDeclencherReversementEvenementAsync(
+            EvenementPayment payment,
+            EvenementReservation reservation,
+            CancellationToken cancellationToken)
+        {
+            var session = await _context.EvenementSessions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(
+                    s => s.IdEvenementSession == reservation.IdEvenementSession,
+                    cancellationToken);
+
+            await _reversementAutomatiqueService.TryDeclencherAsync(
+                ReversementAutomatiqueContext.FromEvenement(payment, reservation, session),
+                cancellationToken);
         }
 
         private async Task TryNotifyPaymentFailedAsync(

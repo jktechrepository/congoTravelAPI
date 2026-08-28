@@ -217,6 +217,7 @@ namespace CongoTravel.Tests
                 NullLogger<ReservationController>.Instance,
                 Mock.Of<ICashReservationWithPaiementService>(),
                 Mock.Of<IFlexPayReservationService>(),
+                Mock.Of<IAllerRetourReservationService>(),
                 Mock.Of<IReservationWithPaiementReadService>(),
                 Mock.Of<IBilletPricingEnrichmentService>(),
                 ctx,

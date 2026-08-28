@@ -142,6 +142,9 @@ namespace CongoTravel.Models.DTOs.Reservation
         /// </summary>
         public int? IdReservation { get; set; }
 
+        /// <summary>Agrégat aller-retour (null = paiement single-leg).</summary>
+        public int? IdReservationAllerRetour { get; set; }
+
         /// <summary>
         /// ID de la société
         /// </summary>

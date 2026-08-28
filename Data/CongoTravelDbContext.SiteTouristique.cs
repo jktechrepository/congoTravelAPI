@@ -68,7 +68,8 @@ namespace CongoTravel.Data
             modelBuilder.Entity<SiteTouristiqueLieuPhoto>(entity =>
             {
                 entity.ToTable("SiteTouristiqueLieuPhotos");
-                entity.Property(e => e.PhotoData).IsRequired().HasColumnType("mediumblob");
+                entity.Property(e => e.PhotoData).IsRequired(false).HasColumnType("mediumblob");
+                entity.Property(e => e.StorageKey).HasMaxLength(500);
                 entity.Property(e => e.Ordre).IsRequired();
                 entity.Property(e => e.Statut).IsRequired().HasDefaultValue(true);
                 entity.Property(e => e.OriginalFileName).HasMaxLength(100);

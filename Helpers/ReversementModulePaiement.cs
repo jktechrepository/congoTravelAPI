@@ -9,5 +9,6 @@ namespace CongoTravel.Helpers
         public const string Evenement = nameof(SocieteActiviteType.Evenement);
         public const string Restaurant = nameof(SocieteActiviteType.Restaurant);
         public const string SiteTouristique = nameof(SocieteActiviteType.SiteTouristique);
+        public const string Hotel = nameof(SocieteActiviteType.Hotel);
     }
 }

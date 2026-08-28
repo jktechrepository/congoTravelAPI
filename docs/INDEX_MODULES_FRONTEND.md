@@ -19,6 +19,11 @@
 | 07 | [MODULE_07_DASHBOARDS_ADMIN.md](../Documentation/Themes/09_frontend_integration/MODULE_07_DASHBOARDS_ADMIN.md) | Dashboards Vue.js |
 | 08 | [MODULE_08_SYNC_OFFLINE_AGENT.md](../Documentation/Themes/09_frontend_integration/MODULE_08_SYNC_OFFLINE_AGENT.md) | Sync offline Flutter agent |
 | 09 | [MODULE_09_REFERENTIELS_ET_COMMUNICATION.md](../Documentation/Themes/09_frontend_integration/MODULE_09_REFERENTIELS_ET_COMMUNICATION.md) | Société, agent, campagnes |
+| 10 | [MODULE_10_SITE_TOURISTIQUE.md](../Documentation/Themes/09_frontend_integration/MODULE_10_SITE_TOURISTIQUE.md) | Site touristique, journées, CASH/FlexPay, tickets |
+| 11 | [MODULE_11_RESTAURANT.md](../Documentation/Themes/09_frontend_integration/MODULE_11_RESTAURANT.md) | Restaurant, créneaux, acompte, tickets |
+| 12 | [MODULE_12_TRANSPORT_ALLER_RETOUR.md](../Documentation/Themes/09_frontend_integration/MODULE_12_TRANSPORT_ALLER_RETOUR.md) | Aller-retour transport (cash / FlexPay, Vue + Flutter) |
+| 13 | [MODULE_13_PHOTOS_STOCKAGE_S3.md](../Documentation/Themes/09_frontend_integration/MODULE_13_PHOTOS_STOCKAGE_S3.md) | Photos S3 — `photoUrl`, multipart (4 domaines) |
+| 14 | [MODULE_14_HOTEL.md](../Documentation/Themes/09_frontend_integration/MODULE_14_HOTEL.md) | Hôtel multi-nuit, allotments, acompte CASH/FlexPay, mes réservations |
 
 ---
 
@@ -34,6 +39,14 @@
 - [`Frontend_Paiement.md`](./Frontend_Paiement.md)
 - [`Frontend_Facturation.md`](./Frontend_Facturation.md)
 - [`INTEGRATION_FLUTTER_FLEXPAY.md`](../Documentation/Themes/09_frontend_integration/INTEGRATION_FLUTTER_FLEXPAY.md)
+
+### Réservation aller-retour (transport)
+- [`MODULE_12_TRANSPORT_ALLER_RETOUR.md`](../Documentation/Themes/09_frontend_integration/MODULE_12_TRANSPORT_ALLER_RETOUR.md) — contrats API
+- [`INTEGRATION_RESERVATION_ALLER_RETOUR_VUE_FLUTTER.md`](../Documentation/Themes/09_frontend_integration/INTEGRATION_RESERVATION_ALLER_RETOUR_VUE_FLUTTER.md) — guide Vue guichet + Flutter FlexPay
+
+### Photos (S3)
+- [`MODULE_13_PHOTOS_STOCKAGE_S3.md`](../Documentation/Themes/09_frontend_integration/MODULE_13_PHOTOS_STOCKAGE_S3.md) — contrats 4 domaines
+- [`INTEGRATION_PHOTOS_S3_VUE_FLUTTER.md`](../Documentation/Themes/09_frontend_integration/INTEGRATION_PHOTOS_S3_VUE_FLUTTER.md) — affichage + upload Vue / Flutter
 
 ### Client
 - [`Frontend_Client.md`](./Frontend_Client.md)

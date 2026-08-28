@@ -52,6 +52,16 @@ namespace CongoTravel.Models.Evenement
         [MaxLength(50)]
         public string? TelephoneOrganisateur { get; set; }
 
+        /// <summary>Mobile Money bénéficiaire PayOut (override Site.NumeroMobileMoney si renseigné et valide).</summary>
+        [MaxLength(30)]
+        public string? NumeroMobileMoneyOrganisateur { get; set; }
+
+        /// <summary>Gate vente en ligne session (AND avec ConfigSociete.ReservationIsActif).</summary>
+        public bool VenteEnLigneActive { get; set; } = true;
+
+        /// <summary>Autorise reversement auto vers organisateur (AND avec ConfigSociete.AutoReversementPaiementElectronique).</summary>
+        public bool AutoReversementOrganisateur { get; set; } = true;
+
         [MaxLength(255)]
         public string? MailOrganisateur { get; set; }
 

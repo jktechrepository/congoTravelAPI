@@ -15,6 +15,14 @@ namespace CongoTravel.Services.Evenement
             EvenementReservationListFilter? filter = null,
             CancellationToken cancellationToken = default);
 
+        /// <summary>
+        /// Réservations d'un client sur toutes les sociétés organisatrices (pas de filtre IdSociete).
+        /// </summary>
+        Task<IReadOnlyList<EvenementReservationListItemDto>> ListByClientAsync(
+            int idClient,
+            EvenementReservationListFilter? filter = null,
+            CancellationToken cancellationToken = default);
+
         Task<EvenementReservationResponseDto?> GetByReferenceAsync(
             string reference,
             int idSociete,

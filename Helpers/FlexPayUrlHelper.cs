@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Http;
 using CongoTravel.Helpers.Evenement;
 using CongoTravel.Helpers.Restaurant;
 using CongoTravel.Helpers.SiteTouristique;
+using CongoTravel.Helpers.Hotel;
 
 namespace CongoTravel.Helpers
 {
@@ -83,6 +84,19 @@ namespace CongoTravel.Helpers
                 RestaurantFlexPayConstants.CallbackRoute,
                 forceProductionCallbackInDev,
                 "restaurant");
+
+        public static string ResolveHotelCallbackUrl(
+            HttpContext? httpContext,
+            string? callbackBaseUrl,
+            string hotelCallbackRelativePath,
+            bool forceProductionCallbackInDev) =>
+            ResolveModuleCallbackUrl(
+                httpContext,
+                callbackBaseUrl,
+                hotelCallbackRelativePath,
+                HotelFlexPayConstants.CallbackRoute,
+                forceProductionCallbackInDev,
+                "hôtel");
 
         public static string DeriveRedirectUrl(string callbackBaseUrl, string action)
         {

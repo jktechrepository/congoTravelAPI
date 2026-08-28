@@ -256,6 +256,54 @@ namespace CongoTravel.Tests
         }
 
         [Fact]
+        public async Task ListByClientAsync_returns_reservations_across_societes()
+        {
+            await using var ctx = BuildDb(nameof(ListByClientAsync_returns_reservations_across_societes));
+            const int idClient = 42;
+
+            var (idSocieteA, idResA) = await SeedConfirmedReservationAsync(ctx, quantity: 1);
+            var resA = await ctx.EvenementReservations.FindAsync(idResA);
+            Assert.NotNull(resA);
+            resA!.IdClient = idClient;
+            await ctx.SaveChangesAsync();
+
+            var idSocieteB = await SeedSocieteAsync(ctx);
+            var (idSocieteB2, idSessionB) = await SeedPublishedSessionAsync(ctx, idSocieteB);
+            Assert.Equal(idSocieteB, idSocieteB2);
+            var holdB = await CreateHoldService(ctx).CreateHoldAsync(
+                idSessionB,
+                idSocieteB,
+                new EvenementHoldRequestDto
+                {
+                    Items = new List<EvenementHoldItemRequestDto> { new() { Quantity = 1 } }
+                });
+            await CreatePaymentService(ctx).ConfirmPaymentAsync(
+                holdB.IdEvenementReservation,
+                idSocieteB,
+                new EvenementConfirmPaymentRequestDto { MethodePaiement = "CASH" });
+            var resB = await ctx.EvenementReservations.FindAsync(holdB.IdEvenementReservation);
+            Assert.NotNull(resB);
+            resB!.IdClient = idClient;
+            await ctx.SaveChangesAsync();
+
+            // Autre client — ne doit pas apparaître
+            var (idSocieteC, idResC) = await SeedConfirmedReservationAsync(ctx, quantity: 1);
+            var resC = await ctx.EvenementReservations.FindAsync(idResC);
+            resC!.IdClient = idClient + 1;
+            await ctx.SaveChangesAsync();
+
+            var service = CreateService(ctx);
+            var list = await service.ListByClientAsync(
+                idClient,
+                new EvenementReservationListFilter { Status = EvenementReservationStatus.CONFIRMED });
+
+            Assert.Equal(2, list.Count);
+            Assert.Contains(list, r => r.IdEvenementReservation == idResA && r.IdSociete == idSocieteA);
+            Assert.Contains(list, r => r.IdEvenementReservation == holdB.IdEvenementReservation && r.IdSociete == idSocieteB);
+            Assert.DoesNotContain(list, r => r.IdEvenementReservation == idResC);
+        }
+
+        [Fact]
         public async Task ListBySocieteAndSessionAsync_returns_null_when_session_not_in_societe()
         {
             await using var ctx = BuildDb(nameof(ListBySocieteAndSessionAsync_returns_null_when_session_not_in_societe));

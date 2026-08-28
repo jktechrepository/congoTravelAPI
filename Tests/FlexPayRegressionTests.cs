@@ -562,6 +562,7 @@ namespace CongoTravel.Tests
                 Microsoft.Extensions.Options.Options.Create(new FlexPayOptions()),
                 resolution,
                 Mock.Of<IReversementAutomatiqueService>(),
+                Mock.Of<IAllerRetourReservationService>(),
                 NullLogger<FlexPayCallbackService>.Instance);
         }
 

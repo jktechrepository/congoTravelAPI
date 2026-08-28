@@ -60,5 +60,21 @@ namespace CongoTravel.Tests
             Assert.Equal("/api/events/flexpay/verifier", EvenementFlexPayConstants.VerifierRoutePrefix);
             Assert.Equal("FLEXPAY", EvenementFlexPayConstants.Provider);
         }
+
+        [Fact]
+        public void Verifier_action_exposes_optional_idSociete_query()
+        {
+            var method = typeof(CongoTravel.Controllers.EvenementFlexPayController)
+                .GetMethod(nameof(CongoTravel.Controllers.EvenementFlexPayController.Verifier));
+            Assert.NotNull(method);
+
+            var param = method!.GetParameters().Single(p => p.Name == "idSociete");
+            Assert.Equal(typeof(int?), param.ParameterType);
+            Assert.True(param.HasDefaultValue);
+            Assert.Null(param.DefaultValue);
+
+            var fromQuery = param.GetCustomAttributes(typeof(Microsoft.AspNetCore.Mvc.FromQueryAttribute), inherit: false);
+            Assert.Single(fromQuery);
+        }
     }
 }

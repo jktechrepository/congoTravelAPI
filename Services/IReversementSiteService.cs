@@ -36,6 +36,7 @@ namespace CongoTravel.Services
             string? motif,
             int? idPaiementTransport = null,
             int? idReservationTransport = null,
+            string? numeroMobileMoneyBeneficiaireOverride = null,
             CancellationToken cancellationToken = default);
 
         Task<ReversementSiteResponseDto?> GetByIdAsync(

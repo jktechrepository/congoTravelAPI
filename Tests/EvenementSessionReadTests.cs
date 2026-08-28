@@ -19,7 +19,7 @@ namespace CongoTravel.Tests
                 .Options);
 
         private static EvenementSessionService CreateService(CongoTravelDbContext ctx) =>
-            new(ctx, new EvenementSessionPhotoService(ctx, Microsoft.Extensions.Logging.Abstractions.NullLogger<EvenementSessionPhotoService>.Instance), Microsoft.Extensions.Logging.Abstractions.NullLogger<EvenementSessionService>.Instance);
+            PhotoStorageTestFactory.CreateEvenementSessionService(ctx);
 
         [Fact]
         public async Task ListAsync_filters_by_status_and_inventory_mode()
@@ -683,7 +683,8 @@ namespace CongoTravel.Tests
 
             Assert.Equal("Catalogue Co", item.NomSociete);
             Assert.NotNull(item.PhotoCouverture);
-            Assert.StartsWith("data:image/jpeg;base64,", item.PhotoCouverture!.PhotoBase64);
+            Assert.False(string.IsNullOrWhiteSpace(item.PhotoCouverture!.PhotoUrl));
+            Assert.True(string.IsNullOrEmpty(item.PhotoCouverture.PhotoBase64));
             Assert.Equal(1, item.PhotoCouverture.Ordre);
             Assert.Equal(25m, item.PrixMin);
             Assert.Equal(25m, item.PrixMax);

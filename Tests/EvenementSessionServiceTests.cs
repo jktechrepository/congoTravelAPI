@@ -19,7 +19,7 @@ namespace CongoTravel.Tests
                 .Options);
 
         private static EvenementSessionService CreateService(CongoTravelDbContext ctx) =>
-            new(ctx, new EvenementSessionPhotoService(ctx, Microsoft.Extensions.Logging.Abstractions.NullLogger<EvenementSessionPhotoService>.Instance), Microsoft.Extensions.Logging.Abstractions.NullLogger<EvenementSessionService>.Instance);
+            PhotoStorageTestFactory.CreateEvenementSessionService(ctx);
 
         [Fact]
         public async Task CreateDraftAsync_creates_session_with_global_quota_pricing()

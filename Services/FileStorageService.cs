@@ -79,6 +79,47 @@ namespace CongoTravel.Services
             };
         }
         
+        public async Task<FileUploadResult> UploadBytesAsync(
+            byte[] content,
+            string relativeKey,
+            string contentType,
+            string? originalFileName = null,
+            CancellationToken cancellationToken = default)
+        {
+            if (content == null || content.Length == 0)
+                throw new ArgumentException("Le contenu binaire est vide ou null", nameof(content));
+
+            if (string.IsNullOrWhiteSpace(relativeKey))
+                throw new ArgumentException("La clé relative est obligatoire", nameof(relativeKey));
+
+            var normalizedKey = relativeKey.Trim().Replace('\\', '/').TrimStart('/');
+            var fullPath = Path.Combine(_environment.WebRootPath, normalizedKey.Replace('/', Path.DirectorySeparatorChar));
+            var directory = Path.GetDirectoryName(fullPath);
+            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+            {
+                Directory.CreateDirectory(directory);
+                _logger.LogInformation("Dossier créé : {Directory}", directory);
+            }
+
+            await File.WriteAllBytesAsync(fullPath, content, cancellationToken);
+
+            var fileName = Path.GetFileName(normalizedKey);
+            var resolvedContentType = string.IsNullOrWhiteSpace(contentType)
+                ? GetContentType(fileName)
+                : contentType;
+
+            _logger.LogInformation("Octets uploadés en local : {Path} ({Size} bytes)", fullPath, content.Length);
+
+            return new FileUploadResult
+            {
+                FileName = fileName,
+                OriginalFileName = originalFileName ?? fileName,
+                FilePath = normalizedKey,
+                FileSize = content.Length,
+                TypeMIME = resolvedContentType
+            };
+        }
+
         public async Task<bool> DeleteFileAsync(string filePath)
         {
             try
@@ -101,6 +142,15 @@ namespace CongoTravel.Services
                 _logger.LogError(ex, $"Erreur lors de la suppression du fichier : {filePath}");
                 return false;
             }
+        }
+
+        public async Task<byte[]> GetFileBytesAsync(string filePath, CancellationToken cancellationToken = default)
+        {
+            var fullPath = Path.Combine(_environment.WebRootPath, filePath);
+            if (!File.Exists(fullPath))
+                throw new FileNotFoundException($"Fichier introuvable : {filePath}");
+
+            return await File.ReadAllBytesAsync(fullPath, cancellationToken);
         }
         
         public Task<FileStream> GetFileStreamAsync(string filePath)

@@ -131,6 +131,7 @@ namespace CongoTravel.Tests
                 currentUser.Object,
                 CreateVoyageControllerDbContext(),
                 mapper.Object,
+                Mock.Of<CongoTravel.Services.PhotoStorage.IPhotoBinaryHydrator>(),
                 NullLogger<VoyageController>.Instance);
 
             var action = await controller.GetById(123);
@@ -175,6 +176,7 @@ namespace CongoTravel.Tests
                 currentUser.Object,
                 CreateVoyageControllerDbContext(),
                 mapper.Object,
+                Mock.Of<CongoTravel.Services.PhotoStorage.IPhotoBinaryHydrator>(),
                 NullLogger<VoyageController>.Instance);
             var action = await controller.GetById(124);
 
@@ -207,6 +209,7 @@ namespace CongoTravel.Tests
                 currentUser.Object,
                 CreateVoyageControllerDbContext(),
                 mapper.Object,
+                Mock.Of<CongoTravel.Services.PhotoStorage.IPhotoBinaryHydrator>(),
                 NullLogger<VoyageController>.Instance);
 
             var action = await controller.GetTarifsCategorieSiege(125);
@@ -273,6 +276,7 @@ namespace CongoTravel.Tests
                 currentUser.Object,
                 CreateVoyageControllerDbContext(),
                 mapper.Object,
+                Mock.Of<CongoTravel.Services.PhotoStorage.IPhotoBinaryHydrator>(),
                 NullLogger<VoyageController>.Instance);
             var dto = new CreateVoyageDto
             {
@@ -362,6 +366,7 @@ namespace CongoTravel.Tests
                 currentUser.Object,
                 CreateVoyageControllerDbContext(),
                 mapper.Object,
+                Mock.Of<CongoTravel.Services.PhotoStorage.IPhotoBinaryHydrator>(),
                 NullLogger<VoyageController>.Instance);
             var dto = new CreateVoyageDto
             {
@@ -449,6 +454,7 @@ namespace CongoTravel.Tests
                 currentUser.Object,
                 CreateVoyageControllerDbContext(),
                 mapper.Object,
+                Mock.Of<CongoTravel.Services.PhotoStorage.IPhotoBinaryHydrator>(),
                 NullLogger<VoyageController>.Instance);
             var dto = new UpdateVoyageDto
             {
@@ -544,6 +550,7 @@ namespace CongoTravel.Tests
                 currentUser.Object,
                 CreateVoyageControllerDbContext(),
                 mapper.Object,
+                Mock.Of<CongoTravel.Services.PhotoStorage.IPhotoBinaryHydrator>(),
                 NullLogger<VoyageController>.Instance);
             var dto = new UpdateVoyageDto
             {
@@ -604,6 +611,7 @@ namespace CongoTravel.Tests
                 currentUser.Object,
                 CreateVoyageControllerDbContext(),
                 mapper.Object,
+                Mock.Of<CongoTravel.Services.PhotoStorage.IPhotoBinaryHydrator>(),
                 NullLogger<VoyageController>.Instance);
 
             var dto = new UpdateVoyageDto
@@ -646,6 +654,7 @@ namespace CongoTravel.Tests
                 NullLogger<ReservationController>.Instance,
                 new Mock<ICashReservationWithPaiementService>().Object,
                 new Mock<IFlexPayReservationService>().Object,
+                new Mock<IAllerRetourReservationService>().Object,
                 readService.Object,
                 new Mock<IBilletPricingEnrichmentService>().Object,
                 db,
@@ -910,7 +919,7 @@ namespace CongoTravel.Tests
         [Theory]
         [InlineData(typeof(ClientController), 15)]
         [InlineData(typeof(VoyageController), 38)]
-        [InlineData(typeof(ReservationController), 36)]
+        [InlineData(typeof(ReservationController), 40)]
         [InlineData(typeof(PaiementController), 9)]
         [InlineData(typeof(BilletController), 16)]
         [InlineData(typeof(FeuilleDeRouteController), 4)]

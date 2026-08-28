@@ -26,6 +26,7 @@ namespace CongoTravel.Services.SiteTouristique
         {
             var journee = await _context.SiteTouristiqueJournees
                 .AsNoTracking()
+                .Include(j => j.Societe)
                 .Include(j => j.GlobalQuota)
                 .Include(j => j.ClassQuotas)
                     .ThenInclude(q => q.Classe)
@@ -39,6 +40,8 @@ namespace CongoTravel.Services.SiteTouristique
             var response = new SiteTouristiqueAvailabilityResponseDto
             {
                 IdSiteTouristiqueJournee = journee.IdSiteTouristiqueJournee,
+                IdSociete = journee.IdSociete,
+                NomSociete = journee.Societe?.Nom,
                 InventoryMode = journee.InventoryMode.ToString(),
                 Status = journee.Status.ToString()
             };

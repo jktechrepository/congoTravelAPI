@@ -39,8 +39,9 @@ namespace CongoTravel.Tests
             Assert.True(config.ActiviteEvenement);
             Assert.True(config.ActiviteSiteTouristique);
             Assert.True(config.ActiviteRestaurant);
+            Assert.True(config.ActiviteHotel);
             Assert.Equal(
-                new[] { "Transport", "Evenement", "SiteTouristique", "Restaurant" },
+                new[] { "Transport", "Evenement", "SiteTouristique", "Restaurant", "Hotel" },
                 ConfigSocieteDefaults.GetActivitesActives(config));
         }
 
@@ -70,6 +71,7 @@ namespace CongoTravel.Tests
                 ActiviteEvenement = false,
                 ActiviteSiteTouristique = false,
                 ActiviteRestaurant = true,
+                ActiviteHotel = false,
                 PoidsBagageParKiloOffert = 25m
             });
 
@@ -84,6 +86,7 @@ namespace CongoTravel.Tests
             Assert.False(updated.ActiviteEvenement);
             Assert.False(updated.ActiviteSiteTouristique);
             Assert.True(updated.ActiviteRestaurant);
+            Assert.False(updated.ActiviteHotel);
             Assert.Equal(25m, updated.PoidsBagageParKiloOffert);
             Assert.Equal(
                 new[] { "Transport", "Restaurant" },

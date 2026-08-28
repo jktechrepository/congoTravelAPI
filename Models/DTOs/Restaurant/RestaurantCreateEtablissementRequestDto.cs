@@ -25,7 +25,11 @@ namespace CongoTravel.Models.DTOs.Restaurant
         [Range(1, int.MaxValue)]
         public int IdSite { get; set; }
 
-        /// <summary>Photos optionnelles à la création (max 3).</summary>
+        /// <summary>
+        /// LEGACY / déprécié — photos embarquées en photoBase64 (max 3).
+        /// Préférer : créer l'établissement sans photos, puis POST/PUT multipart
+        /// <c>/api/restaurants/etablissements/{id}/photos</c>.
+        /// </summary>
         public List<AddRestaurantPhotoDto>? Photos { get; set; }
     }
 }

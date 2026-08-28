@@ -187,6 +187,7 @@ namespace CongoTravel.Services
                     IdUtilisateur = dto.Paiement.IdUtilisateur,
                     Origine = origine,
                     MethodePaiement = methode,
+                    TypeCommande = TypeCommandeReservation.Single,
                     MontantVoyage = montantAttendu,
                     CodeDeviseVoyage = codeDeviseVoyage,
                     MontantFlexPay = montantFlexPay,

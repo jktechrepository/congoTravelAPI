@@ -1,4 +1,5 @@
 using CongoTravel.Helpers.Evenement;
+using CongoTravel.Models.DTOs.Evenement;
 using CongoTravel.Models.Enums;
 using CongoTravel.Services.Repositories;
 using Moq;
@@ -58,6 +59,138 @@ namespace CongoTravel.Tests
 
             Assert.Throws<UnauthorizedAccessException>(() =>
                 EvenementTenancyGuard.ResolveEffectiveSocieteId(user.Object));
+        }
+
+        [Fact]
+        public void FlexPayVerifier_client_may_pass_organizer_idSociete()
+        {
+            var user = new Mock<ICurrentUserService>();
+            user.SetupGet(u => u.IsSuperAdmin).Returns(false);
+            user.SetupGet(u => u.IsStaff).Returns(false);
+            user.SetupGet(u => u.UserRole).Returns(UserRoles.CLIENT);
+            user.SetupGet(u => u.PrimaryRole).Returns(UserRoles.CLIENT);
+            user.SetupGet(u => u.SocieteId).Returns(1);
+
+            var id = EvenementTenancyGuard.ResolveEffectiveSocieteIdForFlexPayVerifier(user.Object, 4);
+
+            Assert.Equal(4, id);
+        }
+
+        [Fact]
+        public void FlexPayVerifier_staff_with_other_idSociete_throws()
+        {
+            var user = new Mock<ICurrentUserService>();
+            user.SetupGet(u => u.IsSuperAdmin).Returns(false);
+            user.SetupGet(u => u.IsStaff).Returns(true);
+            user.SetupGet(u => u.UserRole).Returns(UserRoles.CAISSIER);
+            user.SetupGet(u => u.PrimaryRole).Returns(UserRoles.CAISSIER);
+            user.SetupGet(u => u.SocieteId).Returns(1);
+
+            Assert.Throws<UnauthorizedAccessException>(() =>
+                EvenementTenancyGuard.ResolveEffectiveSocieteIdForFlexPayVerifier(user.Object, 4));
+        }
+
+        [Fact]
+        public void ApplyClientSelfScope_forces_jwt_user_and_clears_query_ids()
+        {
+            var user = new Mock<ICurrentUserService>();
+            user.SetupGet(u => u.IsSuperAdmin).Returns(false);
+            user.SetupGet(u => u.IsStaff).Returns(false);
+            user.SetupGet(u => u.UserRole).Returns(UserRoles.CLIENT);
+            user.SetupGet(u => u.PrimaryRole).Returns(UserRoles.CLIENT);
+            user.SetupGet(u => u.UserId).Returns(11);
+            user.SetupGet(u => u.ClientId).Returns(1);
+
+            var filter = new EvenementReservationListFilter
+            {
+                IdUtilisateur = 999,
+                IdClient = 888
+            };
+            EvenementTenancyGuard.ApplyClientSelfScopeToListFilter(user.Object, filter);
+
+            Assert.Equal(11, filter.IdUtilisateur);
+            Assert.Null(filter.IdClient);
+        }
+
+        [Fact]
+        public void ApplyClientSelfScope_staff_keeps_query_filters()
+        {
+            var user = new Mock<ICurrentUserService>();
+            user.SetupGet(u => u.IsSuperAdmin).Returns(false);
+            user.SetupGet(u => u.IsStaff).Returns(true);
+            user.SetupGet(u => u.UserRole).Returns(UserRoles.CAISSIER);
+            user.SetupGet(u => u.PrimaryRole).Returns(UserRoles.CAISSIER);
+            user.SetupGet(u => u.UserId).Returns(5);
+
+            var filter = new EvenementReservationListFilter { IdClient = 1, IdUtilisateur = 11 };
+            EvenementTenancyGuard.ApplyClientSelfScopeToListFilter(user.Object, filter);
+
+            Assert.Equal(1, filter.IdClient);
+            Assert.Equal(11, filter.IdUtilisateur);
+        }
+
+        [Fact]
+        public void EnsureClientOwnsReservation_allows_own_user()
+        {
+            var user = new Mock<ICurrentUserService>();
+            user.SetupGet(u => u.IsStaff).Returns(false);
+            user.SetupGet(u => u.UserRole).Returns(UserRoles.CLIENT);
+            user.SetupGet(u => u.PrimaryRole).Returns(UserRoles.CLIENT);
+            user.SetupGet(u => u.UserId).Returns(11);
+            user.SetupGet(u => u.ClientId).Returns(1);
+
+            EvenementTenancyGuard.EnsureClientOwnsReservation(user.Object, 11, 1);
+        }
+
+        [Fact]
+        public void EnsureClientOwnsReservation_rejects_foreign()
+        {
+            var user = new Mock<ICurrentUserService>();
+            user.SetupGet(u => u.IsStaff).Returns(false);
+            user.SetupGet(u => u.UserRole).Returns(UserRoles.CLIENT);
+            user.SetupGet(u => u.PrimaryRole).Returns(UserRoles.CLIENT);
+            user.SetupGet(u => u.UserId).Returns(11);
+            user.SetupGet(u => u.ClientId).Returns(1);
+
+            Assert.Throws<UnauthorizedAccessException>(() =>
+                EvenementTenancyGuard.EnsureClientOwnsReservation(user.Object, 99, 2));
+        }
+
+        [Fact]
+        public void EnsureClientMayQueryByClientId_allows_own_client()
+        {
+            var user = new Mock<ICurrentUserService>();
+            user.SetupGet(u => u.IsStaff).Returns(false);
+            user.SetupGet(u => u.UserRole).Returns(UserRoles.CLIENT);
+            user.SetupGet(u => u.PrimaryRole).Returns(UserRoles.CLIENT);
+            user.SetupGet(u => u.ClientId).Returns(1);
+
+            EvenementTenancyGuard.EnsureClientMayQueryByClientId(user.Object, 1);
+        }
+
+        [Fact]
+        public void EnsureClientMayQueryByClientId_rejects_other_client()
+        {
+            var user = new Mock<ICurrentUserService>();
+            user.SetupGet(u => u.IsStaff).Returns(false);
+            user.SetupGet(u => u.UserRole).Returns(UserRoles.CLIENT);
+            user.SetupGet(u => u.PrimaryRole).Returns(UserRoles.CLIENT);
+            user.SetupGet(u => u.ClientId).Returns(1);
+
+            Assert.Throws<UnauthorizedAccessException>(() =>
+                EvenementTenancyGuard.EnsureClientMayQueryByClientId(user.Object, 2));
+        }
+
+        [Fact]
+        public void EnsureClientMayQueryByClientId_staff_may_query_any()
+        {
+            var user = new Mock<ICurrentUserService>();
+            user.SetupGet(u => u.IsStaff).Returns(true);
+            user.SetupGet(u => u.UserRole).Returns(UserRoles.CAISSIER);
+            user.SetupGet(u => u.PrimaryRole).Returns(UserRoles.CAISSIER);
+            user.SetupGet(u => u.ClientId).Returns((int?)null);
+
+            EvenementTenancyGuard.EnsureClientMayQueryByClientId(user.Object, 99);
         }
 
         [Fact]

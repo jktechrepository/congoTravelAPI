@@ -48,7 +48,8 @@ namespace CongoTravel.Tests
 
             Assert.NotNull(created.PhotoCouverture);
             Assert.Equal(1, created.PhotoCouverture!.Ordre);
-            Assert.StartsWith("data:image/jpeg;base64,", created.PhotoCouverture.PhotoBase64);
+            Assert.False(string.IsNullOrWhiteSpace(created.PhotoCouverture.PhotoUrl));
+            Assert.True(string.IsNullOrEmpty(created.PhotoCouverture.PhotoBase64));
             Assert.Equal(2, created.Photos.Count);
             Assert.Equal(1, created.Photos[0].Ordre);
             Assert.Equal(2, created.Photos[1].Ordre);
@@ -99,7 +100,8 @@ namespace CongoTravel.Tests
             var list = await service.ListAsync(idSociete);
             var item = Assert.Single(list);
             Assert.NotNull(item.PhotoCouverture);
-            Assert.StartsWith("data:image/jpeg;base64,", item.PhotoCouverture!.PhotoBase64);
+            Assert.False(string.IsNullOrWhiteSpace(item.PhotoCouverture!.PhotoUrl));
+            Assert.True(string.IsNullOrEmpty(item.PhotoCouverture.PhotoBase64));
             Assert.Equal(1, item.PhotoCouverture.Ordre);
         }
 

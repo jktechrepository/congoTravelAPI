@@ -53,6 +53,8 @@ namespace CongoTravel.Configuration
         /// </summary>
         public string RestaurantCallbackRelativePath { get; set; } = "/api/restaurants/flexpay/callback";
 
+        public string HotelCallbackRelativePath { get; set; } = "/api/hotels/flexpay/callback";
+
         /// <summary>Kill-switch dédié événement ; si <c>false</c>, seul <see cref="Enabled"/> global s'applique.</summary>
         public bool? EventEnabled { get; set; }
 
@@ -61,6 +63,8 @@ namespace CongoTravel.Configuration
 
         /// <summary>Kill-switch dédié restaurant ; si null, fallback sur <see cref="Enabled"/>.</summary>
         public bool? RestaurantEnabled { get; set; }
+
+        public bool? HotelEnabled { get; set; }
 
         /// <summary>Kill-switch global pour le reversement automatique post-paiement électronique.</summary>
         public bool AutoReversementEnabled { get; set; } = true;
@@ -73,5 +77,7 @@ namespace CongoTravel.Configuration
 
         /// <summary>FlexPay restaurant actif (fallback sur <see cref="Enabled"/> si null).</summary>
         public bool IsRestaurantEnabled => RestaurantEnabled ?? Enabled;
+
+        public bool IsHotelEnabled => HotelEnabled ?? Enabled;
     }
 }

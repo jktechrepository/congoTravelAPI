@@ -17,6 +17,7 @@ namespace CongoTravel.Helpers
         public const int DureeHoldEvenementMinutes = 15;
         public const int DureeHoldSiteTouristiqueMinutes = 15;
         public const int DureeHoldRestaurantMinutes = 15;
+        public const int DureeHoldHotelMinutes = 15;
 
         public static ConfigSociete CreateForSociete(int idSociete) => new()
         {
@@ -33,12 +34,14 @@ namespace CongoTravel.Helpers
             DureeHoldEvenementMinutes = DureeHoldEvenementMinutes,
             DureeHoldSiteTouristiqueMinutes = DureeHoldSiteTouristiqueMinutes,
             DureeHoldRestaurantMinutes = DureeHoldRestaurantMinutes,
+            DureeHoldHotelMinutes = DureeHoldHotelMinutes,
             ReaffectationActive = true,
             ReservationIsActif = true,
             ActiviteTransport = true,
             ActiviteEvenement = true,
             ActiviteSiteTouristique = true,
             ActiviteRestaurant = true,
+            ActiviteHotel = true,
             PourcentageReversementSite = 100m,
             DateCreation = DateTime.UtcNow
         };
@@ -57,6 +60,7 @@ namespace CongoTravel.Helpers
             config.DureeHoldEvenementMinutes = Math.Clamp(config.DureeHoldEvenementMinutes, 1, 120);
             config.DureeHoldSiteTouristiqueMinutes = Math.Clamp(config.DureeHoldSiteTouristiqueMinutes, 1, 120);
             config.DureeHoldRestaurantMinutes = Math.Clamp(config.DureeHoldRestaurantMinutes, 1, 120);
+            config.DureeHoldHotelMinutes = Math.Clamp(config.DureeHoldHotelMinutes, 1, 120);
             if (config.JoursAvanceMaxReservation.HasValue)
                 config.JoursAvanceMaxReservation = Math.Clamp(config.JoursAvanceMaxReservation.Value, 1, 730);
 
@@ -94,7 +98,7 @@ namespace CongoTravel.Helpers
         /// <summary>Noms des activités actives (<see cref="SocieteActiviteType"/>).</summary>
         public static IReadOnlyList<string> GetActivitesActives(ConfigSociete config)
         {
-            var list = new List<string>(4);
+            var list = new List<string>(5);
             if (config.ActiviteTransport)
                 list.Add(nameof(SocieteActiviteType.Transport));
             if (config.ActiviteEvenement)
@@ -103,6 +107,8 @@ namespace CongoTravel.Helpers
                 list.Add(nameof(SocieteActiviteType.SiteTouristique));
             if (config.ActiviteRestaurant)
                 list.Add(nameof(SocieteActiviteType.Restaurant));
+            if (config.ActiviteHotel)
+                list.Add(nameof(SocieteActiviteType.Hotel));
             return list;
         }
 

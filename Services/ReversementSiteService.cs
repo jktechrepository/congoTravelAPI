@@ -55,6 +55,7 @@ namespace CongoTravel.Services
                 idPaiementSource: null,
                 enforceManualPendingCheck: true,
                 throwOnFlexPayFailure: true,
+                numeroMobileMoneyBeneficiaireOverride: null,
                 cancellationToken);
 
         public Task<ReversementSiteResponseDto?> InitierPourPaiementAsync(
@@ -79,6 +80,7 @@ namespace CongoTravel.Services
                 motif,
                 idPaiementTransport: idPaiement,
                 idReservationTransport: idReservation,
+                numeroMobileMoneyBeneficiaireOverride: null,
                 cancellationToken);
 
         public async Task<ReversementSiteResponseDto?> InitierPourPaiementAsync(
@@ -93,6 +95,7 @@ namespace CongoTravel.Services
             string? motif,
             int? idPaiementTransport = null,
             int? idReservationTransport = null,
+            string? numeroMobileMoneyBeneficiaireOverride = null,
             CancellationToken cancellationToken = default)
         {
             var module = string.IsNullOrWhiteSpace(modulePaiement)
@@ -130,6 +133,7 @@ namespace CongoTravel.Services
                     idPaiementSource,
                     enforceManualPendingCheck: false,
                     throwOnFlexPayFailure: false,
+                    numeroMobileMoneyBeneficiaireOverride,
                     cancellationToken);
             }
             catch (InvalidOperationException ex) when (
@@ -181,6 +185,7 @@ namespace CongoTravel.Services
             int? idPaiementSource,
             bool enforceManualPendingCheck,
             bool throwOnFlexPayFailure,
+            string? numeroMobileMoneyBeneficiaireOverride,
             CancellationToken cancellationToken)
         {
             if (!_flexPayOptions.Enabled)
@@ -193,7 +198,11 @@ namespace CongoTravel.Services
                 .FirstOrDefaultAsync(s => s.IdSite == idSite && s.IdSociete == idSociete && s.Statut, cancellationToken)
                 ?? throw new InvalidOperationException($"Site {idSite} introuvable ou inactif.");
 
-            if (!MobileMoneyPhoneHelper.TryNormalize(site.NumeroMobileMoney, out var phone, out var phoneError))
+            var rawPhone = !string.IsNullOrWhiteSpace(numeroMobileMoneyBeneficiaireOverride)
+                ? numeroMobileMoneyBeneficiaireOverride
+                : site.NumeroMobileMoney;
+
+            if (!MobileMoneyPhoneHelper.TryNormalize(rawPhone, out var phone, out var phoneError))
                 throw new InvalidOperationException(phoneError ?? "NumeroMobileMoney invalide pour ce site.");
 
             var codeDevise = (codeDeviseInput ?? "CDF").Trim().ToUpperInvariant();

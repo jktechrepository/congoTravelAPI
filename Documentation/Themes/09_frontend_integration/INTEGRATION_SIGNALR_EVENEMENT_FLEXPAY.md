@@ -49,6 +49,7 @@ sequenceDiagram
 | JWT acheteur | Hub `[Authorize]` ; sans token → connexion refusée |
 | `IdUtilisateur` | Renseigné côté API à l’achat si `UserId > 0` ; **sinon pas de push** (guichet anonyme → poll seul) |
 | Permissions poll | `Evenement.Reservation.Confirm` pour `verifier` |
+| Query Client | `?idSociete=` = société **organisatrice** (achat cross-société) — voir [MODULE_05](MODULE_05_EVENEMENT_BILLETTERIE.md) |
 | Package web | `@microsoft/signalr` |
 | Package Flutter | `signalr_netcore` (ou client SignalR compatible .NET) |
 

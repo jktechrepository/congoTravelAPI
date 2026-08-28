@@ -7,7 +7,9 @@ namespace CongoTravel.Helpers.Restaurant
 {
     public static class RestaurantEtablissementMapper
     {
-        public static RestaurantEtablissementListItemDto ToListItemDto(RestaurantEntity restaurant) =>
+        public static RestaurantEtablissementListItemDto ToListItemDto(
+            RestaurantEntity restaurant,
+            bool includePhotoBase64 = false) =>
             new()
             {
                 IdRestaurant = restaurant.IdRestaurant,
@@ -23,10 +25,12 @@ namespace CongoTravel.Helpers.Restaurant
                 Status = restaurant.Status.ToString(),
                 DateCreation = restaurant.DateCreation,
                 DateModification = restaurant.DateModification,
-                PhotoCouverture = ResolveCoverPhoto(restaurant)
+                PhotoCouverture = ResolveCoverPhoto(restaurant, includePhotoBase64)
             };
 
-        public static RestaurantEtablissementResponseDto ToResponseDto(RestaurantEntity restaurant)
+        public static RestaurantEtablissementResponseDto ToResponseDto(
+            RestaurantEntity restaurant,
+            bool includePhotoBase64 = false)
         {
             var dto = new RestaurantEtablissementResponseDto
             {
@@ -44,7 +48,7 @@ namespace CongoTravel.Helpers.Restaurant
                 DateCreation = restaurant.DateCreation,
                 DateModification = restaurant.DateModification,
                 CreneauxCount = restaurant.Creneaux?.Count ?? 0,
-                PhotoCouverture = ResolveCoverPhoto(restaurant)
+                PhotoCouverture = ResolveCoverPhoto(restaurant, includePhotoBase64)
             };
 
             if (restaurant.Photos != null && restaurant.Photos.Count > 0)
@@ -52,26 +56,28 @@ namespace CongoTravel.Helpers.Restaurant
                 dto.Photos = restaurant.Photos
                     .Where(p => p.Statut)
                     .OrderBy(p => p.Ordre)
-                    .Select(ToPhotoDto)
+                    .Select(p => ToPhotoDto(p, includePhotoBase64))
                     .ToList();
             }
 
             return dto;
         }
 
-        public static RestaurantPhotoDto ToPhotoDto(RestaurantPhoto photo)
+        public static RestaurantPhotoDto ToPhotoDto(
+            RestaurantPhoto photo,
+            bool includePhotoBase64 = false)
         {
-            var contentType = string.IsNullOrWhiteSpace(photo.TypeMIME)
-                ? "image/jpeg"
-                : photo.TypeMIME!;
-
             return new RestaurantPhotoDto
             {
                 IdRestaurantPhoto = photo.IdRestaurantPhoto,
                 IdRestaurant = photo.IdRestaurant,
-                PhotoBase64 = photo.PhotoData.Length > 0
-                    ? VehiculePhotoBase64Helper.ToDataUrl(photo.PhotoData, contentType)
-                    : string.Empty,
+                PhotoUrl = CongoTravelPhotoUrlBuilder.ForRestaurant(
+                    photo.IdRestaurant,
+                    photo.IdRestaurantPhoto),
+                PhotoBase64 = PhotoContentHelper.EncodeBase64IfRequested(
+                    photo.PhotoData,
+                    photo.TypeMIME,
+                    includePhotoBase64),
                 Ordre = photo.Ordre,
                 OriginalFileName = photo.OriginalFileName,
                 TypeMIME = photo.TypeMIME,
@@ -82,14 +88,16 @@ namespace CongoTravel.Helpers.Restaurant
             };
         }
 
-        private static RestaurantPhotoDto? ResolveCoverPhoto(RestaurantEntity restaurant)
+        private static RestaurantPhotoDto? ResolveCoverPhoto(
+            RestaurantEntity restaurant,
+            bool includePhotoBase64 = false)
         {
             var cover = restaurant.Photos?
                 .Where(p => p.Statut)
                 .OrderBy(p => p.Ordre)
                 .FirstOrDefault();
 
-            return cover == null ? null : ToPhotoDto(cover);
+            return cover == null ? null : ToPhotoDto(cover, includePhotoBase64);
         }
     }
 }

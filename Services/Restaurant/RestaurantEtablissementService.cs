@@ -4,6 +4,7 @@ using CongoTravel.Helpers;
 using CongoTravel.Helpers.Restaurant;
 using CongoTravel.Models.DTOs.Restaurant;
 using CongoTravel.Models.Restaurant.Enums;
+using CongoTravel.Services.PhotoStorage;
 using RestaurantEntity = CongoTravel.Models.Restaurant.Restaurant;
 using RestaurantConflictException = CongoTravel.Models.Restaurant.RestaurantConflictException;
 
@@ -13,15 +14,18 @@ namespace CongoTravel.Services.Restaurant
     {
         private readonly CongoTravelDbContext _context;
         private readonly IRestaurantPhotoService _photoService;
+        private readonly IPhotoBinaryHydrator _photoHydrator;
         private readonly ILogger<RestaurantEtablissementService> _logger;
 
         public RestaurantEtablissementService(
             CongoTravelDbContext context,
             IRestaurantPhotoService photoService,
+            IPhotoBinaryHydrator photoHydrator,
             ILogger<RestaurantEtablissementService> logger)
         {
             _context = context;
             _photoService = photoService;
+            _photoHydrator = photoHydrator;
             _logger = logger;
         }
 
@@ -85,50 +89,70 @@ namespace CongoTravel.Services.Restaurant
         public async Task<RestaurantEtablissementResponseDto?> GetByIdAsync(
             int idRestaurant,
             int? idSociete = null,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default,
+            bool includePhotoBase64 = false)
         {
             var query = EtablissementDetailQuery().Where(r => r.IdRestaurant == idRestaurant);
             if (idSociete.HasValue && idSociete.Value > 0)
                 query = query.Where(r => r.IdSociete == idSociete.Value);
 
             var restaurant = await query.FirstOrDefaultAsync(cancellationToken);
-            return restaurant == null ? null : RestaurantEtablissementMapper.ToResponseDto(restaurant);
+            if (restaurant == null)
+                return null;
+            if (includePhotoBase64)
+                await _photoHydrator.HydrateRestaurantPhotosAsync(restaurant.Photos, cancellationToken);
+            return RestaurantEtablissementMapper.ToResponseDto(restaurant, includePhotoBase64);
         }
 
         public async Task<RestaurantEtablissementResponseDto?> GetPublishedByIdAsync(
             int idRestaurant,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default,
+            bool includePhotoBase64 = false)
         {
             var restaurant = await EtablissementDetailQuery()
                 .FirstOrDefaultAsync(
                     r => r.IdRestaurant == idRestaurant && r.Status == RestaurantStatus.Published,
                     cancellationToken);
-            return restaurant == null ? null : RestaurantEtablissementMapper.ToResponseDto(restaurant);
+            if (restaurant == null)
+                return null;
+            if (includePhotoBase64)
+                await _photoHydrator.HydrateRestaurantPhotosAsync(restaurant.Photos, cancellationToken);
+            return RestaurantEtablissementMapper.ToResponseDto(restaurant, includePhotoBase64);
         }
 
         public async Task<IReadOnlyList<RestaurantEtablissementListItemDto>> ListAsync(
             int idSociete,
             RestaurantEtablissementListFilter? filter = null,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default,
+            bool includePhotoBase64 = false)
         {
             var query = EtablissementListQuery().Where(r => r.IdSociete == idSociete);
             if (filter?.Status.HasValue == true)
                 query = query.Where(r => r.Status == filter.Status.Value);
 
             var restaurants = await query.OrderBy(r => r.Nom).ToListAsync(cancellationToken);
-            return restaurants.Select(RestaurantEtablissementMapper.ToListItemDto).ToList();
+            if (includePhotoBase64)
+                await _photoHydrator.HydrateRestaurantsAsync(restaurants, cancellationToken);
+            return restaurants
+                .Select(r => RestaurantEtablissementMapper.ToListItemDto(r, includePhotoBase64))
+                .ToList();
         }
 
         public async Task<IReadOnlyList<RestaurantEtablissementListItemDto>> ListPublishedGlobalAsync(
             RestaurantEtablissementListFilter? filter = null,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default,
+            bool includePhotoBase64 = false)
         {
             var query = EtablissementListQuery().Where(r => r.Status == RestaurantStatus.Published);
             if (filter?.IdSociete.HasValue == true && filter.IdSociete.Value > 0)
                 query = query.Where(r => r.IdSociete == filter.IdSociete.Value);
 
             var restaurants = await query.OrderBy(r => r.Nom).ToListAsync(cancellationToken);
-            return restaurants.Select(RestaurantEtablissementMapper.ToListItemDto).ToList();
+            if (includePhotoBase64)
+                await _photoHydrator.HydrateRestaurantsAsync(restaurants, cancellationToken);
+            return restaurants
+                .Select(r => RestaurantEtablissementMapper.ToListItemDto(r, includePhotoBase64))
+                .ToList();
         }
 
         public async Task<RestaurantEtablissementResponseDto?> UpdateAsync(
