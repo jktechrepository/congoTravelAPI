@@ -253,6 +253,87 @@ namespace CongoTravel.Controllers
             }
         }
 
+        /// <summary>
+        /// Met à jour une journée Draft (date, devise, fenêtres, quotas) ou Published
+        /// (fenêtres ; capacité/prix seulement sans vente active).
+        /// </summary>
+        [HttpPut("{id:int}")]
+        [Permission("SiteTouristique.Lieu.Write")]
+        [ProducesResponseType(typeof(SiteTouristiqueJourneeResponseDto), 200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
+        [ProducesResponseType(409)]
+        public async Task<ActionResult<SiteTouristiqueJourneeResponseDto>> Update(
+            int id,
+            [FromBody] SiteTouristiqueUpdateJourneeRequestDto request,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var idSociete = SiteTouristiqueTenancyGuard.ResolveEffectiveSocieteId(_currentUserService);
+                var updated = await _journeeService.UpdateAsync(id, request, idSociete, cancellationToken);
+                return Ok(updated);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (SiteTouristiqueJourneeConflictException ex)
+            {
+                return Conflict(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur PUT journée site touristique {Id}", id);
+                return StatusCode(500, new { message = "Une erreur interne est survenue." });
+            }
+        }
+
+        /// <summary>
+        /// Supprime une journée (Draft ou Published) sans vente active ni commande en attente.
+        /// </summary>
+        [HttpDelete("{id:int}")]
+        [Permission("SiteTouristique.Lieu.Write")]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(404)]
+        [ProducesResponseType(409)]
+        public async Task<IActionResult> Delete(
+            int id,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var idSociete = SiteTouristiqueTenancyGuard.ResolveEffectiveSocieteId(_currentUserService);
+                await _journeeService.DeleteAsync(id, idSociete, cancellationToken);
+                return NoContent();
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (SiteTouristiqueJourneeConflictException ex)
+            {
+                return Conflict(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur DELETE journée site touristique {Id}", id);
+                return StatusCode(500, new { message = "Une erreur interne est survenue." });
+            }
+        }
+
         [HttpPut("{id:int}/publish")]
         [Permission("SiteTouristique.Lieu.Write")]
         [ProducesResponseType(typeof(SiteTouristiqueJourneeResponseDto), 200)]
@@ -282,6 +363,82 @@ namespace CongoTravel.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Erreur publish journée {Id}", id);
+                return StatusCode(500, new { message = "Une erreur interne est survenue." });
+            }
+        }
+
+        /// <summary>
+        /// Soft-delete : passe la journée en Cancelled (Draft ou Published).
+        /// Idempotent si déjà Cancelled. Closed → 400.
+        /// </summary>
+        [HttpPut("{id:int}/cancel")]
+        [Permission("SiteTouristique.Lieu.Write")]
+        [ProducesResponseType(typeof(SiteTouristiqueJourneeResponseDto), 200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
+        public async Task<ActionResult<SiteTouristiqueJourneeResponseDto>> Cancel(
+            int id,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var idSociete = SiteTouristiqueTenancyGuard.ResolveEffectiveSocieteId(_currentUserService);
+                var cancelled = await _journeeService.CancelAsync(id, idSociete, cancellationToken);
+                return Ok(cancelled);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur cancel journée {Id}", id);
+                return StatusCode(500, new { message = "Une erreur interne est survenue." });
+            }
+        }
+
+        /// <summary>
+        /// Clôture opérationnelle : passe la journée en Closed (Draft ou Published).
+        /// Idempotent si déjà Closed. Cancelled → 400.
+        /// </summary>
+        [HttpPut("{id:int}/close")]
+        [Permission("SiteTouristique.Lieu.Write")]
+        [ProducesResponseType(typeof(SiteTouristiqueJourneeResponseDto), 200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
+        public async Task<ActionResult<SiteTouristiqueJourneeResponseDto>> Close(
+            int id,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var idSociete = SiteTouristiqueTenancyGuard.ResolveEffectiveSocieteId(_currentUserService);
+                var closed = await _journeeService.CloseAsync(id, idSociete, cancellationToken);
+                return Ok(closed);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur close journée {Id}", id);
                 return StatusCode(500, new { message = "Une erreur interne est survenue." });
             }
         }

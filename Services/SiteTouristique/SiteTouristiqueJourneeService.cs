@@ -256,6 +256,323 @@ namespace CongoTravel.Services.SiteTouristique
             return await LoadJourneeResponseAsync(journee.IdSiteTouristiqueJournee, idSociete, cancellationToken);
         }
 
+        public async Task<SiteTouristiqueJourneeResponseDto> UpdateAsync(
+            int idSiteTouristiqueJournee,
+            SiteTouristiqueUpdateJourneeRequestDto request,
+            int idSociete,
+            CancellationToken cancellationToken = default)
+        {
+            if (request == null)
+                throw new InvalidOperationException("Le corps de la requête est obligatoire.");
+
+            request.SalesOpenAtUtc = SiteTouristiqueDateTimeUtcHelper.NormalizeToUtc(request.SalesOpenAtUtc);
+            request.SalesCloseAtUtc = SiteTouristiqueDateTimeUtcHelper.NormalizeToUtc(request.SalesCloseAtUtc);
+
+            var journee = await _context.SiteTouristiqueJournees
+                .Include(j => j.GlobalQuota)
+                .Include(j => j.ClassQuotas)
+                .FirstOrDefaultAsync(
+                    j => j.IdSiteTouristiqueJournee == idSiteTouristiqueJournee && j.IdSociete == idSociete,
+                    cancellationToken);
+
+            if (journee == null)
+                throw new KeyNotFoundException($"Journée site touristique {idSiteTouristiqueJournee} introuvable.");
+
+            switch (journee.Status)
+            {
+                case SiteTouristiqueStatus.Draft:
+                    await UpdateDraftAsync(journee, request, idSociete, cancellationToken);
+                    break;
+
+                case SiteTouristiqueStatus.Published:
+                    await UpdatePublishedAsync(journee, request, idSociete, cancellationToken);
+                    break;
+
+                default:
+                    throw new InvalidOperationException(
+                        $"Impossible de modifier une journée au statut {journee.Status} (Draft ou Published uniquement).");
+            }
+
+            ApplySalesWindows(journee, request);
+            journee.DateModification = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync(cancellationToken);
+
+            _logger.LogInformation(
+                "Journée site touristique mise à jour — Id={Id}, Statut={Status}, Societe={IdSociete}",
+                journee.IdSiteTouristiqueJournee,
+                journee.Status,
+                idSociete);
+
+            return await LoadJourneeResponseAsync(journee.IdSiteTouristiqueJournee, idSociete, cancellationToken);
+        }
+
+        public async Task DeleteAsync(
+            int idSiteTouristiqueJournee,
+            int idSociete,
+            CancellationToken cancellationToken = default)
+        {
+            var journee = await _context.SiteTouristiqueJournees
+                .Include(j => j.GlobalQuota)
+                .Include(j => j.ClassQuotas)
+                .FirstOrDefaultAsync(
+                    j => j.IdSiteTouristiqueJournee == idSiteTouristiqueJournee && j.IdSociete == idSociete,
+                    cancellationToken);
+
+            if (journee == null)
+                throw new KeyNotFoundException($"Journée site touristique {idSiteTouristiqueJournee} introuvable.");
+
+            if (await HasActiveSalesAsync(idSiteTouristiqueJournee, cancellationToken))
+            {
+                throw new SiteTouristiqueJourneeConflictException(
+                    "Impossible de supprimer la journée : des réservations actives (HOLD/CONFIRMED) existent.");
+            }
+
+            var hasPendingCommande = await _context.SiteTouristiqueCommandesEnAttente
+                .AsNoTracking()
+                .AnyAsync(
+                    c => c.IdSiteTouristiqueJournee == idSiteTouristiqueJournee,
+                    cancellationToken);
+
+            if (hasPendingCommande)
+            {
+                throw new SiteTouristiqueJourneeConflictException(
+                    "Impossible de supprimer la journée : des commandes FlexPay en attente existent.");
+            }
+
+            // FK Restrict : CANCELLED/EXPIRED bloquent aussi le hard delete (tickets/paiements liés).
+            var hasHistoricalReservations = await _context.SiteTouristiqueReservations
+                .AsNoTracking()
+                .AnyAsync(r => r.IdSiteTouristiqueJournee == idSiteTouristiqueJournee, cancellationToken);
+
+            if (hasHistoricalReservations)
+            {
+                throw new SiteTouristiqueJourneeConflictException(
+                    "Impossible de supprimer la journée : des réservations historiques (CANCELLED/EXPIRED) existent encore.");
+            }
+
+            _context.SiteTouristiqueJournees.Remove(journee);
+            await _context.SaveChangesAsync(cancellationToken);
+
+            _logger.LogInformation(
+                "Journée site touristique supprimée — Id={Id}, Societe={IdSociete}, Statut={Status}",
+                idSiteTouristiqueJournee,
+                idSociete,
+                journee.Status);
+        }
+
+        public async Task<SiteTouristiqueJourneeResponseDto> CancelAsync(
+            int idSiteTouristiqueJournee,
+            int idSociete,
+            CancellationToken cancellationToken = default)
+        {
+            var journee = await _context.SiteTouristiqueJournees
+                .FirstOrDefaultAsync(
+                    j => j.IdSiteTouristiqueJournee == idSiteTouristiqueJournee && j.IdSociete == idSociete,
+                    cancellationToken);
+
+            if (journee == null)
+                throw new KeyNotFoundException($"Journée site touristique {idSiteTouristiqueJournee} introuvable.");
+
+            if (journee.Status == SiteTouristiqueStatus.Closed)
+            {
+                throw new InvalidOperationException(
+                    "Impossible d'annuler une journée Closed (déjà clôturée opérationnellement).");
+            }
+
+            if (journee.Status == SiteTouristiqueStatus.Cancelled)
+                return await LoadJourneeResponseAsync(idSiteTouristiqueJournee, idSociete, cancellationToken);
+
+            journee.Status = SiteTouristiqueStatus.Cancelled;
+            journee.DateModification = DateTime.UtcNow;
+            await _context.SaveChangesAsync(cancellationToken);
+
+            _logger.LogInformation(
+                "Journée site touristique annulée (soft-delete) — Id={Id}, Societe={IdSociete}",
+                idSiteTouristiqueJournee,
+                idSociete);
+
+            return await LoadJourneeResponseAsync(idSiteTouristiqueJournee, idSociete, cancellationToken);
+        }
+
+        public async Task<SiteTouristiqueJourneeResponseDto> CloseAsync(
+            int idSiteTouristiqueJournee,
+            int idSociete,
+            CancellationToken cancellationToken = default)
+        {
+            var journee = await _context.SiteTouristiqueJournees
+                .FirstOrDefaultAsync(
+                    j => j.IdSiteTouristiqueJournee == idSiteTouristiqueJournee && j.IdSociete == idSociete,
+                    cancellationToken);
+
+            if (journee == null)
+                throw new KeyNotFoundException($"Journée site touristique {idSiteTouristiqueJournee} introuvable.");
+
+            if (journee.Status == SiteTouristiqueStatus.Cancelled)
+            {
+                throw new InvalidOperationException(
+                    "Impossible de clôturer une journée Cancelled (annulée).");
+            }
+
+            if (journee.Status == SiteTouristiqueStatus.Closed)
+                return await LoadJourneeResponseAsync(idSiteTouristiqueJournee, idSociete, cancellationToken);
+
+            journee.Status = SiteTouristiqueStatus.Closed;
+            journee.DateModification = DateTime.UtcNow;
+            await _context.SaveChangesAsync(cancellationToken);
+
+            _logger.LogInformation(
+                "Journée site touristique clôturée — Id={Id}, Societe={IdSociete}",
+                idSiteTouristiqueJournee,
+                idSociete);
+
+            return await LoadJourneeResponseAsync(idSiteTouristiqueJournee, idSociete, cancellationToken);
+        }
+
+        private async Task UpdateDraftAsync(
+            SiteTouristiqueJournee journee,
+            SiteTouristiqueUpdateJourneeRequestDto request,
+            int idSociete,
+            CancellationToken cancellationToken)
+        {
+            if (request.DateVisite.HasValue)
+            {
+                var newDate = request.DateVisite.Value;
+                if (newDate != journee.DateVisite)
+                {
+                    var exists = await _context.SiteTouristiqueJournees
+                        .AsNoTracking()
+                        .AnyAsync(
+                            j => j.IdSiteTouristique == journee.IdSiteTouristique
+                                 && j.DateVisite == newDate
+                                 && j.IdSiteTouristiqueJournee != journee.IdSiteTouristiqueJournee,
+                            cancellationToken);
+
+                    if (exists)
+                    {
+                        throw new SiteTouristiqueJourneeConflictException(
+                            $"Une journée existe déjà pour le lieu {journee.IdSiteTouristique} à la date {newDate:yyyy-MM-dd}.");
+                    }
+
+                    journee.DateVisite = newDate;
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(request.CodeDevise))
+                journee.CodeDevise = NormalizeCodeDevise(request.CodeDevise);
+
+            if (TouchesInventory(request, journee.InventoryMode))
+                await ApplyInventoryUpdateAsync(journee, request, idSociete, cancellationToken);
+        }
+
+        private async Task UpdatePublishedAsync(
+            SiteTouristiqueJournee journee,
+            SiteTouristiqueUpdateJourneeRequestDto request,
+            int idSociete,
+            CancellationToken cancellationToken)
+        {
+            if (request.DateVisite.HasValue)
+            {
+                throw new InvalidOperationException(
+                    "DateVisite ne peut pas être modifiée sur une journée Published.");
+            }
+
+            if (!string.IsNullOrWhiteSpace(request.CodeDevise))
+            {
+                throw new InvalidOperationException(
+                    "CodeDevise ne peut pas être modifié sur une journée Published.");
+            }
+
+            if (!TouchesInventory(request, journee.InventoryMode))
+                return;
+
+            if (await HasActiveSalesAsync(journee.IdSiteTouristiqueJournee, cancellationToken))
+            {
+                throw new SiteTouristiqueJourneeConflictException(
+                    "Impossible de modifier capacité/prix : des réservations actives existent sur cette journée.");
+            }
+
+            await ApplyInventoryUpdateAsync(journee, request, idSociete, cancellationToken);
+        }
+
+        private static bool TouchesInventory(
+            SiteTouristiqueUpdateJourneeRequestDto request,
+            SiteTouristiqueInventoryMode inventoryMode) =>
+            inventoryMode switch
+            {
+                SiteTouristiqueInventoryMode.GlobalQuota => request.GlobalQuota != null,
+                SiteTouristiqueInventoryMode.ClassQuota => request.ClassQuotas != null,
+                _ => false
+            };
+
+        private async Task ApplyInventoryUpdateAsync(
+            SiteTouristiqueJournee journee,
+            SiteTouristiqueUpdateJourneeRequestDto request,
+            int idSociete,
+            CancellationToken cancellationToken)
+        {
+            switch (journee.InventoryMode)
+            {
+                case SiteTouristiqueInventoryMode.GlobalQuota:
+                    ValidateGlobalQuotaCreate(request.GlobalQuota);
+                    if (journee.GlobalQuota == null)
+                        AttachGlobalQuota(journee, request.GlobalQuota!);
+                    else
+                    {
+                        journee.GlobalQuota.CapaciteTotale = request.GlobalQuota!.CapaciteTotale;
+                        journee.GlobalQuota.PrixUnitaire = request.GlobalQuota.PrixUnitaire;
+                    }
+
+                    break;
+
+                case SiteTouristiqueInventoryMode.ClassQuota:
+                    ValidateClassQuotasCreate(request.ClassQuotas);
+                    if (journee.ClassQuotas.Count > 0)
+                        _context.SiteTouristiqueClassQuotas.RemoveRange(journee.ClassQuotas);
+                    journee.ClassQuotas.Clear();
+                    await AttachClassQuotasAsync(journee, request.ClassQuotas!, idSociete, cancellationToken);
+                    break;
+
+                default:
+                    throw new InvalidOperationException(
+                        $"InventoryMode {journee.InventoryMode} non supporté pour la mise à jour.");
+            }
+        }
+
+        private async Task<bool> HasActiveSalesAsync(
+            int idSiteTouristiqueJournee,
+            CancellationToken cancellationToken) =>
+            await _context.SiteTouristiqueReservations
+                .AsNoTracking()
+                .AnyAsync(
+                    r => r.IdSiteTouristiqueJournee == idSiteTouristiqueJournee
+                         && (r.Status == SiteTouristiqueReservationStatus.HOLD
+                             || r.Status == SiteTouristiqueReservationStatus.CONFIRMED),
+                    cancellationToken);
+
+        private static void ApplySalesWindows(
+            SiteTouristiqueJournee journee,
+            SiteTouristiqueUpdateJourneeRequestDto request)
+        {
+            if (request.SalesOpenAtUtc.HasValue)
+                journee.SalesOpenAtUtc = request.SalesOpenAtUtc;
+            if (request.SalesCloseAtUtc.HasValue)
+                journee.SalesCloseAtUtc = request.SalesCloseAtUtc;
+
+            ValidateSalesWindow(journee.SalesOpenAtUtc, journee.SalesCloseAtUtc);
+        }
+
+        private static void ValidateSalesWindow(DateTime? salesOpenAtUtc, DateTime? salesCloseAtUtc)
+        {
+            if (salesCloseAtUtc.HasValue
+                && salesOpenAtUtc.HasValue
+                && salesCloseAtUtc.Value < salesOpenAtUtc.Value)
+            {
+                throw new InvalidOperationException(
+                    "SalesCloseAtUtc doit être postérieur ou égal à SalesOpenAtUtc.");
+            }
+        }
+
         private IQueryable<SiteTouristiqueJournee> BuildListQuery(
             int idSociete,
             SiteTouristiqueJourneeListFilter? filter)

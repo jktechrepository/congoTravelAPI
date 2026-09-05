@@ -54,5 +54,42 @@ namespace CongoTravel.Services.SiteTouristique
             int idSiteTouristiqueJournee,
             int idSociete,
             CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Met à jour une journée : Draft = date/devise/fenêtres/quotas ;
+        /// Published = fenêtres + capacité/prix si aucune vente active.
+        /// </summary>
+        Task<SiteTouristiqueJourneeResponseDto> UpdateAsync(
+            int idSiteTouristiqueJournee,
+            SiteTouristiqueUpdateJourneeRequestDto request,
+            int idSociete,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Supprime une journée (hard delete) si aucune vente active (HOLD/CONFIRMED)
+        /// et aucune commande FlexPay en attente.
+        /// </summary>
+        Task DeleteAsync(
+            int idSiteTouristiqueJournee,
+            int idSociete,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Soft-delete : passe la journée en <c>Cancelled</c> (Draft/Published).
+        /// Idempotent si déjà Cancelled ; Closed → erreur.
+        /// </summary>
+        Task<SiteTouristiqueJourneeResponseDto> CancelAsync(
+            int idSiteTouristiqueJournee,
+            int idSociete,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Clôture opérationnelle : passe la journée en <c>Closed</c> (Draft/Published).
+        /// Idempotent si déjà Closed ; Cancelled → erreur.
+        /// </summary>
+        Task<SiteTouristiqueJourneeResponseDto> CloseAsync(
+            int idSiteTouristiqueJournee,
+            int idSociete,
+            CancellationToken cancellationToken = default);
     }
 }

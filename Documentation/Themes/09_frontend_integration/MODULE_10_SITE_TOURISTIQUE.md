@@ -243,6 +243,95 @@ Si Swagger renvoie `$.dateVisite` + « The request field is required », le body
 
 Puis publish.
 
+#### Modifier une journée (`PUT /api/sites-touristiques/journees/{id}`)
+
+Permission : `SiteTouristique.Lieu.Write`. `idSiteTouristique` et `inventoryMode` sont **immuables** après création.
+
+| Statut | Autorisé | Interdit |
+|--------|----------|----------|
+| **Draft** | `dateVisite`, `codeDevise`, `salesOpenAtUtc` / `salesCloseAtUtc`, quotas/prix | Changer lieu ou mode inventaire |
+| **Published** | Fenêtres de vente ; capacité/prix **si aucune vente active** (HOLD/CONFIRMED) | Date, devise ; inventaire s’il y a des ventes → **409** |
+| **Closed / Cancelled** | — | **400** |
+
+```json
+PUT /api/sites-touristiques/journees/10
+{
+  "dateVisite": "2026-09-20",
+  "codeDevise": "CDF",
+  "salesOpenAtUtc": "2026-09-01T08:00:00Z",
+  "salesCloseAtUtc": "2026-09-19T20:00:00Z",
+  "globalQuota": { "capaciteTotale": 120, "prixUnitaire": 6000 }
+}
+```
+
+Published — fenêtres seules (toujours OK) :
+
+```json
+PUT /api/sites-touristiques/journees/10
+{
+  "salesOpenAtUtc": "2026-09-01T08:00:00Z",
+  "salesCloseAtUtc": "2026-09-19T20:00:00Z"
+}
+```
+
+#### Supprimer une journée (`DELETE /api/sites-touristiques/journees/{id}`)
+
+Permission : `SiteTouristique.Lieu.Write`. Hard delete (journée + quotas).
+
+| Cas | HTTP |
+|-----|------|
+| Draft / Published / Closed / Cancelled **sans** HOLD/CONFIRMED, sans commande FlexPay en attente, sans résa historique | **204** |
+| HOLD ou CONFIRMED présents | **409** |
+| Commande FlexPay en attente | **409** |
+| Réservations CANCELLED/EXPIRED encore présentes (FK) | **409** |
+| Introuvable / autre société | **404** |
+
+```http
+DELETE /api/sites-touristiques/journees/10
+```
+
+#### Annuler une journée — soft-delete (`PUT /api/sites-touristiques/journees/{id}/cancel`)
+
+Permission : `SiteTouristique.Lieu.Write`. Passe `status` à **`Cancelled`** (ligne conservée). Les HOLD ouverts expirent naturellement ; les CONFIRMED / tickets restent.
+
+| Depuis | Résultat |
+|--------|----------|
+| Draft / Published | → Cancelled, **200** |
+| Déjà Cancelled | **200** idempotent |
+| Closed | **400** |
+| Introuvable / autre société | **404** |
+
+```http
+PUT /api/sites-touristiques/journees/10/cancel
+```
+
+| | Hard `DELETE` | Soft `PUT …/cancel` |
+|--|---------------|---------------------|
+| Données | Effacées | Conservées (`Cancelled`) |
+| Avec ventes | **409** | **OK** |
+| Catalogue public | N/A | Retirée (filtre Published) |
+
+#### Clôturer une journée (`PUT /api/sites-touristiques/journees/{id}/close`)
+
+Permission : `SiteTouristique.Lieu.Write`. Passe `status` à **`Closed`** (fin opérationnelle ; pas une annulation). Catalogue / ventes bloqués comme pour `Cancelled`.
+
+| Depuis | Résultat |
+|--------|----------|
+| Draft / Published | → Closed, **200** |
+| Déjà Closed | **200** idempotent |
+| Cancelled | **400** |
+| Introuvable / autre société | **404** |
+
+```http
+PUT /api/sites-touristiques/journees/10/close
+```
+
+| | `cancel` | `close` |
+|--|----------|---------|
+| Sens | Annulation / retrait | Fin de journée opérationnelle |
+| Statut | `Cancelled` | `Closed` |
+| Depuis l’autre | Closed → cancel **400** | Cancelled → close **400** |
+
 ---
 
 ## 5. Contrat API — vente (Vue guichet + Flutter)
